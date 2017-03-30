@@ -1,4 +1,4 @@
-package com.datastax.simulacron;
+package com.datastax.simulacron.server;
 
 import java.util.ArrayList;
 import java.util.HashMap;

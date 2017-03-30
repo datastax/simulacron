@@ -1,4 +1,4 @@
-package com.datastax.simulacron;
+package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.PrimitiveCodec;
 import io.netty.buffer.ByteBuf;

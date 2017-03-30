@@ -2,35 +2,37 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.datastax</groupId>
-    <artifactId>simulacron</artifactId>
-    <version>0.1-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>9</version>
+    </parent>
 
-    <name>simulacron</name>
+    <groupId>com.datastax.simulacron</groupId>
+    <artifactId>simulacron-parent</artifactId>
+    <version>0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>simulacron parent project</name>
     <url>http://maven.apache.org</url>
+
+    <modules>
+        <module>native-server</module>
+        <module>http-server</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <netty.version>4.1.9.Final</netty.version>
+        <netty.version>4.1.8.Final</netty.version>
         <junit.version>4.12</junit.version>
         <slf4j.version>1.7.22</slf4j.version>
         <logback.version>1.1.9</logback.version>
         <native-protocol.version>1.4.0-SNAPSHOT</native-protocol.version>
+        <vertx.version>3.4.1</vertx.version>
         <format.validateOnly>true</format.validateOnly>
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>com.datastax.oss</groupId>
-            <artifactId>native-protocol</artifactId>
-            <version>${native-protocol.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-handler</artifactId>
-            <version>${netty.version}</version>
-        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
