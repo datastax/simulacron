@@ -9,15 +9,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Cluster {
 
-  private Server server;
-
   private AtomicInteger dcCounter = new AtomicInteger(1);
 
   private Map<Integer, DataCenter> dataCenters = new HashMap<>();
 
-  public Cluster(Server server) {
-    this.server = server;
-  }
+  public Cluster() {}
 
   public DataCenter addDataCenter() {
     int id = dcCounter.getAndIncrement();
@@ -31,16 +27,13 @@ public class Cluster {
     return dataCenters.get(i);
   }
 
-  CompletableFuture<Void> bind(Node node) {
-    return server.bind(node);
-  }
-
-  public CompletableFuture<Void> init(Integer... nodesInDc) {
-    List<CompletableFuture<Node>> futures = new ArrayList<>();
+  public CompletableFuture<Void> init(Server server, Integer... nodesInDc) {
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
     for (Integer nodeCount : nodesInDc) {
       DataCenter dc = addDataCenter();
       for (int i = 0; i < nodeCount; i++) {
-        futures.add(dc.addNode());
+        Node node = dc.add();
+        futures.add(server.bind(node));
       }
     }
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
@@ -49,7 +42,8 @@ public class Cluster {
 
   public static void main(String args[]) {
     // Start a simulated Cluster with 3 DCs with 10 nodes in each DC.
-    Cluster cluster = new Cluster(new Server());
-    cluster.init(10, 10, 10);
+    Server server = new Server();
+    Cluster cluster = new Cluster();
+    cluster.init(server, 10, 10, 10);
   }
 }

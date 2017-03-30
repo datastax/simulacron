@@ -7,7 +7,6 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
@@ -41,7 +40,7 @@ public final class Server {
 
   public CompletableFuture<Void> bind(Node node) {
     CompletableFuture<Void> f = new CompletableFuture<>();
-    ChannelFuture bindFuture = this.serverBootstrap.bind(node.address(), node.port());
+    ChannelFuture bindFuture = this.serverBootstrap.bind(node.address());
     bindFuture.addListener(
         (ChannelFutureListener)
             channelFuture -> {
@@ -75,10 +74,10 @@ public final class Server {
     }
   }
 
-  static class Initializer extends ChannelInitializer<SocketChannel> {
+  static class Initializer extends ChannelInitializer<Channel> {
 
     @Override
-    protected void initChannel(SocketChannel channel) throws Exception {
+    protected void initChannel(Channel channel) throws Exception {
       ChannelPipeline pipeline = channel.pipeline();
       Node node = channel.parent().attr(HANDLER).get();
       MDC.put("node", node.toString());

@@ -4,10 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataCenter {
@@ -27,25 +28,20 @@ public class DataCenter {
     this.name = name;
   }
 
-  public CompletableFuture<Node> addNode() {
+  public Node add() {
     int id = nodeCounter.getAndIncrement();
     String nodeName = name + ":" + id;
-    InetAddress address;
+    SocketAddress address;
     try {
-      address = IPResolver.next();
+      address = new InetSocketAddress(IPResolver.next(), 9042);
     } catch (UnknownHostException e) {
       e.printStackTrace();
       address = null;
     }
     logger.debug("Assigning address {} to {}", address, nodeName);
     Node node = new Node(address, this, nodeName);
-    return cluster
-        .bind(node)
-        .thenApply(
-            v -> {
-              nodes.put(id, node);
-              return node;
-            });
+    nodes.put(id, node);
+    return node;
   }
 
   public Node node(int i) {

@@ -27,11 +27,6 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
     ByteBuf contents = (ByteBuf) super.decode(ctx, buffer);
     if (contents == null) return null;
 
-    // Parse protocol version
-    int version = buffer.getByte(0);
-    // first bit is the "direction" of the frame (0 = request)
-    assert (version & 0x80) == 0 : "Frame decoder should only receive request frames";
-
     return frameCodec.decode(contents);
   }
 }

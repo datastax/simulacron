@@ -17,7 +17,7 @@ import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,28 +32,22 @@ public class Node {
       Collections.unmodifiableMap(new HashMap<>());
   private static Logger logger = LoggerFactory.getLogger(Node.class);
 
-  private final InetAddress address;
-  private final int port;
+  private final SocketAddress address;
   private final DataCenter dc;
   private final String name;
 
-  public Node(InetAddress address, DataCenter dc, String name) {
-    this(address, 9042, dc, name);
+  public Node(SocketAddress address) {
+    this(address, new DataCenter(new Cluster(), "standalone"), "standalone");
   }
 
-  public Node(InetAddress address, int port, DataCenter dc, String name) {
+  public Node(SocketAddress address, DataCenter dc, String name) {
     this.address = address;
-    this.port = port;
     this.dc = dc;
     this.name = name;
   }
 
-  public InetAddress address() {
+  public SocketAddress address() {
     return address;
-  }
-
-  public int port() {
-    return port;
   }
 
   private static final Pattern useKeyspacePattern =
