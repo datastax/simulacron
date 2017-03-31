@@ -5,15 +5,17 @@ import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.response.Ready;
+import com.datastax.simulacron.cluster.Node;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
-import io.netty.channel.local.LocalAddress;
 import io.netty.channel.local.LocalChannel;
 import io.netty.channel.local.LocalServerChannel;
 import org.junit.Test;
 
+import java.net.SocketAddress;
 import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -26,9 +28,10 @@ public class ServerTest {
   public void testBind() throws Exception {
     // Use a LocalAddress to use VM pipes
     EventLoopGroup elg = new DefaultEventLoopGroup();
-    LocalAddress address = new LocalAddress("NODE");
+    UUID nodeId = UUID.randomUUID();
+    SocketAddress address = AddressResolver.localAddressResolver.apply(nodeId.toString());
     Server server = new Server(elg, LocalServerChannel.class);
-    Node node = new Node(address);
+    Node node = Node.builder().withId(nodeId).withAddress(address).build();
 
     // Should bind within 5 seconds.
     server.bind(node).get(5, TimeUnit.SECONDS);

@@ -1,4 +1,4 @@
-package com.datastax.simulacron.server;
+package com.datastax.simulacron.cluster;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.FrameCodec;
@@ -11,6 +11,7 @@ import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.oss.protocol.internal.response.result.Void;
+import com.datastax.simulacron.server.AddressResolver;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -22,28 +23,42 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Node {
+public class Node extends AbstractNodeProperties {
 
   private static final Map<String, ByteBuffer> emptyCustomPayload =
       Collections.unmodifiableMap(new HashMap<>());
   private static Logger logger = LoggerFactory.getLogger(Node.class);
 
   private final SocketAddress address;
-  private final DataCenter dc;
-  private final String name;
 
-  public Node(SocketAddress address) {
-    this(address, new DataCenter(new Cluster(), "standalone"), "standalone");
+  Node(
+      String name,
+      UUID id,
+      String cassandraVersion,
+      Map<String, Object> peerInfo,
+      DataCenter parent) {
+    // Constructor to use for serialization/deserialization as address is resolved at runtime based
+    // on environment configuration.
+    this(AddressResolver.defaultResolver.apply(null), name, id, cassandraVersion, peerInfo, parent);
   }
 
-  public Node(SocketAddress address, DataCenter dc, String name) {
+  Node(
+      SocketAddress address,
+      String name,
+      UUID id,
+      String cassandraVersion,
+      Map<String, Object> peerInfo,
+      DataCenter parent) {
+    super(name, id, cassandraVersion, peerInfo, parent);
+    if (parent != null) {
+      parent.addNode(this);
+    }
     this.address = address;
-    this.dc = dc;
-    this.name = name;
   }
 
   public SocketAddress address() {
@@ -53,7 +68,7 @@ public class Node {
   private static final Pattern useKeyspacePattern =
       Pattern.compile("\\s*use\\s+(.*)$", Pattern.CASE_INSENSITIVE);
 
-  CompletableFuture<Void> handle(
+  public CompletableFuture<Void> handle(
       ChannelHandlerContext ctx, Frame frame, FrameCodec<ByteBuf> frameCodec) {
     logger.info("Got request streamId: {} msg: {}", frame.streamId, frame.message);
     CompletableFuture<Void> f = new CompletableFuture<>();
@@ -105,6 +120,43 @@ public class Node {
 
   @Override
   public String toString() {
-    return name;
+    return toStringWith(", address=" + address);
+  }
+
+  // programmatic builder.
+
+  public static Builder builder() {
+    return new Builder(null);
+  }
+
+  public static Builder builder(DataCenter dataCenter) {
+    return new Builder(dataCenter);
+  }
+
+  public static class Builder extends NodePropertiesBuilder<Builder, DataCenter> {
+
+    private SocketAddress address = null;
+
+    Builder(DataCenter parent) {
+      super(Builder.class, parent);
+    }
+
+    public Builder withAddress(SocketAddress address) {
+      this.address = address;
+      return this;
+    }
+
+    public Node build() {
+      if (id == null) {
+        id = UUID.randomUUID();
+      }
+      if (name == null) {
+        name = id.toString();
+      }
+      if (address == null) {
+        address = AddressResolver.defaultResolver.apply(null);
+      }
+      return new Node(address, name, id, cassandraVersion, peerInfo, parent);
+    }
   }
 }

@@ -3,6 +3,8 @@ package com.datastax.simulacron.server;
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.FrameCodec;
+import com.datastax.simulacron.cluster.Cluster;
+import com.datastax.simulacron.cluster.Node;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -13,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public final class Server {
 
@@ -38,14 +42,29 @@ public final class Server {
             .childHandler(new Initializer());
   }
 
-  public CompletableFuture<Void> bind(Node node) {
-    CompletableFuture<Void> f = new CompletableFuture<>();
+  public CompletableFuture<Cluster> bind(Cluster cluster) {
+    // TODO, need a means of binding/unbinding cluster and nodes, thus returning cluster/node is not appropriate
+    List<CompletableFuture<Node>> bindFutures =
+        cluster
+            .dataCenters()
+            .stream()
+            .flatMap(dc -> dc.nodes().stream())
+            .map(this::bind)
+            .collect(Collectors.toList());
+
+    return CompletableFuture.allOf(bindFutures.toArray(new CompletableFuture[] {}))
+        .thenApply(__ -> cluster);
+  }
+
+  public CompletableFuture<Node> bind(Node node) {
+    CompletableFuture<Node> f = new CompletableFuture<>();
     ChannelFuture bindFuture = this.serverBootstrap.bind(node.address());
     bindFuture.addListener(
         (ChannelFutureListener)
             channelFuture -> {
+              logger.info("Bound {} to {}", node, channelFuture.channel());
               channelFuture.channel().attr(HANDLER).set(node);
-              f.complete(null);
+              f.complete(node);
             });
     return f;
   }
@@ -62,7 +81,7 @@ public final class Server {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-      MDC.put("node", node.toString());
+      MDC.put("node", node.id().toString());
 
       try {
         @SuppressWarnings("unchecked")
@@ -80,7 +99,7 @@ public final class Server {
     protected void initChannel(Channel channel) throws Exception {
       ChannelPipeline pipeline = channel.pipeline();
       Node node = channel.parent().attr(HANDLER).get();
-      MDC.put("node", node.toString());
+      MDC.put("node", node.id().toString());
 
       try {
         logger.info("Got new connection {}", channel);
