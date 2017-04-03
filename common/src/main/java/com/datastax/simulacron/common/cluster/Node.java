@@ -40,6 +40,21 @@ public class Node extends AbstractNodeProperties {
     return address;
   }
 
+  /**
+   * @return The {@link DataCenter} this node belongs to, otherwise null if it does not have one.
+   */
+  public DataCenter getDataCenter() {
+    return parent;
+  }
+
+  /**
+   * @return The {@link Cluster} associated this node belongs to, otherwise null if it does not
+   *     belong to one.
+   */
+  public Cluster getCluster() {
+    return Optional.ofNullable(parent).map(DataCenter::getCluster).orElse(null);
+  }
+
   @Override
   public String toString() {
     return toStringWith(", address=" + address);

@@ -21,8 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -30,10 +28,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class BoundNode extends Node {
+import static com.datastax.simulacron.server.FrameUtils.wrapResponse;
 
-  private static final Map<String, ByteBuffer> emptyCustomPayload =
-      Collections.unmodifiableMap(new HashMap<>());
+public class BoundNode extends Node {
 
   private static Logger logger = LoggerFactory.getLogger(BoundNode.class);
 
@@ -81,16 +78,7 @@ public class BoundNode extends Node {
     }
 
     if (response != null) {
-      Frame responseFrame =
-          new Frame(
-              frame.protocolVersion,
-              frame.beta,
-              frame.streamId,
-              false,
-              null,
-              emptyCustomPayload,
-              Collections.emptyList(),
-              response);
+      Frame responseFrame = wrapResponse(frame, response);
       logger.info(
           "Sending response for streamId: {} with msg {}",
           responseFrame.streamId,

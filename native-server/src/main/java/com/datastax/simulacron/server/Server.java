@@ -65,9 +65,49 @@ public final class Server {
     }
 
     clusters.put(clusterId, c);
-    // TODO: Unbind everything onm failures
+    // TODO: Unbind everything on failures
     return CompletableFuture.allOf(bindFutures.toArray(new CompletableFuture[] {}))
         .thenApply(__ -> c);
+  }
+
+  public CompletableFuture<Cluster> unregister(Cluster cluster) {
+    CompletableFuture<Cluster> future = new CompletableFuture<>();
+    UUID clusterId = cluster.getId();
+    if (clusterId == null) {
+      future.completeExceptionally(
+          new IllegalArgumentException("Cluster has no id, must not be bound"));
+    } else {
+      Cluster foundCluster = clusters.get(clusterId);
+      List<CompletableFuture<Node>> closeFutures = new ArrayList<>();
+      if (foundCluster != null) {
+        // Close socket on each node.
+        for (DataCenter dataCenter : foundCluster.getDataCenters()) {
+          for (Node node : dataCenter.getNodes()) {
+            CompletableFuture<Node> closeFuture = new CompletableFuture<>();
+            BoundNode boundNode = (BoundNode) node;
+            boundNode
+                .channel
+                .close()
+                .addListener(
+                    channelFuture -> {
+                      closeFuture.complete(boundNode);
+                    });
+            closeFutures.add(closeFuture);
+          }
+        }
+        CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[] {}))
+            .thenAccept(
+                __ -> {
+                  // remove cluster and complete future.
+                  clusters.remove(clusterId);
+                  future.complete(foundCluster);
+                });
+      } else {
+        future.completeExceptionally(new IllegalArgumentException("Cluster not found."));
+      }
+    }
+
+    return future;
   }
 
   public CompletableFuture<Node> register(Node node) {
@@ -81,6 +121,19 @@ public final class Server {
     clusters.put(clusterId, dummyCluster);
 
     return bindInternal(node, dummyDataCenter);
+  }
+
+  public CompletableFuture<Node> unregister(Node node) {
+    CompletableFuture<Node> future = new CompletableFuture<>();
+    Cluster cluster = node.getCluster();
+    if (cluster == null) {
+      future.completeExceptionally(
+          new IllegalArgumentException("Node has no Cluster, must not be bound."));
+      return future;
+    } else {
+      unregister(cluster).thenApply(c -> future.complete(node));
+    }
+    return future;
   }
 
   private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent) {

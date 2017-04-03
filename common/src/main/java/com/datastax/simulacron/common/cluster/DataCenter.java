@@ -26,6 +26,11 @@ public class DataCenter extends AbstractNodeProperties {
     }
   }
 
+  /** @return The {@link Cluster} associated this belongs to otherwise null. */
+  public Cluster getCluster() {
+    return parent;
+  }
+
   public List<Node> getNodes() {
     return Collections.unmodifiableList(nodes);
   }
