@@ -93,7 +93,7 @@ public interface NodeProperties {
   default Optional<Object> resolvePeerInfo(String key) {
     // if value is present, return it, otherwise try parent.
     Object value = getPeerInfo().get(key);
-    return value != null ? Optional.of(value) : getParent().map(p -> resolvePeerInfo(key));
+    return value != null ? Optional.of(value) : getParent().map(p -> p.resolvePeerInfo(key));
   }
 
   /**
