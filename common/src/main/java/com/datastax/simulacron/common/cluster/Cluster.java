@@ -1,6 +1,7 @@
 package com.datastax.simulacron.common.cluster;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.*;
@@ -8,15 +9,17 @@ import java.util.stream.Collectors;
 
 public class Cluster extends AbstractNodeProperties {
 
+  @JsonManagedReference
+  @JsonProperty("data_centers")
   private final List<DataCenter> dataCenters = new ArrayList<>();
 
-  @JsonCreator
-  Cluster(
-      @JsonProperty("name") String name,
-      @JsonProperty("id") UUID id,
-      @JsonProperty("cassandra_version") String cassandraVersion,
-      @JsonProperty("peer_info") Map<String, Object> peerInfo) {
-    super(name, id, cassandraVersion, peerInfo, null);
+  Cluster() {
+    // Default constructor for jackson deserialization.
+    this(null, null, null, Collections.emptyMap());
+  }
+
+  Cluster(String name, UUID id, String cassandraVersion, Map<String, Object> peerInfo) {
+    super(name, id, cassandraVersion, peerInfo);
   }
 
   public List<DataCenter> getDataCenters() {
@@ -41,6 +44,12 @@ public class Cluster extends AbstractNodeProperties {
     return toStringWith(
         ", dataCenters="
             + dataCenters.stream().map(d -> d.getId().toString()).collect(Collectors.joining(",")));
+  }
+
+  @Override
+  @JsonIgnore
+  public Optional<NodeProperties> getParent() {
+    return Optional.empty();
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, Cluster> {

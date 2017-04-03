@@ -1,24 +1,24 @@
 package com.datastax.simulacron.common.cluster;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.net.SocketAddress;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 public class Node extends AbstractNodeProperties {
 
-  private SocketAddress address;
+  @JsonProperty private final SocketAddress address;
 
-  @JsonCreator
-  Node(
-      @JsonProperty("address") SocketAddress address,
-      @JsonProperty("name") String name,
-      @JsonProperty("id") UUID id,
-      @JsonProperty("cassandra_version") String cassandraVersion,
-      @JsonProperty("peer_info") Map<String, Object> peerInfo) {
-    this(address, name, id, cassandraVersion, peerInfo, null);
+  @JsonBackReference private final DataCenter parent;
+
+  Node() {
+    // Default constructor for jackson deserialization.
+    this(null, null, null, null, Collections.emptyMap(), null);
   }
 
   Node(
@@ -28,9 +28,10 @@ public class Node extends AbstractNodeProperties {
       String cassandraVersion,
       Map<String, Object> peerInfo,
       DataCenter parent) {
-    super(name, id, cassandraVersion, peerInfo, parent);
+    super(name, id, cassandraVersion, peerInfo);
     this.address = address;
-    if (parent != null) {
+    this.parent = parent;
+    if (this.parent != null) {
       parent.addNode(this);
     }
   }
@@ -52,6 +53,12 @@ public class Node extends AbstractNodeProperties {
 
   public static Builder builder(DataCenter dataCenter) {
     return new Builder(dataCenter);
+  }
+
+  @Override
+  @JsonIgnore
+  public Optional<NodeProperties> getParent() {
+    return Optional.ofNullable(parent);
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, DataCenter> {
