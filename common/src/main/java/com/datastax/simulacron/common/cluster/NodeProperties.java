@@ -1,4 +1,4 @@
-package com.datastax.simulacron.cluster;
+package com.datastax.simulacron.common.cluster;
 
 import java.util.Map;
 import java.util.Optional;
@@ -34,55 +34,55 @@ public interface NodeProperties {
    */
   default <T> T resolve(Function<NodeProperties, T> methodRef, T defaultValue) {
     return ofNullable(methodRef.apply(this))
-        .orElseGet(() -> parent().map(methodRef).orElse(defaultValue));
+        .orElseGet(() -> getParent().map(methodRef).orElse(defaultValue));
   }
 
   /** @return A human readable name for this. */
-  String name();
+  String getName();
 
   /** @return A unique id for this. */
-  UUID id();
+  UUID getId();
 
   /**
    * @return The cassandra version of this if set, otherwise null. The cassandra version is used to
    *     determine formatting of schema tables and maybe eventually other behavior.
    */
-  String cassandraVersion();
+  String getCassandraVersion();
 
   /**
    * @return The peer info of this, should always be nonnull. The peer info is a mapping of column
    *     names to values to be used in the system.peers and local table.
    */
-  Map<String, Object> peerInfo();
+  Map<String, Object> getPeerInfo();
 
   /**
    * @return The parent instance of this. For example, it is expected that a node has a parent data
    *     center, a data center has a parent cluster.
    */
-  Optional<NodeProperties> parent();
+  Optional<NodeProperties> getParent();
 
   /**
    * @return the cassandra version for this, otherwise its parents. If it is not set, the default
    *     value is used.
    */
   default String resolveCassandraVersion() {
-    return resolve(NodeProperties::cassandraVersion, "3.0.12");
+    return resolve(NodeProperties::getCassandraVersion, "3.0.12");
   }
 
   /**
-   * @return {@link NodeProperties#name()} for this, and if there are parents, prefixes parent's
+   * @return {@link NodeProperties#getName()} for this, and if there are parents, prefixes parent's
    *     name(s) separated by ':', otherwise returns.
    */
   default String resolveName() {
-    return parent().map(p -> p.resolveName() + ":").orElse("") + name();
+    return getParent().map(p -> p.resolveName() + ":").orElse("") + getName();
   }
 
   /**
-   * @return {@link NodeProperties#name()} for this, and if there are parents, prefixes parent's
+   * @return {@link NodeProperties#getName()} for this, and if there are parents, prefixes parent's
    *     name(s) separated by ':', otherwise returns.
    */
   default String resolveId() {
-    return parent().map(p -> p.resolveId() + ":").orElse("") + id().toString();
+    return getParent().map(p -> p.resolveId() + ":").orElse("") + getId().toString();
   }
 
   /**
@@ -91,9 +91,9 @@ public interface NodeProperties {
    *     set, Optional.empty is returned.
    */
   default Optional<Object> resolvePeerInfo(String key) {
-    Object value = peerInfo().get(key);
     // if value is present, return it, otherwise try parent.
-    return value != null ? Optional.of(value) : parent().map(p -> resolvePeerInfo(key));
+    Object value = getPeerInfo().get(key);
+    return value != null ? Optional.of(value) : getParent().map(p -> resolvePeerInfo(key));
   }
 
   /**

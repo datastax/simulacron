@@ -1,6 +1,7 @@
-package com.datastax.simulacron.cluster;
+package com.datastax.simulacron.common.cluster;
 
-import com.datastax.simulacron.server.Server;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -9,16 +10,21 @@ public class Cluster extends AbstractNodeProperties {
 
   private final List<DataCenter> dataCenters = new ArrayList<>();
 
-  Cluster(String name, UUID id, String cassandraVersion, Map<String, Object> peerInfo) {
+  @JsonCreator
+  Cluster(
+      @JsonProperty("name") String name,
+      @JsonProperty("id") UUID id,
+      @JsonProperty("cassandra_version") String cassandraVersion,
+      @JsonProperty("peer_info") Map<String, Object> peerInfo) {
     super(name, id, cassandraVersion, peerInfo, null);
   }
 
-  public List<DataCenter> dataCenters() {
+  public List<DataCenter> getDataCenters() {
     return Collections.unmodifiableList(dataCenters);
   }
 
   void addDataCenter(DataCenter dataCenter) {
-    assert dataCenter.parent().orElse(null) == this;
+    assert dataCenter.getParent().orElse(null) == this;
     this.dataCenters.add(dataCenter);
   }
 
@@ -34,7 +40,7 @@ public class Cluster extends AbstractNodeProperties {
   public String toString() {
     return toStringWith(
         ", dataCenters="
-            + dataCenters.stream().map(d -> d.id().toString()).collect(Collectors.joining(",")));
+            + dataCenters.stream().map(d -> d.getId().toString()).collect(Collectors.joining(",")));
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, Cluster> {
@@ -57,12 +63,6 @@ public class Cluster extends AbstractNodeProperties {
     }
 
     public Cluster build() {
-      if (id == null) {
-        id = UUID.randomUUID();
-      }
-      if (name == null) {
-        name = id.toString();
-      }
       Cluster cluster = new Cluster(name, id, cassandraVersion, peerInfo);
       if (nodes != null) {
         for (int i = 1; i <= nodes.length; i++) {
@@ -75,12 +75,5 @@ public class Cluster extends AbstractNodeProperties {
       }
       return cluster;
     }
-  }
-
-  public static void main(String args[]) {
-    Cluster cluster = Cluster.builder().withName("cluster1").withNodes(10, 10).build();
-
-    Server server = new Server();
-    server.bind(cluster);
   }
 }

@@ -1,24 +1,38 @@
-package com.datastax.simulacron.cluster;
+package com.datastax.simulacron.common.cluster;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class DataCenter extends AbstractNodeProperties {
 
-  private List<Node> nodes = new ArrayList<>();
+  private final List<Node> nodes = new ArrayList<>();
+
+  @JsonCreator
+  DataCenter(
+      @JsonProperty("name") String name,
+      @JsonProperty("id") UUID id,
+      @JsonProperty("cassandra_version") String cassandraVersion,
+      @JsonProperty("peer_info") Map<String, Object> peerInfo) {
+    this(name, id, cassandraVersion, peerInfo, null);
+  }
 
   DataCenter(
       String name, UUID id, String cassandraVersion, Map<String, Object> peerInfo, Cluster parent) {
     super(name, id, cassandraVersion, peerInfo, parent);
-    parent.addDataCenter(this);
+    if (parent != null) {
+      parent.addDataCenter(this);
+    }
   }
 
-  public List<Node> nodes() {
+  public List<Node> getNodes() {
     return Collections.unmodifiableList(nodes);
   }
 
   void addNode(Node node) {
-    assert node.parent().orElse(null) == this;
+    assert node.getParent().orElse(null) == this;
     this.nodes.add(node);
   }
 
@@ -33,7 +47,8 @@ public class DataCenter extends AbstractNodeProperties {
   @Override
   public String toString() {
     return toStringWith(
-        ", nodes=" + nodes.stream().map(n -> n.id().toString()).collect(Collectors.joining(",")));
+        ", nodes="
+            + nodes.stream().map(n -> n.getId().toString()).collect(Collectors.joining(",")));
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, Cluster> {
@@ -43,12 +58,6 @@ public class DataCenter extends AbstractNodeProperties {
     }
 
     public DataCenter build() {
-      if (id == null) {
-        id = UUID.randomUUID();
-      }
-      if (name == null) {
-        name = id.toString();
-      }
       return new DataCenter(name, id, cassandraVersion, peerInfo, parent);
     }
   }

@@ -17,6 +17,7 @@
     <url>http://maven.apache.org</url>
 
     <modules>
+        <module>common</module>
         <module>native-server</module>
         <module>http-server</module>
     </modules>
@@ -30,6 +31,7 @@
         <logback.version>1.1.9</logback.version>
         <native-protocol.version>1.4.0-SNAPSHOT</native-protocol.version>
         <vertx.version>3.4.1</vertx.version>
+        <jackson.version>2.7.4</jackson.version>
         <format.validateOnly>true</format.validateOnly>
     </properties>
 

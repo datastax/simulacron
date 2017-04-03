@@ -3,8 +3,8 @@ package com.datastax.simulacron.server;
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.FrameCodec;
-import com.datastax.simulacron.cluster.Cluster;
-import com.datastax.simulacron.cluster.Node;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.Node;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -46,9 +46,9 @@ public final class Server {
     // TODO, need a means of binding/unbinding cluster and nodes, thus returning cluster/node is not appropriate
     List<CompletableFuture<Node>> bindFutures =
         cluster
-            .dataCenters()
+            .getDataCenters()
             .stream()
-            .flatMap(dc -> dc.nodes().stream())
+            .flatMap(dc -> dc.getNodes().stream())
             .map(this::bind)
             .collect(Collectors.toList());
 
@@ -58,7 +58,7 @@ public final class Server {
 
   public CompletableFuture<Node> bind(Node node) {
     CompletableFuture<Node> f = new CompletableFuture<>();
-    ChannelFuture bindFuture = this.serverBootstrap.bind(node.address());
+    ChannelFuture bindFuture = this.serverBootstrap.bind(node.getAddress());
     bindFuture.addListener(
         (ChannelFutureListener)
             channelFuture -> {
@@ -81,12 +81,14 @@ public final class Server {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-      MDC.put("node", node.id().toString());
+      MDC.put("node", node.getId().toString());
 
       try {
         @SuppressWarnings("unchecked")
         Frame frame = (Frame) msg;
-        node.handle(ctx, frame, frameCodec);
+        logger.info("Got message {} for {}.", frame, node);
+        // TODO: implement handle
+        //node.handle(ctx, frame, frameCodec);
       } finally {
         MDC.remove("node");
       }
@@ -99,7 +101,7 @@ public final class Server {
     protected void initChannel(Channel channel) throws Exception {
       ChannelPipeline pipeline = channel.pipeline();
       Node node = channel.parent().attr(HANDLER).get();
-      MDC.put("node", node.id().toString());
+      MDC.put("node", node.getId().toString());
 
       try {
         logger.info("Got new connection {}", channel);

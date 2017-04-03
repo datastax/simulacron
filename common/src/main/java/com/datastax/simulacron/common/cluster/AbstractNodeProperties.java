@@ -1,4 +1,6 @@
-package com.datastax.simulacron.cluster;
+package com.datastax.simulacron.common.cluster;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.Map;
 import java.util.Optional;
@@ -26,27 +28,28 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   }
 
   @Override
-  public String name() {
+  public String getName() {
     return name;
   }
 
   @Override
-  public UUID id() {
+  public UUID getId() {
     return id;
   }
 
   @Override
-  public String cassandraVersion() {
+  public String getCassandraVersion() {
     return cassandraVersion;
   }
 
   @Override
-  public Map<String, Object> peerInfo() {
+  public Map<String, Object> getPeerInfo() {
     return peerInfo;
   }
 
   @Override
-  public Optional<NodeProperties> parent() {
+  @JsonIgnore
+  public Optional<NodeProperties> getParent() {
     return Optional.ofNullable(parent);
   }
 
@@ -54,7 +57,7 @@ public abstract class AbstractNodeProperties implements NodeProperties {
     StringBuilder str = new StringBuilder(this.getClass().getSimpleName());
     str.append("{");
     str.append("id=" + id);
-    if (!name.equals(id.toString())) {
+    if (name != null && !name.equals(id.toString())) {
       str.append(", name='" + name + '\'');
     }
     if (cassandraVersion != null) {
@@ -64,7 +67,7 @@ public abstract class AbstractNodeProperties implements NodeProperties {
       str.append(", peerInfo=" + peerInfo);
     }
     if (parent != null) {
-      if (parent.name().equals(parent.id().toString())) {
+      if (parent.getName().equals(parent.getId().toString())) {
         str.append(", parent=" + parent.resolveId());
       } else {
         str.append(", parent=" + parent.resolveName());

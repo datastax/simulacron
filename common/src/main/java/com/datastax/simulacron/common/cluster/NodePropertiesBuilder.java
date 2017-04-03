@@ -1,4 +1,4 @@
-package com.datastax.simulacron.cluster;
+package com.datastax.simulacron.common.cluster;
 
 import java.util.HashMap;
 import java.util.Map;

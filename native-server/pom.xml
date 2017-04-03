@@ -14,6 +14,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.datastax.simulacron</groupId>
+            <artifactId>simulacron-common</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.datastax.oss</groupId>
             <artifactId>native-protocol</artifactId>
             <version>${native-protocol.version}</version>
