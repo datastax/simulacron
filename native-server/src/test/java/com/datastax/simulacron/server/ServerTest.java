@@ -11,7 +11,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.local.LocalChannel;
 import io.netty.channel.local.LocalServerChannel;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.SocketAddress;
@@ -25,9 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ServerTest {
 
-  // TODO: Ignore until handle is reimplemented
   @Test
-  @Ignore
   public void testBind() throws Exception {
     // Use a LocalAddress to use VM pipes
     EventLoopGroup elg = new DefaultEventLoopGroup();
@@ -36,8 +33,12 @@ public class ServerTest {
     Server server = new Server(elg, LocalServerChannel.class);
     Node node = Node.builder().withId(nodeId).withAddress(address).build();
 
-    // Should bind within 5 seconds.
-    server.bind(node).get(5, TimeUnit.SECONDS);
+    // Should bind within 5 seconds and get a bound node back.
+    Node boundNode = server.bind(node).get(5, TimeUnit.SECONDS);
+    assertThat(boundNode).isInstanceOf(BoundNode.class);
+
+    // Should be registered.
+    assertThat(server.nodes.get(boundNode.getId())).isSameAs(boundNode);
 
     FrameCodec<ByteBuf> frameCodec =
         FrameCodec.defaultClient(new ByteBufCodec(), Compressor.none());

@@ -21,7 +21,7 @@ public class Node extends AbstractNodeProperties {
     this(null, null, null, null, Collections.emptyMap(), null);
   }
 
-  Node(
+  public Node(
       SocketAddress address,
       String name,
       UUID id,

@@ -4,6 +4,7 @@ import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -15,20 +16,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
+import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class Server {
 
   private static Logger logger = LoggerFactory.getLogger(Server.class);
 
-  private static final AttributeKey<Node> HANDLER = AttributeKey.valueOf("NODE");
+  private static final AttributeKey<BoundNode> HANDLER = AttributeKey.valueOf("NODE");
 
   private ServerBootstrap serverBootstrap;
 
   private static final FrameCodec<ByteBuf> frameCodec =
       FrameCodec.defaultServer(new ByteBufCodec(), Compressor.none());
+
+  final Map<UUID, Cluster> clusters = new ConcurrentHashMap<>();
+
+  final Map<UUID, Node> nodes = new ConcurrentHashMap<>();
 
   public Server() {
     this(new NioEventLoopGroup(), NioServerSocketChannel.class);
@@ -42,39 +51,84 @@ public final class Server {
             .childHandler(new Initializer());
   }
 
-  public CompletableFuture<Cluster> bind(Cluster cluster) {
-    // TODO, need a means of binding/unbinding cluster and nodes, thus returning cluster/node is not appropriate
-    List<CompletableFuture<Node>> bindFutures =
-        cluster
-            .getDataCenters()
-            .stream()
-            .flatMap(dc -> dc.getNodes().stream())
-            .map(this::bind)
-            .collect(Collectors.toList());
+  public CompletableFuture<Cluster> register(Cluster cluster) {
+    // TODO make a Cluster.copy that doesn't inherit DCs?  DC that doesn't inherit nodes? etc.
+    UUID clusterId = UUID.randomUUID();
+    Cluster c =
+        Cluster.builder()
+            .withCassandraVersion(cluster.getCassandraVersion())
+            .withPeerInfo(cluster.getPeerInfo())
+            .withName(cluster.getName())
+            .withId(clusterId)
+            .build();
 
+    List<CompletableFuture<Node>> bindFutures = new ArrayList<>();
+
+    for (DataCenter dataCenter : cluster.getDataCenters()) {
+      UUID dcId = UUID.randomUUID();
+      DataCenter dc =
+          DataCenter.builder(c)
+              .withCassandraVersion(dataCenter.getCassandraVersion())
+              .withPeerInfo(dataCenter.getPeerInfo())
+              .withName(dataCenter.getName())
+              .withId(dcId)
+              .build();
+
+      for (Node node : dataCenter.getNodes()) {
+        bindFutures.add(bindInternal(node, dc));
+      }
+    }
+
+    // TODO: Unbind everything onm failures
     return CompletableFuture.allOf(bindFutures.toArray(new CompletableFuture[] {}))
-        .thenApply(__ -> cluster);
+        .thenApply(
+            __ -> {
+              clusters.put(clusterId, c);
+              return c;
+            });
   }
 
   public CompletableFuture<Node> bind(Node node) {
+    return bindInternal(node, null);
+  }
+
+  private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent) {
+    UUID nodeId = UUID.randomUUID();
+    SocketAddress address =
+        refNode.getAddress() != null
+            ? refNode.getAddress()
+            : AddressResolver.defaultResolver.apply(null);
     CompletableFuture<Node> f = new CompletableFuture<>();
-    ChannelFuture bindFuture = this.serverBootstrap.bind(node.getAddress());
+    ChannelFuture bindFuture = this.serverBootstrap.bind(refNode.getAddress());
     bindFuture.addListener(
         (ChannelFutureListener)
             channelFuture -> {
+              BoundNode node =
+                  new BoundNode(
+                      address,
+                      refNode.getName(),
+                      nodeId,
+                      refNode.getCassandraVersion(),
+                      refNode.getPeerInfo(),
+                      parent,
+                      channelFuture.channel());
               logger.info("Bound {} to {}", node, channelFuture.channel());
               channelFuture.channel().attr(HANDLER).set(node);
+              if (parent == null) {
+                nodes.put(nodeId, node);
+              }
               f.complete(node);
             });
+
     return f;
   }
 
   static class RequestHandler extends ChannelInboundHandlerAdapter {
 
-    private Node node;
+    private BoundNode node;
     private FrameCodec<ByteBuf> frameCodec;
 
-    private RequestHandler(Node node, FrameCodec<ByteBuf> frameCodec) {
+    private RequestHandler(BoundNode node, FrameCodec<ByteBuf> frameCodec) {
       this.node = node;
       this.frameCodec = frameCodec;
     }
@@ -86,9 +140,7 @@ public final class Server {
       try {
         @SuppressWarnings("unchecked")
         Frame frame = (Frame) msg;
-        logger.info("Got message {} for {}.", frame, node);
-        // TODO: implement handle
-        //node.handle(ctx, frame, frameCodec);
+        node.handle(ctx, frame, frameCodec);
       } finally {
         MDC.remove("node");
       }
@@ -100,7 +152,7 @@ public final class Server {
     @Override
     protected void initChannel(Channel channel) throws Exception {
       ChannelPipeline pipeline = channel.pipeline();
-      Node node = channel.parent().attr(HANDLER).get();
+      BoundNode node = channel.parent().attr(HANDLER).get();
       MDC.put("node", node.getId().toString());
 
       try {
