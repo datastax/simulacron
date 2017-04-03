@@ -6,6 +6,7 @@ import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.NodeProperties;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -15,6 +16,7 @@ import org.junit.Test;
 
 import java.net.SocketAddress;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -34,11 +36,17 @@ public class ServerTest {
     Node node = Node.builder().withId(nodeId).withAddress(address).build();
 
     // Should bind within 5 seconds and get a bound node back.
-    Node boundNode = server.bind(node).get(5, TimeUnit.SECONDS);
+    Node boundNode = server.register(node).get(5, TimeUnit.SECONDS);
     assertThat(boundNode).isInstanceOf(BoundNode.class);
 
-    // Should be registered.
-    assertThat(server.nodes.get(boundNode.getId())).isSameAs(boundNode);
+    // Should be wrapped and registered in a dummy cluster.
+    Optional<NodeProperties> parent = boundNode.getParent();
+    assertThat(parent).isPresent();
+    Optional<NodeProperties> parentC = parent.get().getParent();
+    assertThat(parentC).isPresent();
+    NodeProperties cluster = parentC.get();
+
+    assertThat(server.clusters.get(cluster.getId())).isSameAs(cluster);
 
     FrameCodec<ByteBuf> frameCodec =
         FrameCodec.defaultClient(new ByteBufCodec(), Compressor.none());

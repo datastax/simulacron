@@ -24,6 +24,20 @@ public abstract class NodePropertiesBuilder<
     this.parent = parent;
   }
 
+  /**
+   * Copies properties from a previously built {@link NodeProperties} into this. This is useful for
+   * when we are creating a new copy that has new fields set like ID for example.
+   *
+   * @param toCopy Existing {@link NodeProperties} toCopy.
+   * @return Updated builder with copied properties.
+   */
+  public S copy(NodeProperties toCopy) {
+    return this.withCassandraVersion(toCopy.getCassandraVersion())
+        .withName(toCopy.getName())
+        .withId(toCopy.getId())
+        .withPeerInfo(toCopy.getPeerInfo());
+  }
+
   public S withCassandraVersion(String cassandraVersion) {
     this.cassandraVersion = cassandraVersion;
     return myself;

@@ -37,8 +37,6 @@ public final class Server {
 
   final Map<UUID, Cluster> clusters = new ConcurrentHashMap<>();
 
-  final Map<UUID, Node> nodes = new ConcurrentHashMap<>();
-
   public Server() {
     this(new NioEventLoopGroup(), NioServerSocketChannel.class);
   }
@@ -52,44 +50,37 @@ public final class Server {
   }
 
   public CompletableFuture<Cluster> register(Cluster cluster) {
-    // TODO make a Cluster.copy that doesn't inherit DCs?  DC that doesn't inherit nodes? etc.
     UUID clusterId = UUID.randomUUID();
-    Cluster c =
-        Cluster.builder()
-            .withCassandraVersion(cluster.getCassandraVersion())
-            .withPeerInfo(cluster.getPeerInfo())
-            .withName(cluster.getName())
-            .withId(clusterId)
-            .build();
+    Cluster c = Cluster.builder().copy(cluster).withId(clusterId).build();
 
     List<CompletableFuture<Node>> bindFutures = new ArrayList<>();
 
     for (DataCenter dataCenter : cluster.getDataCenters()) {
       UUID dcId = UUID.randomUUID();
-      DataCenter dc =
-          DataCenter.builder(c)
-              .withCassandraVersion(dataCenter.getCassandraVersion())
-              .withPeerInfo(dataCenter.getPeerInfo())
-              .withName(dataCenter.getName())
-              .withId(dcId)
-              .build();
+      DataCenter dc = DataCenter.builder(c).copy(dataCenter).withId(dcId).build();
 
       for (Node node : dataCenter.getNodes()) {
         bindFutures.add(bindInternal(node, dc));
       }
     }
 
+    clusters.put(clusterId, c);
     // TODO: Unbind everything onm failures
     return CompletableFuture.allOf(bindFutures.toArray(new CompletableFuture[] {}))
-        .thenApply(
-            __ -> {
-              clusters.put(clusterId, c);
-              return c;
-            });
+        .thenApply(__ -> c);
   }
 
-  public CompletableFuture<Node> bind(Node node) {
-    return bindInternal(node, null);
+  public CompletableFuture<Node> register(Node node) {
+    // Wrap node in dummy cluster
+    UUID clusterId = UUID.randomUUID();
+    Cluster dummyCluster = Cluster.builder().withId(clusterId).withName("dummy").build();
+    UUID dcId = UUID.randomUUID();
+    DataCenter dummyDataCenter =
+        dummyCluster.addDataCenter().withName("dummy").withId(dcId).build();
+
+    clusters.put(clusterId, dummyCluster);
+
+    return bindInternal(node, dummyDataCenter);
   }
 
   private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent) {
@@ -114,9 +105,6 @@ public final class Server {
                       channelFuture.channel());
               logger.info("Bound {} to {}", node, channelFuture.channel());
               channelFuture.channel().attr(HANDLER).set(node);
-              if (parent == null) {
-                nodes.put(nodeId, node);
-              }
               f.complete(node);
             });
 
