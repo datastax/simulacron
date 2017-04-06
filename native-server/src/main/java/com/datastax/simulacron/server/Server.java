@@ -17,10 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -135,9 +132,6 @@ public final class Server {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
           .handle(
               (v, ex) -> {
-                if (ex != null) {
-                  logger.warn("Exception while unbinding nodes", ex);
-                }
                 future.completeExceptionally(e);
                 return v;
               });
@@ -154,16 +148,14 @@ public final class Server {
    * <p>If the cluster is not currently registered the returned future will fail with an {@link
    * IllegalArgumentException}.
    *
-   * @param cluster cluster to unregister.
+   * @param clusterId id of the cluster.
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<Cluster> unregister(Cluster cluster) {
+  public CompletableFuture<Cluster> unregister(UUID clusterId) {
     CompletableFuture<Cluster> future = new CompletableFuture<>();
-    UUID clusterId = cluster.getId();
     if (clusterId == null) {
-      future.completeExceptionally(
-          new IllegalArgumentException("Cluster has no id, must not be bound"));
+      future.completeExceptionally(new IllegalArgumentException("Null id provided"));
     } else {
       Cluster foundCluster = clusters.get(clusterId);
       List<CompletableFuture<Node>> closeFutures = new ArrayList<>();
@@ -202,7 +194,12 @@ public final class Server {
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
   public CompletableFuture<Node> register(Node node) {
-    //TODO: Fail if input node already has a parent.
+    if (node.getDataCenter() != null) {
+      CompletableFuture<Node> future = new CompletableFuture<>();
+      future.completeExceptionally(
+          new IllegalArgumentException("Node belongs to a Cluster, should be standalone."));
+      return future;
+    }
     // Wrap node in dummy cluster
     UUID clusterId = UUID.randomUUID();
     Cluster dummyCluster = Cluster.builder().withId(clusterId).withName("dummy").build();
@@ -218,24 +215,42 @@ public final class Server {
   /**
    * Unregisters a {@link Node} and closes all listening network interfaces associated with it.
    *
-   * <p>If the node's cluster is not currently registered the returned future will fail with an
-   * {@link IllegalArgumentException}.
+   * <p>If the node cannot be found, the future will fail with an {@link IllegalArgumentException}.
    *
-   * <p>Also note that if the node belongs to a Cluster, that entire cluster will be unregistered.
+   * <p>Also note that if the node belongs to a Cluster with more than 1 node, the future will fail
+   * with an {@link IllegalArgumentException}.
    *
-   * @param node node to unregister.
+   * @param nodeId id of node to register.
    * @return A future that when completed provides the unregistered node as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<Node> unregister(Node node) {
-    Cluster cluster = node.getCluster();
-    if (cluster == null) {
+  public CompletableFuture<Node> unregisterNode(UUID nodeId) {
+    // Find the Node among all registered single-node clusters.
+    Optional<Node> nodeOption =
+        clusters
+            .values()
+            .stream()
+            .flatMap(c -> c.getNodes().stream())
+            .filter(n -> n.getId().equals(nodeId))
+            .findFirst();
+    if (nodeOption.isPresent()) {
+      Node node = nodeOption.get();
+      Cluster cluster = node.getCluster();
+      if (cluster.getNodes().size() > 1) {
+        CompletableFuture<Node> future = new CompletableFuture<>();
+        future.completeExceptionally(
+            new IllegalArgumentException(
+                "Node belongs to a Cluster with "
+                    + cluster.getNodes().size()
+                    + ", cannot be unregistered alone"));
+        return future;
+      }
+      return unregister(cluster.getId()).thenApply(__ -> node);
+    } else {
       CompletableFuture<Node> future = new CompletableFuture<>();
       future.completeExceptionally(
-          new IllegalArgumentException("Node has no Cluster, must not be bound."));
+          new IllegalArgumentException("No Node found with id: " + nodeId));
       return future;
-    } else {
-      return unregister(cluster).thenApply(__ -> node);
     }
   }
 
