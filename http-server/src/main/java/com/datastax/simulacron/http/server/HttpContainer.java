@@ -14,36 +14,38 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HttpContainer {
-    Logger logger = LoggerFactory.getLogger(HttpContainer.class);
+  Logger logger = LoggerFactory.getLogger(HttpContainer.class);
 
-    public static final int DEFAULT_PORT = 8187;
+  public static final int DEFAULT_PORT = 8187;
 
-    private int port = DEFAULT_PORT;
-    private boolean enableLogging = true;
-    private Router router = null;
-    private HttpServer server =null;
-    private  Vertx vertx =null;
-    public static ConcurrentHashMap<String, Object> primedQueries = new ConcurrentHashMap<String, Object>();
+  private int port = DEFAULT_PORT;
+  private boolean enableLogging = true;
+  private Router router = null;
+  private HttpServer server = null;
+  private Vertx vertx = null;
+  public static ConcurrentHashMap<String, Object> primedQueries =
+      new ConcurrentHashMap<String, Object>();
 
-    public HttpContainer(int port, boolean enableLogging){
-        this.port = port;
-        this.enableLogging = enableLogging;
-        vertx = Vertx.vertx();
-        HttpServerOptions options = new HttpServerOptions().setLogActivity(this.enableLogging);
-        server= vertx.createHttpServer(options);
-        router = Router.router(vertx);
-    }
+  public HttpContainer(int port, boolean enableLogging) {
+    this.port = port;
+    this.enableLogging = enableLogging;
+    vertx = Vertx.vertx();
+    HttpServerOptions options = new HttpServerOptions().setLogActivity(this.enableLogging);
+    server = vertx.createHttpServer(options);
+    router = Router.router(vertx);
+  }
 
-    public void start(){
+  public void start() {
 
-        server.requestHandler(router::accept);
-        server.listen(port);
+    server.requestHandler(router::accept);
+    server.listen(port);
+  }
 
-    }
-    public void addRoute(Handler<RoutingContext> handler, String path, HttpMethod method){
-        router.route(method, path).handler(handler);
-    }
-    public Router getRouter(){
-        return router;
-    }
+  public void addRoute(Handler<RoutingContext> handler, String path, HttpMethod method) {
+    router.route(method, path).handler(handler);
+  }
+
+  public Router getRouter() {
+    return router;
+  }
 }
