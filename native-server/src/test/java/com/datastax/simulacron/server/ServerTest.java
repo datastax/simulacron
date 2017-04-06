@@ -37,7 +37,7 @@ public class ServerTest {
   private final EventLoopGroup eventLoop = new DefaultEventLoopGroup();
 
   private final Server localServer =
-      new Server(localAddressResolver, eventLoop, LocalServerChannel.class);
+      new Server(localAddressResolver, eventLoop, LocalServerChannel.class, 10, TimeUnit.SECONDS);
 
   @After
   public void tearDown() {

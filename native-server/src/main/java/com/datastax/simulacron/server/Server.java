@@ -29,11 +29,9 @@ import java.util.stream.Collectors;
 
 public final class Server {
 
-  private static Logger logger = LoggerFactory.getLogger(Server.class);
+  private static final Logger logger = LoggerFactory.getLogger(Server.class);
 
   private static final AttributeKey<BoundNode> HANDLER = AttributeKey.valueOf("NODE");
-
-  private ServerBootstrap serverBootstrap;
 
   private static final FrameCodec<ByteBuf> frameCodec =
       FrameCodec.defaultServer(new ByteBufCodec(), Compressor.none());
@@ -41,24 +39,37 @@ public final class Server {
   private static final long BIND_TIMEOUT_IN_NANOS =
       TimeUnit.NANOSECONDS.convert(10, TimeUnit.SECONDS);
 
+  private ServerBootstrap serverBootstrap;
+
   private final AddressResolver addressResolver;
+
+  private final long bindTimeoutInNanos;
 
   final Map<UUID, Cluster> clusters = new ConcurrentHashMap<>();
 
+  // TODO: Make Server builder-based.
   public Server() {
-    this(AddressResolver.defaultResolver, new NioEventLoopGroup(), NioServerSocketChannel.class);
+    this(
+        AddressResolver.defaultResolver,
+        new NioEventLoopGroup(),
+        NioServerSocketChannel.class,
+        BIND_TIMEOUT_IN_NANOS,
+        TimeUnit.NANOSECONDS);
   }
 
   Server(
       AddressResolver addressResolver,
       EventLoopGroup eventLoopGroup,
-      Class<? extends ServerChannel> channelClass) {
+      Class<? extends ServerChannel> channelClass,
+      long bindTimeout,
+      TimeUnit bindTimeoutUnits) {
     this.serverBootstrap =
         new ServerBootstrap()
             .group(eventLoopGroup)
             .channel(channelClass)
             .childHandler(new Initializer());
     this.addressResolver = addressResolver;
+    this.bindTimeoutInNanos = TimeUnit.NANOSECONDS.convert(bindTimeout, bindTimeoutUnits);
   }
 
   public CompletableFuture<Cluster> register(Cluster cluster) {
@@ -84,6 +95,7 @@ public final class Server {
     // Evaluate each future, if any fail capture the exception and record all successfully
     // bound nodes.
     long start = System.nanoTime();
+    // TODO find way to test timeout scenarios, guess would have to mock the ServerBootstrap somehow?
     for (CompletableFuture<Node> f : bindFutures) {
       try {
         if (timedOut) {
@@ -92,9 +104,9 @@ public final class Server {
             nodes.add((BoundNode) node);
           }
         } else {
-          nodes.add((BoundNode) f.get(BIND_TIMEOUT_IN_NANOS, TimeUnit.NANOSECONDS));
+          nodes.add((BoundNode) f.get(bindTimeoutInNanos, TimeUnit.NANOSECONDS));
         }
-        if (System.nanoTime() - start > BIND_TIMEOUT_IN_NANOS) {
+        if (System.nanoTime() - start > bindTimeoutInNanos) {
           timedOut = true;
         }
       } catch (TimeoutException te) {
