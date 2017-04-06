@@ -53,7 +53,7 @@ public class ServerTest {
     assertThat(boundNode).isInstanceOf(BoundNode.class);
 
     // Should be wrapped and registered in a dummy cluster.
-    assertThat(localServer.clusters.get(boundNode.getCluster().getId()))
+    assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
         .isSameAs(boundNode.getCluster());
 
     try (Client client = new Client(eventLoop)) {
@@ -71,7 +71,7 @@ public class ServerTest {
     Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
 
     // Cluster should be registered.
-    assertThat(localServer.clusters.get(boundCluster.getId())).isSameAs(boundCluster);
+    assertThat(localServer.getClusterRegistry().get(boundCluster.getId())).isSameAs(boundCluster);
 
     // Should be 2 DCs.
     assertThat(boundCluster.getDataCenters()).hasSize(2);
@@ -114,7 +114,7 @@ public class ServerTest {
       fail();
     } catch (Exception e) {
       assertThat(e.getCause()).isInstanceOf(ChannelException.class);
-      assertThat(localServer.clusters).doesNotContainKey(cluster.getId());
+      assertThat(localServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
     }
   }
 
@@ -196,13 +196,13 @@ public class ServerTest {
 
     // Wrapper cluster should be registered.
     Cluster cluster = boundNode.getCluster();
-    assertThat(localServer.clusters).containsKey(cluster.getId());
+    assertThat(localServer.getClusterRegistry()).containsKey(cluster.getId());
 
     // Unregistering the node should close the nodes channel and remove cluster.
     assertThat(localServer.unregister(boundNode).get(5, TimeUnit.SECONDS)).isSameAs(boundNode);
 
     // Node's cluster should be removed from registry.
-    assertThat(localServer.clusters).doesNotContainKey(cluster.getId());
+    assertThat(localServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
 
     // Channel should be closed.
     assertThat(boundNode.channel.isOpen()).isFalse();
@@ -214,7 +214,7 @@ public class ServerTest {
     Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
 
     // Cluster should be registered.
-    assertThat(localServer.clusters.get(boundCluster.getId())).isSameAs(boundCluster);
+    assertThat(localServer.getClusterRegistry().get(boundCluster.getId())).isSameAs(boundCluster);
 
     // Should be 4 nodes total.
     List<Node> nodes = boundCluster.getNodes();
@@ -229,7 +229,7 @@ public class ServerTest {
         .isSameAs(boundCluster);
 
     // Cluster should be removed from registry.
-    assertThat(localServer.clusters).doesNotContainKey(boundCluster.getId());
+    assertThat(localServer.getClusterRegistry()).doesNotContainKey(boundCluster.getId());
 
     // All node's channels should be closed.
     for (Node node : nodes) {
@@ -259,7 +259,7 @@ public class ServerTest {
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
-      assertThat(localServer.clusters).doesNotContainKey(cluster.getId());
+      assertThat(localServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
     }
   }
 
