@@ -23,6 +23,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 public final class Server {
 
@@ -35,18 +38,27 @@ public final class Server {
   private static final FrameCodec<ByteBuf> frameCodec =
       FrameCodec.defaultServer(new ByteBufCodec(), Compressor.none());
 
+  private static final long BIND_TIMEOUT_IN_NANOS =
+      TimeUnit.NANOSECONDS.convert(10, TimeUnit.SECONDS);
+
+  private final AddressResolver addressResolver;
+
   final Map<UUID, Cluster> clusters = new ConcurrentHashMap<>();
 
   public Server() {
-    this(new NioEventLoopGroup(), NioServerSocketChannel.class);
+    this(AddressResolver.defaultResolver, new NioEventLoopGroup(), NioServerSocketChannel.class);
   }
 
-  Server(EventLoopGroup eventLoopGroup, Class<? extends ServerChannel> channelClass) {
+  Server(
+      AddressResolver addressResolver,
+      EventLoopGroup eventLoopGroup,
+      Class<? extends ServerChannel> channelClass) {
     this.serverBootstrap =
         new ServerBootstrap()
             .group(eventLoopGroup)
             .channel(channelClass)
             .childHandler(new Initializer());
+    this.addressResolver = addressResolver;
   }
 
   public CompletableFuture<Cluster> register(Cluster cluster) {
@@ -65,9 +77,57 @@ public final class Server {
     }
 
     clusters.put(clusterId, c);
-    // TODO: Unbind everything on failures
-    return CompletableFuture.allOf(bindFutures.toArray(new CompletableFuture[] {}))
-        .thenApply(__ -> c);
+
+    List<BoundNode> nodes = new ArrayList<>(bindFutures.size());
+    Throwable exception = null;
+    boolean timedOut = false;
+    // Evaluate each future, if any fail capture the exception and record all successfully
+    // bound nodes.
+    long start = System.nanoTime();
+    for (CompletableFuture<Node> f : bindFutures) {
+      try {
+        if (timedOut) {
+          Node node = f.getNow(null);
+          if (node != null) {
+            nodes.add((BoundNode) node);
+          }
+        } else {
+          nodes.add((BoundNode) f.get(BIND_TIMEOUT_IN_NANOS, TimeUnit.NANOSECONDS));
+        }
+        if (System.nanoTime() - start > BIND_TIMEOUT_IN_NANOS) {
+          timedOut = true;
+        }
+      } catch (TimeoutException te) {
+        timedOut = true;
+        exception = te;
+      } catch (Exception e) {
+        exception = e.getCause();
+      }
+    }
+
+    // If there was a failure close all bound nodes.
+    if (exception != null) {
+      final Throwable e = exception;
+      // Close each node
+      List<CompletableFuture<Node>> futures =
+          nodes.stream().map(this::close).collect(Collectors.toList());
+
+      CompletableFuture<Cluster> future = new CompletableFuture<>();
+      // On completion of unbinding all nodes, fail the returned future.
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
+          .handle(
+              (v, ex) -> {
+                if (ex != null) {
+                  logger.warn("Exception while unbinding nodes", ex);
+                }
+                future.completeExceptionally(e);
+                return v;
+              });
+      return future;
+    } else {
+      return CompletableFuture.allOf(bindFutures.toArray(new CompletableFuture[] {}))
+          .thenApply(__ -> c);
+    }
   }
 
   public CompletableFuture<Cluster> unregister(Cluster cluster) {
@@ -83,16 +143,8 @@ public final class Server {
         // Close socket on each node.
         for (DataCenter dataCenter : foundCluster.getDataCenters()) {
           for (Node node : dataCenter.getNodes()) {
-            CompletableFuture<Node> closeFuture = new CompletableFuture<>();
             BoundNode boundNode = (BoundNode) node;
-            boundNode
-                .channel
-                .close()
-                .addListener(
-                    channelFuture -> {
-                      closeFuture.complete(boundNode);
-                    });
-            closeFutures.add(closeFuture);
+            closeFutures.add(close(boundNode));
           }
         }
         CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[] {}))
@@ -124,44 +176,58 @@ public final class Server {
   }
 
   public CompletableFuture<Node> unregister(Node node) {
-    CompletableFuture<Node> future = new CompletableFuture<>();
     Cluster cluster = node.getCluster();
     if (cluster == null) {
+      CompletableFuture<Node> future = new CompletableFuture<>();
       future.completeExceptionally(
           new IllegalArgumentException("Node has no Cluster, must not be bound."));
       return future;
     } else {
-      unregister(cluster).thenApply(c -> future.complete(node));
+      return unregister(cluster).thenApply(__ -> node);
     }
-    return future;
   }
 
   private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent) {
     UUID nodeId = UUID.randomUUID();
+    // Use node's address if set, otherwise generate a new one.
     SocketAddress address =
-        refNode.getAddress() != null
-            ? refNode.getAddress()
-            : AddressResolver.defaultResolver.apply(null);
+        refNode.getAddress() != null ? refNode.getAddress() : addressResolver.get();
     CompletableFuture<Node> f = new CompletableFuture<>();
-    ChannelFuture bindFuture = this.serverBootstrap.bind(refNode.getAddress());
+    ChannelFuture bindFuture = this.serverBootstrap.bind(address);
     bindFuture.addListener(
         (ChannelFutureListener)
             channelFuture -> {
-              BoundNode node =
-                  new BoundNode(
-                      address,
-                      refNode.getName(),
-                      nodeId,
-                      refNode.getCassandraVersion(),
-                      refNode.getPeerInfo(),
-                      parent,
-                      channelFuture.channel());
-              logger.info("Bound {} to {}", node, channelFuture.channel());
-              channelFuture.channel().attr(HANDLER).set(node);
-              f.complete(node);
+              if (channelFuture.isSuccess()) {
+                BoundNode node =
+                    new BoundNode(
+                        address,
+                        refNode.getName(),
+                        nodeId,
+                        refNode.getCassandraVersion(),
+                        refNode.getPeerInfo(),
+                        parent,
+                        channelFuture.channel());
+                logger.info("Bound {} to {}", node, channelFuture.channel());
+                channelFuture.channel().attr(HANDLER).set(node);
+                f.complete(node);
+              } else {
+                // If failed, propagate it.
+                f.completeExceptionally(channelFuture.cause());
+              }
             });
 
     return f;
+  }
+
+  private CompletableFuture<Node> close(BoundNode node) {
+    CompletableFuture<Node> future = new CompletableFuture<>();
+    node.channel
+        .close()
+        .addListener(
+            channelFuture -> {
+              future.complete(node);
+            });
+    return future;
   }
 
   static class RequestHandler extends ChannelInboundHandlerAdapter {

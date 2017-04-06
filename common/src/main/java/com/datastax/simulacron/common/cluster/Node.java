@@ -43,6 +43,7 @@ public class Node extends AbstractNodeProperties {
   /**
    * @return The {@link DataCenter} this node belongs to, otherwise null if it does not have one.
    */
+  @JsonIgnore
   public DataCenter getDataCenter() {
     return parent;
   }
@@ -51,6 +52,7 @@ public class Node extends AbstractNodeProperties {
    * @return The {@link Cluster} associated this node belongs to, otherwise null if it does not
    *     belong to one.
    */
+  @JsonIgnore
   public Cluster getCluster() {
     return Optional.ofNullable(parent).map(DataCenter::getCluster).orElse(null);
   }

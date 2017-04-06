@@ -1,14 +1,16 @@
 package com.datastax.simulacron.common.cluster;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 public class DataCenter extends AbstractNodeProperties {
 
-  @JsonManagedReference private final List<Node> nodes = new ArrayList<>();
+  @JsonManagedReference private final Collection<Node> nodes = new ConcurrentLinkedQueue<>();
 
   @JsonBackReference private final Cluster parent;
 
@@ -27,12 +29,13 @@ public class DataCenter extends AbstractNodeProperties {
   }
 
   /** @return The {@link Cluster} associated this belongs to otherwise null. */
+  @JsonIgnore
   public Cluster getCluster() {
     return parent;
   }
 
-  public List<Node> getNodes() {
-    return Collections.unmodifiableList(nodes);
+  public Collection<Node> getNodes() {
+    return nodes;
   }
 
   void addNode(Node node) {

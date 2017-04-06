@@ -22,8 +22,13 @@ public class Cluster extends AbstractNodeProperties {
     super(name, id, cassandraVersion, peerInfo);
   }
 
-  public List<DataCenter> getDataCenters() {
-    return Collections.unmodifiableList(dataCenters);
+  public Collection<DataCenter> getDataCenters() {
+    return dataCenters;
+  }
+
+  @JsonIgnore
+  public List<Node> getNodes() {
+    return dataCenters.stream().flatMap(dc -> dc.getNodes().stream()).collect(Collectors.toList());
   }
 
   void addDataCenter(DataCenter dataCenter) {

@@ -6,18 +6,18 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
-import java.util.function.Function;
+import java.util.UUID;
 import java.util.function.Supplier;
 
-public interface AddressResolver<I> extends Function<I, SocketAddress> {
+public interface AddressResolver extends Supplier<SocketAddress> {
 
   // TODO: make this configurable when needed.  For now we'll just use incrementing IPs from 127.0.1.1
   // but eventually it might be nice to have a resolver that returns incrementing ips + ports when C*
   // supports multiple instances per IP.  Also might be nice if a user wants to use a different IP range
   // or run multiple instances.
-  AddressResolver<Void> defaultResolver = inet4Resolver(new byte[] {127, 0, 1, 1});
+  AddressResolver defaultResolver = inet4Resolver(new byte[] {127, 0, 1, 1});
 
-  final AddressResolver<String> localAddressResolver = LocalAddress::new;
+  AddressResolver localAddressResolver = () -> new LocalAddress(UUID.randomUUID().toString());
 
   /**
    * Creates a resolver that returns next unused IP address at port 9042. Starts from 127.0.0.1 and
@@ -28,7 +28,7 @@ public interface AddressResolver<I> extends Function<I, SocketAddress> {
    * @param startingAddress IP to start from.
    * @return A resolver that returns incrementing ip addresses with port 9042.
    */
-  static AddressResolver<Void> inet4Resolver(byte[] startingAddress) {
+  static AddressResolver inet4Resolver(byte[] startingAddress) {
     // duplicate contents of input address so we don't mutate input.
     byte[] ipAddr = new byte[4];
     System.arraycopy(startingAddress, 0, ipAddr, 0, 4);
@@ -56,6 +56,6 @@ public interface AddressResolver<I> extends Function<I, SocketAddress> {
           }
         };
 
-    return __ -> new InetSocketAddress(nextAddr.get(), 9042);
+    return () -> new InetSocketAddress(nextAddr.get(), 9042);
   }
 }
