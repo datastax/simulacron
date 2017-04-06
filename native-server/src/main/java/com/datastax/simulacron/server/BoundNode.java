@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,10 +38,10 @@ public class BoundNode extends Node {
 
   transient Channel channel;
 
-  public BoundNode(
+  BoundNode(
       SocketAddress address,
       String name,
-      UUID id,
+      Long id,
       String cassandraVersion,
       Map<String, Object> peerInfo,
       DataCenter parent,
@@ -51,7 +50,7 @@ public class BoundNode extends Node {
     this.channel = channel;
   }
 
-  public CompletableFuture<Void> handle(
+  CompletableFuture<Void> handle(
       ChannelHandlerContext ctx, Frame frame, FrameCodec<ByteBuf> frameCodec) {
     logger.info("Got request streamId: {} msg: {}", frame.streamId, frame.message);
     CompletableFuture<Void> f = new CompletableFuture<>();

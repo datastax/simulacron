@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class Cluster extends AbstractNodeProperties {
@@ -13,12 +14,14 @@ public class Cluster extends AbstractNodeProperties {
   @JsonProperty("data_centers")
   private final List<DataCenter> dataCenters = new ArrayList<>();
 
+  @JsonIgnore private final transient AtomicLong dcCounter = new AtomicLong(0);
+
   Cluster() {
     // Default constructor for jackson deserialization.
     this(null, null, null, Collections.emptyMap());
   }
 
-  Cluster(String name, UUID id, String cassandraVersion, Map<String, Object> peerInfo) {
+  Cluster(String name, Long id, String cassandraVersion, Map<String, Object> peerInfo) {
     super(name, id, cassandraVersion, peerInfo);
   }
 
@@ -37,7 +40,7 @@ public class Cluster extends AbstractNodeProperties {
   }
 
   public DataCenter.Builder addDataCenter() {
-    return new DataCenter.Builder(this);
+    return new DataCenter.Builder(this, dcCounter.getAndIncrement());
   }
 
   public static Builder builder() {

@@ -4,8 +4,12 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class DataCenter extends AbstractNodeProperties {
@@ -14,13 +18,15 @@ public class DataCenter extends AbstractNodeProperties {
 
   @JsonBackReference private final Cluster parent;
 
+  @JsonIgnore private final transient AtomicLong nodeCounter = new AtomicLong(0);
+
   DataCenter() {
     // Default constructor for jackson deserialization.
     this(null, null, null, Collections.emptyMap(), null);
   }
 
   DataCenter(
-      String name, UUID id, String cassandraVersion, Map<String, Object> peerInfo, Cluster parent) {
+      String name, Long id, String cassandraVersion, Map<String, Object> peerInfo, Cluster parent) {
     super(name, id, cassandraVersion, peerInfo);
     this.parent = parent;
     if (this.parent != null) {
@@ -44,11 +50,7 @@ public class DataCenter extends AbstractNodeProperties {
   }
 
   public Node.Builder addNode() {
-    return new Node.Builder(this);
-  }
-
-  public static Builder builder(Cluster cluster) {
-    return new Builder(cluster);
+    return new Node.Builder(this, nodeCounter.getAndIncrement());
   }
 
   @Override
@@ -65,8 +67,9 @@ public class DataCenter extends AbstractNodeProperties {
 
   public static class Builder extends NodePropertiesBuilder<Builder, Cluster> {
 
-    Builder(Cluster parent) {
+    Builder(Cluster parent, Long id) {
       super(Builder.class, parent);
+      this.id = id;
     }
 
     public DataCenter build() {

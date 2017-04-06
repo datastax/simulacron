@@ -3,12 +3,11 @@ package com.datastax.simulacron.common.cluster;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
-import java.util.UUID;
 
 public abstract class AbstractNodeProperties implements NodeProperties {
 
   private final String name;
-  private final UUID id;
+  private final Long id;
 
   @JsonProperty("cassandra_version")
   private final String cassandraVersion;
@@ -17,7 +16,7 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   private final Map<String, Object> peerInfo;
 
   AbstractNodeProperties(
-      String name, UUID id, String cassandraVersion, Map<String, Object> peerInfo) {
+      String name, Long id, String cassandraVersion, Map<String, Object> peerInfo) {
     this.name = name;
     this.id = id;
     this.cassandraVersion = cassandraVersion;
@@ -30,7 +29,7 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   }
 
   @Override
-  public UUID getId() {
+  public Long getId() {
     return id;
   }
 

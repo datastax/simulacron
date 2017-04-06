@@ -17,11 +17,14 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.net.SocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -53,8 +56,11 @@ public final class Server {
    */
   private final long bindTimeoutInNanos;
 
+  /** Counter used to assign incrementing ids to clusters. */
+  private final AtomicLong clusterCounter = new AtomicLong();
+
   /** Mapping of registered {@link Cluster} instances to their identifier. */
-  private final Map<UUID, Cluster> clusters = new ConcurrentHashMap<>();
+  private final Map<Long, Cluster> clusters = new ConcurrentHashMap<>();
 
   private Server(
       AddressResolver addressResolver, ServerBootstrap serverBootstrap, long bindTimeoutInNanos) {
@@ -77,14 +83,13 @@ public final class Server {
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
   public CompletableFuture<Cluster> register(Cluster cluster) {
-    UUID clusterId = UUID.randomUUID();
+    long clusterId = clusterCounter.getAndIncrement();
     Cluster c = Cluster.builder().copy(cluster).withId(clusterId).build();
 
     List<CompletableFuture<Node>> bindFutures = new ArrayList<>();
 
     for (DataCenter dataCenter : cluster.getDataCenters()) {
-      UUID dcId = UUID.randomUUID();
-      DataCenter dc = DataCenter.builder(c).copy(dataCenter).withId(dcId).build();
+      DataCenter dc = c.addDataCenter().copy(dataCenter).build();
 
       for (Node node : dataCenter.getNodes()) {
         bindFutures.add(bindInternal(node, dc));
@@ -152,7 +157,7 @@ public final class Server {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<Cluster> unregister(UUID clusterId) {
+  public CompletableFuture<Cluster> unregister(Long clusterId) {
     CompletableFuture<Cluster> future = new CompletableFuture<>();
     if (clusterId == null) {
       future.completeExceptionally(new IllegalArgumentException("Null id provided"));
@@ -201,66 +206,21 @@ public final class Server {
       return future;
     }
     // Wrap node in dummy cluster
-    UUID clusterId = UUID.randomUUID();
+    Long clusterId = clusterCounter.getAndIncrement();
     Cluster dummyCluster = Cluster.builder().withId(clusterId).withName("dummy").build();
-    UUID dcId = UUID.randomUUID();
-    DataCenter dummyDataCenter =
-        dummyCluster.addDataCenter().withName("dummy").withId(dcId).build();
+    DataCenter dummyDataCenter = dummyCluster.addDataCenter().withName("dummy").build();
 
     clusters.put(clusterId, dummyCluster);
 
     return bindInternal(node, dummyDataCenter);
   }
 
-  /**
-   * Unregisters a {@link Node} and closes all listening network interfaces associated with it.
-   *
-   * <p>If the node cannot be found, the future will fail with an {@link IllegalArgumentException}.
-   *
-   * <p>Also note that if the node belongs to a Cluster with more than 1 node, the future will fail
-   * with an {@link IllegalArgumentException}.
-   *
-   * @param nodeId id of node to register.
-   * @return A future that when completed provides the unregistered node as it existed in the
-   *     registry, may not be the same object as the input.
-   */
-  public CompletableFuture<Node> unregisterNode(UUID nodeId) {
-    // Find the Node among all registered single-node clusters.
-    Optional<Node> nodeOption =
-        clusters
-            .values()
-            .stream()
-            .flatMap(c -> c.getNodes().stream())
-            .filter(n -> n.getId().equals(nodeId))
-            .findFirst();
-    if (nodeOption.isPresent()) {
-      Node node = nodeOption.get();
-      Cluster cluster = node.getCluster();
-      if (cluster.getNodes().size() > 1) {
-        CompletableFuture<Node> future = new CompletableFuture<>();
-        future.completeExceptionally(
-            new IllegalArgumentException(
-                "Node belongs to a Cluster with "
-                    + cluster.getNodes().size()
-                    + ", cannot be unregistered alone"));
-        return future;
-      }
-      return unregister(cluster.getId()).thenApply(__ -> node);
-    } else {
-      CompletableFuture<Node> future = new CompletableFuture<>();
-      future.completeExceptionally(
-          new IllegalArgumentException("No Node found with id: " + nodeId));
-      return future;
-    }
-  }
-
   /** @return a map of registered {@link Cluster} instances keyed by their identifier. */
-  public Map<UUID, Cluster> getClusterRegistry() {
+  public Map<Long, Cluster> getClusterRegistry() {
     return this.clusters;
   }
 
   private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent) {
-    UUID nodeId = UUID.randomUUID();
     // Use node's address if set, otherwise generate a new one.
     SocketAddress address =
         refNode.getAddress() != null ? refNode.getAddress() : addressResolver.get();
@@ -274,7 +234,9 @@ public final class Server {
                     new BoundNode(
                         address,
                         refNode.getName(),
-                        nodeId,
+                        refNode.getId() != null
+                            ? refNode.getId()
+                            : 0, // assign id 0 if this is a standalone node.
                         refNode.getCassandraVersion(),
                         refNode.getPeerInfo(),
                         parent,

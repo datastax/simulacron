@@ -2,7 +2,6 @@ package com.datastax.simulacron.common.cluster;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 public abstract class NodePropertiesBuilder<
     S extends NodePropertiesBuilder<S, P>, P extends NodeProperties> {
@@ -11,7 +10,7 @@ public abstract class NodePropertiesBuilder<
   private final S myself;
   String cassandraVersion;
   String name;
-  UUID id;
+  Long id;
   Map<String, Object> peerInfo = new HashMap<>();
 
   NodePropertiesBuilder(Class<?> selfType) {
@@ -48,7 +47,7 @@ public abstract class NodePropertiesBuilder<
     return myself;
   }
 
-  public S withId(UUID id) {
+  public S withId(Long id) {
     this.id = id;
     return myself;
   }

@@ -8,7 +8,6 @@ import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 public class Node extends AbstractNodeProperties {
 
@@ -24,7 +23,7 @@ public class Node extends AbstractNodeProperties {
   public Node(
       SocketAddress address,
       String name,
-      UUID id,
+      Long id,
       String cassandraVersion,
       Map<String, Object> peerInfo,
       DataCenter parent) {
@@ -65,11 +64,7 @@ public class Node extends AbstractNodeProperties {
   // programmatic builder.
 
   public static Builder builder() {
-    return new Builder(null);
-  }
-
-  public static Builder builder(DataCenter dataCenter) {
-    return new Builder(dataCenter);
+    return new Builder(null, null);
   }
 
   @Override
@@ -82,8 +77,9 @@ public class Node extends AbstractNodeProperties {
 
     private SocketAddress address = null;
 
-    Builder(DataCenter parent) {
+    Builder(DataCenter parent, Long id) {
       super(Builder.class, parent);
+      this.id = id;
     }
 
     public Builder withAddress(SocketAddress address) {

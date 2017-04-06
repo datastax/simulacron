@@ -2,7 +2,6 @@ package com.datastax.simulacron.common.cluster;
 
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Function;
 
 import static java.util.Optional.ofNullable;
@@ -41,7 +40,7 @@ public interface NodeProperties {
   String getName();
 
   /** @return A unique id for this. */
-  UUID getId();
+  Long getId();
 
   /**
    * @return The cassandra version of this if set, otherwise null. The cassandra version is used to
@@ -82,7 +81,7 @@ public interface NodeProperties {
    *     name(s) separated by ':', otherwise returns.
    */
   default String resolveId() {
-    return getParent().map(p -> p.resolveId() + ":").orElse("") + getId().toString();
+    return getParent().map(p -> p.resolveId() + ":").orElse("") + getId();
   }
 
   /**

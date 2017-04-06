@@ -22,7 +22,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.*;
 
 import static com.datastax.simulacron.server.AddressResolver.localAddressResolver;
@@ -115,7 +114,7 @@ public class ServerTest {
 
   @Test
   public void testRegisterClusterFailsWhenNodeAlreadyBound() throws Exception {
-    Cluster cluster = Cluster.builder().withId(UUID.randomUUID()).build();
+    Cluster cluster = Cluster.builder().build();
     DataCenter dc = cluster.addDataCenter().build();
     SocketAddress address = localAddressResolver.get();
 
@@ -185,7 +184,7 @@ public class ServerTest {
             .build();
 
     // Create a 2 node cluster with 1 node having the slow address.
-    Cluster cluster = Cluster.builder().withId(UUID.randomUUID()).build();
+    Cluster cluster = Cluster.builder().build();
     DataCenter dc = cluster.addDataCenter().build();
     dc.addNode().withAddress(slowAddr).build();
     dc.addNode().build();
@@ -198,30 +197,6 @@ public class ServerTest {
       // Expect a timeout exception.
       assertThat(e.getCause()).isInstanceOf(TimeoutException.class);
     }
-  }
-
-  @Test
-  public void testUnregisterNode() throws Exception {
-    // Bind node and ensure channel is open.
-    Node node = Node.builder().build();
-    BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
-
-    // Channel should be open.
-    assertThat(boundNode.channel.isOpen()).isTrue();
-
-    // Wrapper cluster should be registered.
-    Cluster cluster = boundNode.getCluster();
-    assertThat(localServer.getClusterRegistry()).containsKey(cluster.getId());
-
-    // Unregistering the node should close the nodes channel and remove cluster.
-    assertThat(localServer.unregisterNode(boundNode.getId()).get(5, TimeUnit.SECONDS))
-        .isSameAs(boundNode);
-
-    // Node's cluster should be removed from registry.
-    assertThat(localServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
-
-    // Channel should be closed.
-    assertThat(boundNode.channel.isOpen()).isFalse();
   }
 
   @Test
@@ -269,7 +244,7 @@ public class ServerTest {
   @Test
   public void testUnregisterClusterNotRegistered() throws Exception {
     // attemping to unregister a Cluster that is not registered should throw an exception.
-    Cluster cluster = Cluster.builder().withId(UUID.randomUUID()).withNodes(1).build();
+    Cluster cluster = Cluster.builder().withId(Long.MAX_VALUE).withNodes(1).build();
     try {
       localServer.unregister(cluster.getId()).get(5, TimeUnit.SECONDS);
       fail();
@@ -285,38 +260,6 @@ public class ServerTest {
     Node node = Node.builder().build();
     try {
       localServer.unregister(node.getId()).get(5, TimeUnit.SECONDS);
-      fail();
-    } catch (ExecutionException ex) {
-      assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
-    }
-  }
-
-  @Test
-  public void testUnregisterNodeWithClusterNotRegistered() throws Exception {
-    // attempting to unregister a Node whose cluster is not registered should throw an exception.
-    Node node = Node.builder().build();
-    Node boundNode = localServer.register(node).get(5, TimeUnit.SECONDS);
-    localServer.unregisterNode(boundNode.getId()).get(5, TimeUnit.SECONDS);
-
-    try {
-      // attempt unregister a second time which should fail since already unregistered.
-      localServer.unregisterNode(boundNode.getId()).get(5, TimeUnit.SECONDS);
-      fail();
-    } catch (ExecutionException ex) {
-      assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
-    }
-  }
-
-  @Test
-  public void testUnregisterNodeWithMultiNodeCluster() throws Exception {
-    // attempting to unregister a Node which belongs to a multi-node Cluster should throw an exception.
-    Cluster cluster = Cluster.builder().withNodes(1, 1, 1).build();
-    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
-
-    Node node2 = boundCluster.getNodes().get(1);
-
-    try {
-      localServer.unregisterNode(node2.getId()).get(5, TimeUnit.SECONDS);
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
