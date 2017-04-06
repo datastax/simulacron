@@ -36,9 +36,6 @@ public final class Server {
   private static final FrameCodec<ByteBuf> frameCodec =
       FrameCodec.defaultServer(new ByteBufCodec(), Compressor.none());
 
-  private static final long BIND_TIMEOUT_IN_NANOS =
-      TimeUnit.NANOSECONDS.convert(10, TimeUnit.SECONDS);
-
   private ServerBootstrap serverBootstrap;
 
   private final AddressResolver addressResolver;
@@ -47,29 +44,11 @@ public final class Server {
 
   final Map<UUID, Cluster> clusters = new ConcurrentHashMap<>();
 
-  // TODO: Make Server builder-based.
-  public Server() {
-    this(
-        AddressResolver.defaultResolver,
-        new NioEventLoopGroup(),
-        NioServerSocketChannel.class,
-        BIND_TIMEOUT_IN_NANOS,
-        TimeUnit.NANOSECONDS);
-  }
-
-  Server(
-      AddressResolver addressResolver,
-      EventLoopGroup eventLoopGroup,
-      Class<? extends ServerChannel> channelClass,
-      long bindTimeout,
-      TimeUnit bindTimeoutUnits) {
-    this.serverBootstrap =
-        new ServerBootstrap()
-            .group(eventLoopGroup)
-            .channel(channelClass)
-            .childHandler(new Initializer());
+  private Server(
+      AddressResolver addressResolver, ServerBootstrap serverBootstrap, long bindTimeoutInNanos) {
+    this.serverBootstrap = serverBootstrap;
     this.addressResolver = addressResolver;
-    this.bindTimeoutInNanos = TimeUnit.NANOSECONDS.convert(bindTimeout, bindTimeoutUnits);
+    this.bindTimeoutInNanos = bindTimeoutInNanos;
   }
 
   public CompletableFuture<Cluster> register(Cluster cluster) {
@@ -240,6 +219,49 @@ public final class Server {
               future.complete(node);
             });
     return future;
+  }
+
+  public static Builder builder() {
+    return builder(new NioEventLoopGroup(), NioServerSocketChannel.class);
+  }
+
+  public static Builder builder(
+      EventLoopGroup eventLoopGroup, Class<? extends ServerChannel> channelClass) {
+    ServerBootstrap serverBootstrap =
+        new ServerBootstrap()
+            .group(eventLoopGroup)
+            .channel(channelClass)
+            .childHandler(new Initializer());
+    return new Builder(serverBootstrap);
+  }
+
+  static class Builder {
+    private ServerBootstrap serverBootstrap;
+
+    private AddressResolver addressResolver = AddressResolver.defaultResolver;
+
+    private static long DEFAULT_BIND_TIMEOUT_IN_NANOS =
+        TimeUnit.NANOSECONDS.convert(10, TimeUnit.SECONDS);
+
+    private long bindTimeoutInNanos = DEFAULT_BIND_TIMEOUT_IN_NANOS;
+
+    Builder(ServerBootstrap initialBootstrap) {
+      this.serverBootstrap = initialBootstrap;
+    }
+
+    public Builder withBindTimeout(long time, TimeUnit timeUnit) {
+      this.bindTimeoutInNanos = TimeUnit.NANOSECONDS.convert(time, timeUnit);
+      return this;
+    }
+
+    public Builder withAddressResolver(AddressResolver addressResolver) {
+      this.addressResolver = addressResolver;
+      return this;
+    }
+
+    public Server build() {
+      return new Server(addressResolver, serverBootstrap, bindTimeoutInNanos);
+    }
   }
 
   static class RequestHandler extends ChannelInboundHandlerAdapter {

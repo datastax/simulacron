@@ -10,6 +10,7 @@ import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.local.LocalChannel;
@@ -22,10 +23,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static com.datastax.simulacron.server.AddressResolver.localAddressResolver;
 import static com.datastax.simulacron.server.FrameUtils.wrapRequest;
@@ -37,7 +35,9 @@ public class ServerTest {
   private final EventLoopGroup eventLoop = new DefaultEventLoopGroup();
 
   private final Server localServer =
-      new Server(localAddressResolver, eventLoop, LocalServerChannel.class, 10, TimeUnit.SECONDS);
+      Server.builder(eventLoop, LocalServerChannel.class)
+          .withAddressResolver(localAddressResolver)
+          .build();
 
   @After
   public void tearDown() {
@@ -106,8 +106,8 @@ public class ServerTest {
 
     // Create 2 nodes with the same address, this should cause issue since both can't be
     // bound to same interface.
-    Node node0 = dc.addNode().withAddress(address).build();
-    Node node1 = dc.addNode().withAddress(address).build();
+    dc.addNode().withAddress(address).build();
+    dc.addNode().withAddress(address).build();
 
     try {
       localServer.register(cluster).get(5, TimeUnit.SECONDS);
@@ -115,6 +115,73 @@ public class ServerTest {
     } catch (Exception e) {
       assertThat(e.getCause()).isInstanceOf(ChannelException.class);
       assertThat(localServer.clusters).doesNotContainKey(cluster.getId());
+    }
+  }
+
+  /** A custom handler that delays binding of a socket by 1 second for the given address. */
+  @ChannelHandler.Sharable
+  class SlowBindHandler extends ChannelOutboundHandlerAdapter {
+
+    SocketAddress slowAddr;
+
+    SlowBindHandler(SocketAddress slowAddr) {
+      this.slowAddr = slowAddr;
+    }
+
+    @Override
+    public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise)
+        throws Exception {
+      if (localAddress == slowAddr) {
+        // delay binding 1 second.
+        eventLoop.schedule(
+            () -> {
+              try {
+                super.bind(ctx, localAddress, promise);
+              } catch (Exception e) {
+                // shouldn't happen.
+              }
+            },
+            1,
+            TimeUnit.SECONDS);
+      } else {
+        super.bind(ctx, localAddress, promise);
+      }
+    }
+  }
+
+  @Test
+  public void testRegisterClusterFailsWhenBindTimesOut() throws Exception {
+    // Designated address to be slow to bind.
+    SocketAddress slowAddr = localAddressResolver.get();
+
+    // create a bootstrap with a handler that delays binding by 1 second for designated address.
+    ServerBootstrap serverBootstrap =
+        new ServerBootstrap()
+            .group(eventLoop)
+            .channel(LocalServerChannel.class)
+            .handler(new SlowBindHandler(slowAddr))
+            .childHandler(new Server.Initializer());
+
+    // Define server with 500ms timeout, which should cause binding of slow address to timeout and fail register.
+    Server flakyServer =
+        new Server.Builder(serverBootstrap)
+            .withAddressResolver(localAddressResolver)
+            .withBindTimeout(500, TimeUnit.MILLISECONDS)
+            .build();
+
+    // Create a 2 node cluster with 1 node having the slow address.
+    Cluster cluster = Cluster.builder().withId(UUID.randomUUID()).build();
+    DataCenter dc = cluster.addDataCenter().build();
+    dc.addNode().withAddress(slowAddr).build();
+    dc.addNode().build();
+
+    // Attempt to register which should fail.
+    try {
+      flakyServer.register(cluster).get(5, TimeUnit.SECONDS);
+      fail();
+    } catch (Exception e) {
+      // Expect a timeout exception.
+      assertThat(e.getCause()).isInstanceOf(TimeoutException.class);
     }
   }
 
