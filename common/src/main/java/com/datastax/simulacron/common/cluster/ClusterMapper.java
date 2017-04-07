@@ -14,6 +14,12 @@ import java.net.SocketAddress;
 
 public class ClusterMapper {
 
+  /**
+   * Constructs an {@link ObjectMapper} that knows how to serialize and deserialize {@link Cluster}
+   * and its members.
+   *
+   * @return a new {@link ObjectMapper}
+   */
   public static ObjectMapper getMapper() {
     ObjectMapper om = new ObjectMapper();
 
@@ -26,6 +32,13 @@ public class ClusterMapper {
     return om;
   }
 
+  /**
+   * A custom deserializer for deserializing an address in the format of X.X.X.X:YYYY into a {@link
+   * SocketAddress}.
+   *
+   * <p>This does not currently work for Inet6 addresses presumably. It also does not work for
+   * LocalAddress as well.
+   */
   public static class SocketAddressDeserializer extends StdDeserializer<SocketAddress> {
 
     SocketAddressDeserializer() {

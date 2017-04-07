@@ -9,8 +9,16 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Represents a {@link Node} which may belong to a {@link Cluster} (via a {@link DataCenter}
+ * relationship) or it may be standalone to represent a 'single node' cluster.
+ *
+ * <p>A {@link Node} has an address which indicates what ip address and port the node is listening
+ * on.
+ */
 public class Node extends AbstractNodeProperties {
 
+  /** The address and port that this node should listen on. */
   @JsonProperty private final SocketAddress address;
 
   @JsonBackReference private final DataCenter parent;
@@ -35,6 +43,7 @@ public class Node extends AbstractNodeProperties {
     }
   }
 
+  /** @return The address and port that this node should listen on. */
   public SocketAddress getAddress() {
     return address;
   }
@@ -61,8 +70,11 @@ public class Node extends AbstractNodeProperties {
     return toStringWith(", address=" + address);
   }
 
-  // programmatic builder.
-
+  /**
+   * Constructs a {@link Builder} for defining a {@link Node} that has no parent {@link Cluster}.
+   *
+   * @return Builder for creating {@link Node}
+   */
   public static Builder builder() {
     return new Builder(null, null);
   }
@@ -82,11 +94,18 @@ public class Node extends AbstractNodeProperties {
       this.id = id;
     }
 
+    /**
+     * Sets the address that the Node should be listening on.
+     *
+     * @param address address to listen on
+     * @return this builder
+     */
     public Builder withAddress(SocketAddress address) {
       this.address = address;
       return this;
     }
 
+    /** @return Constructs a {@link Node} from this builder. Can be called multiple times. */
     public Node build() {
       return new Node(address, name, id, cassandraVersion, peerInfo, parent);
     }

@@ -8,8 +8,11 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+/** Represents a cluster, which contains {@link DataCenter}s which contains {@link Node}s. */
 public class Cluster extends AbstractNodeProperties {
 
+  // json managed reference is used to indicate a two way linking between the 'parent' (cluster) and 'children'
+  // (datacenters) in a json tree.  This tells the jackson mapping to tie child DCs to this cluster on deserialization.
   @JsonManagedReference
   @JsonProperty("data_centers")
   private final List<DataCenter> dataCenters = new ArrayList<>();
@@ -25,24 +28,43 @@ public class Cluster extends AbstractNodeProperties {
     super(name, id, cassandraVersion, peerInfo);
   }
 
+  /** @return The {@link DataCenter}s belonging to this cluster. */
   public Collection<DataCenter> getDataCenters() {
     return dataCenters;
   }
 
+  /**
+   * @return All nodes belonging to {@link DataCenter}s in this cluster. Note that this method
+   *     builds a new collection on every invocation, so it is recommended to not call this
+   *     repeatedly without a good reason.
+   */
   @JsonIgnore
   public List<Node> getNodes() {
     return dataCenters.stream().flatMap(dc -> dc.getNodes().stream()).collect(Collectors.toList());
   }
 
+  /**
+   * Intended to be called in {@link DataCenter} construction to add the {@link DataCenter} to this
+   * cluster.
+   *
+   * @param dataCenter The data center to tie to this cluster.
+   */
   void addDataCenter(DataCenter dataCenter) {
     assert dataCenter.getParent().orElse(null) == this;
     this.dataCenters.add(dataCenter);
   }
 
+  /**
+   * Constructs a builder for a {@link DataCenter} that will be added to this cluster. On
+   * construction the created {@link DataCenter} will be added to this cluster.
+   *
+   * @return a Builder to create a {@link DataCenter} in this cluster.
+   */
   public DataCenter.Builder addDataCenter() {
     return new DataCenter.Builder(this, dcCounter.getAndIncrement());
   }
 
+  /** @return A builder for making a Cluster. */
   public static Builder builder() {
     return new Builder();
   }
@@ -79,6 +101,7 @@ public class Cluster extends AbstractNodeProperties {
       return this;
     }
 
+    /** @return Constructs a {@link Cluster} from this builder. Can be called multiple times. */
     public Cluster build() {
       Cluster cluster = new Cluster(name, id, cassandraVersion, peerInfo);
       if (nodes != null) {

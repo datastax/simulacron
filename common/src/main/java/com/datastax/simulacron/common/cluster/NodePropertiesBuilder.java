@@ -3,6 +3,14 @@ package com.datastax.simulacron.common.cluster;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * A base builder to use when defining a {@link NodeProperties} implementation that provides builder
+ * methods for version, name, id, and peer info. Also provides a {@link #copy(NodeProperties)}
+ * method for deriving {@link NodeProperties} values from an existing object.
+ *
+ * @param <S> The concrete type of the builder.
+ * @param <P> The type of the parent object (if applicable).
+ */
 public abstract class NodePropertiesBuilder<
     S extends NodePropertiesBuilder<S, P>, P extends NodeProperties> {
 

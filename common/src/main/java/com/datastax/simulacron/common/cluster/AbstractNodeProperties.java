@@ -4,6 +4,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
 
+/**
+ * Implementation of {@link NodeProperties} that provides a constructor a implementations for
+ * everything expcet {@link NodeProperties#getParent()}.
+ */
 public abstract class AbstractNodeProperties implements NodeProperties {
 
   private final String name;

@@ -6,6 +6,16 @@ import java.util.function.Function;
 
 import static java.util.Optional.ofNullable;
 
+/**
+ * Interface that defines an Object having a name, id, cassandra version a mapping of peer info and
+ * optionally a parent which also defines these properties.
+ *
+ * <p>The main utility for this is to provide a mechanism to resolve the "most specific" value to
+ * use for a node. For example, if you have a node belonging to a datacenter which belongs a
+ * cluster, one can define a cassandraVersion at the cluster level and calls to {@link
+ * #resolveCassandraVersion()} on the node will return the cassandraVersion defined at the node
+ * level if defined, otherwise data center, otherwise cluster, otherwise some default value.
+ */
 public interface NodeProperties {
 
   /**
