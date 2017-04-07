@@ -27,6 +27,9 @@ public abstract class NodePropertiesBuilder<
    * Copies properties from a previously built {@link NodeProperties} into this. This is useful for
    * when we are creating a new copy that has new fields set like ID for example.
    *
+   * <p>Note that this doesn't copy values like children or environment specific properties (like
+   * address).
+   *
    * @param toCopy Existing {@link NodeProperties} toCopy.
    * @return Updated builder with copied properties.
    */
@@ -58,7 +61,7 @@ public abstract class NodePropertiesBuilder<
   }
 
   public S withPeerInfo(Map<String, Object> peerInfo) {
-    this.peerInfo = peerInfo;
+    this.peerInfo = new HashMap<>(peerInfo);
     return myself;
   }
 }

@@ -33,7 +33,8 @@ public interface NodeProperties {
    */
   default <T> T resolve(Function<NodeProperties, T> methodRef, T defaultValue) {
     return ofNullable(methodRef.apply(this))
-        .orElseGet(() -> getParent().map(methodRef).orElse(defaultValue));
+        .orElseGet(
+            () -> getParent().map(p -> p.resolve(methodRef, defaultValue)).orElse(defaultValue));
   }
 
   /** @return A human readable name for this. */
@@ -92,7 +93,9 @@ public interface NodeProperties {
   default Optional<Object> resolvePeerInfo(String key) {
     // if value is present, return it, otherwise try parent.
     Object value = getPeerInfo().get(key);
-    return value != null ? Optional.of(value) : getParent().map(p -> p.resolvePeerInfo(key));
+    return value != null
+        ? Optional.of(value)
+        : getParent().map(p -> p.resolvePeerInfo(key).orElse(null));
   }
 
   /**
@@ -103,6 +106,6 @@ public interface NodeProperties {
    *     set, defaultValue is returned.
    */
   default Object resolvePeerInfo(String key, Object defaultValue) {
-    return resolvePeerInfo(key).orElse(defaultValue);
+    return resolvePeerInfo(key).orElseGet(() -> defaultValue);
   }
 }

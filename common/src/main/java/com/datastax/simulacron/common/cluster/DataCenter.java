@@ -62,7 +62,7 @@ public class DataCenter extends AbstractNodeProperties {
 
   @Override
   public Optional<NodeProperties> getParent() {
-    return Optional.of(parent);
+    return Optional.ofNullable(parent);
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, Cluster> {

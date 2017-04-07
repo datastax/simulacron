@@ -25,7 +25,7 @@ public abstract class AbstractNodeProperties implements NodeProperties {
 
   @Override
   public String getName() {
-    return name;
+    return name != null ? name : id != null ? id.toString() : null;
   }
 
   @Override
