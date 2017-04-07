@@ -66,4 +66,33 @@ public class NodePropertiesTest {
     assertThat(node.resolvePeerInfo("goodbye")).isEqualTo(Optional.of("sun"));
     assertThat(node.resolvePeerInfo("yo", "hi")).isEqualTo("hi");
   }
+
+  @Test
+  public void testToStringWithId() {
+    Node node = Node.builder().withId(7L).withName("node0").build();
+
+    assertThat(node.toString()).isEqualTo("Node{id=7, name='node0', address=null}");
+  }
+
+  @Test
+  public void testToStringNoName() {
+    Node node = Node.builder().withId(7L).build();
+
+    assertThat(node.toString()).isEqualTo("Node{id=7, address=null}");
+  }
+
+  @Test
+  public void testToStringWithProps() {
+    Node node =
+        Node.builder()
+            .withId(7L)
+            .withName("node0")
+            .withPeerInfo("hello", "world")
+            .withCassandraVersion("1.2.19")
+            .build();
+
+    assertThat(node.toString())
+        .isEqualTo(
+            "Node{id=7, name='node0', cassandraVersion='1.2.19', peerInfo={hello=world}, address=null}");
+  }
 }

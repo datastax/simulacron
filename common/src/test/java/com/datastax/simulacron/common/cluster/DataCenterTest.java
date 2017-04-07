@@ -74,4 +74,28 @@ public class DataCenterTest {
     assertThat(dc.getNodes()).isEmpty();
     assertThat(dc.toString()).isNotNull();
   }
+
+  @Test
+  public void testCopy() {
+    Cluster cluster = Cluster.builder().build();
+    DataCenter dc =
+        cluster
+            .addDataCenter()
+            .withName("dc2")
+            .withCassandraVersion("1.2.19")
+            .withPeerInfo("hello", "world")
+            .build();
+
+    dc.addNode().build();
+    dc.addNode().build();
+
+    DataCenter dc2 = cluster.addDataCenter().copy(dc).build();
+    assertThat(dc2.getId()).isEqualTo(dc.getId());
+    assertThat(dc2.getName()).isEqualTo(dc.getName());
+    assertThat(dc2.getCassandraVersion()).isEqualTo(dc.getCassandraVersion());
+    assertThat(dc2.getPeerInfo()).isEqualTo(dc.getPeerInfo());
+
+    // Nodes should not be copied.
+    assertThat(dc2.getNodes()).isEmpty();
+  }
 }

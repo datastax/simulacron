@@ -73,4 +73,27 @@ public class NodeTest {
     assertThat(node.getPeerInfo()).isEqualTo(Collections.emptyMap());
     assertThat(node.toString()).isNotNull();
   }
+
+  @Test
+  public void testCopy() {
+    Cluster cluster = Cluster.builder().build();
+    DataCenter dc = cluster.addDataCenter().build();
+
+    Node node =
+        dc.addNode()
+            .withName("node2")
+            .withCassandraVersion("1.2.19")
+            .withPeerInfo("hello", "world")
+            .withAddress(new InetSocketAddress(InetAddress.getLoopbackAddress(), 9042))
+            .build();
+
+    Node node2 = dc.addNode().copy(node).build();
+    assertThat(node2.getId()).isEqualTo(node.getId());
+    assertThat(node2.getName()).isEqualTo(node.getName());
+    assertThat(node2.getCassandraVersion()).isEqualTo(node.getCassandraVersion());
+    assertThat(node2.getPeerInfo()).isEqualTo(node.getPeerInfo());
+
+    // Address should not be copied.
+    assertThat(node2.getAddress()).isNull();
+  }
 }

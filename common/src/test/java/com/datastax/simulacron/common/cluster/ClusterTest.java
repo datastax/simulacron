@@ -88,4 +88,27 @@ public class ClusterTest {
       assertThat(dc.getId()).isEqualTo(i);
     }
   }
+
+  @Test
+  public void testCopy() {
+    Cluster cluster =
+        Cluster.builder()
+            .withId(1L)
+            .withName("cluster0")
+            .withCassandraVersion("3.0.11")
+            .withPeerInfo("hello", "world")
+            .build();
+
+    cluster.addDataCenter().build();
+    cluster.addDataCenter().build();
+
+    Cluster cluster2 = Cluster.builder().copy(cluster).build();
+    assertThat(cluster2.getId()).isEqualTo(cluster.getId());
+    assertThat(cluster2.getName()).isEqualTo(cluster.getName());
+    assertThat(cluster2.getCassandraVersion()).isEqualTo(cluster.getCassandraVersion());
+    assertThat(cluster2.getPeerInfo()).isEqualTo(cluster.getPeerInfo());
+
+    // DataCenters should not be copied.
+    assertThat(cluster2.getDataCenters()).isEmpty();
+  }
 }
