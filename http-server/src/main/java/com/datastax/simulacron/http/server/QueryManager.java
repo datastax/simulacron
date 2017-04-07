@@ -1,6 +1,6 @@
 package com.datastax.simulacron.http.server;
 
-import com.datastax.simulacron.common.cluster.Query;
+import com.datastax.simulacron.common.cluster.QueryPrime;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
@@ -14,7 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class QueryManager implements HttpListener {
   Logger logger = LoggerFactory.getLogger(QueryManager.class);
-  public static ConcurrentHashMap<String, Query> queries = new ConcurrentHashMap<String, Query>();
+  public static ConcurrentHashMap<String, QueryPrime> queries =
+      new ConcurrentHashMap<String, QueryPrime>();
 
   public void primerQuery(RoutingContext context) {
 
@@ -27,7 +28,7 @@ public class QueryManager implements HttpListener {
               ObjectMapper om = new ObjectMapper();
               om.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
               try {
-                Query query = om.readValue(jsonBody, Query.class);
+                QueryPrime query = om.readValue(jsonBody, QueryPrime.class);
                 queries.put(query.when.query, query);
 
               } catch (IOException e) {

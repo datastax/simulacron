@@ -293,7 +293,7 @@ public final class Server {
     return new Builder(serverBootstrap);
   }
 
-  static class Builder {
+  public static class Builder {
     private ServerBootstrap serverBootstrap;
 
     private AddressResolver addressResolver = AddressResolver.defaultResolver;
