@@ -26,23 +26,6 @@ public class ClusterMapper {
     return om;
   }
 
-  public static void main(String args[]) throws Exception {
-    ObjectMapper om = getMapper();
-    Cluster cluster =
-        Cluster.builder()
-            .withName("cluster1")
-            .withCassandraVersion("1.2.19")
-            .withPeerInfo("hello", "world")
-            .withPeerInfo("goodbye", "sun")
-            .withNodes(10, 10)
-            .build();
-    String json = om.writeValueAsString(cluster);
-    System.out.println(json);
-
-    Cluster cluster2 = om.readValue(json, Cluster.class);
-    System.out.println(om.writeValueAsString(cluster2));
-  }
-
   public static class SocketAddressDeserializer extends StdDeserializer<SocketAddress> {
 
     SocketAddressDeserializer() {
