@@ -130,6 +130,9 @@ public class ServerTest {
       assertThat(e.getCause()).isInstanceOf(ChannelException.class);
       assertThat(localServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
     }
+
+    // Cluster should not have been registered.
+    assertThat(localServer.getClusterRegistry()).isEmpty();
   }
 
   /** A custom handler that delays binding of a socket by 1 second for the given address. */

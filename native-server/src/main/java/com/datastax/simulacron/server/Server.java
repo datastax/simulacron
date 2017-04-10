@@ -137,6 +137,8 @@ public final class Server {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
           .handle(
               (v, ex) -> {
+                // remove cluster from registry since it failed to completely register.
+                clusters.remove(clusterId);
                 future.completeExceptionally(e);
                 return v;
               });
