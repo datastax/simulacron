@@ -8,8 +8,8 @@ import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.codec.CachedDataTypeEncoders;
 import com.datastax.simulacron.common.codec.DataTypeEncoders;
+import com.datastax.simulacron.common.codec.EncoderCache;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -98,46 +98,41 @@ public class PeerMetadataHandler implements StubMapping {
   @Override
   public List<Action> getActions(Node node, Frame frame) {
     if (frame.message instanceof Query) {
+      DataTypeEncoders e = EncoderCache.getEncoders(frame.protocolVersion);
       Query query = (Query) frame.message;
-      String queryStr = query.query;
-      if (queryStr.equals(queryLocal)) {
-        return handleSystemLocalQuery(node, frame);
-      } else if (queryStr.equals(queryClusterName)) {
-        return handleClusterNameQuery(node, frame);
-      } else if (queryStr.equals(queryPeers)) {
-        return handlePeersQuery(node, frame, n -> n != node);
-      } else {
-        // if querying for particular peer, return information for only that peer.
-        Matcher matcher = queryPeersWithAddr.matcher(queryStr);
-        if (matcher.matches()) {
-          return handlePeersQuery(
-              node,
-              frame,
-              n -> {
-                InetAddress address;
-                if (n.getAddress() instanceof InetSocketAddress) {
-                  address = ((InetSocketAddress) n.getAddress()).getAddress();
-                  String addrIp = address.getHostAddress();
-                  return addrIp.equals(matcher.group(1));
-                } else {
-                  return false;
-                }
-              });
-        }
+
+      switch (query.query) {
+        case queryLocal:
+          return handleSystemLocalQuery(node, e);
+        case queryClusterName:
+          return handleClusterNameQuery(node, e);
+        case queryPeers:
+          return handlePeersQuery(node, e, n -> n != node);
+        default:
+          // if querying for particular peer, return information for only that peer.
+          Matcher matcher = queryPeersWithAddr.matcher(query.query);
+          if (matcher.matches()) {
+            return handlePeersQuery(
+                node,
+                e,
+                n -> {
+                  InetAddress address;
+                  if (n.getAddress() instanceof InetSocketAddress) {
+                    address = ((InetSocketAddress) n.getAddress()).getAddress();
+                    String addrIp = address.getHostAddress();
+                    return addrIp.equals(matcher.group(1));
+                  } else {
+                    return false;
+                  }
+                });
+          }
       }
     }
     return Collections.emptyList();
   }
 
-  List<Action> handleSystemLocalQuery(Node node, Frame frame) {
-    // TODO: Reuse data type encoders (cache by protocol version)
-    DataTypeEncoders e = new CachedDataTypeEncoders(frame.protocolVersion);
-    InetAddress address;
-    if (node.getAddress() instanceof InetSocketAddress) {
-      address = ((InetSocketAddress) node.getAddress()).getAddress();
-    } else {
-      address = InetAddress.getLoopbackAddress();
-    }
+  List<Action> handleSystemLocalQuery(Node node, DataTypeEncoders e) {
+    InetAddress address = resolveAddress(node);
 
     Queue<List<ByteBuffer>> localRow =
         Utils.singletonRow(
@@ -159,18 +154,14 @@ public class PeerMetadataHandler implements StubMapping {
     return Collections.singletonList(action);
   }
 
-  List<Action> handleClusterNameQuery(Node node, Frame frame) {
-    DataTypeEncoders e = new CachedDataTypeEncoders(frame.protocolVersion);
-
+  List<Action> handleClusterNameQuery(Node node, DataTypeEncoders e) {
     Queue<List<ByteBuffer>> clusterRow = Utils.singletonRow(e.string(node.getCluster().getName()));
     Rows rows = new Rows(queryClusterNameMetadata, clusterRow);
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
   }
 
-  List<Action> handlePeersQuery(Node node, Frame frame, Predicate<Node> nodeFilter) {
-    DataTypeEncoders e = new CachedDataTypeEncoders(frame.protocolVersion);
-
+  List<Action> handlePeersQuery(Node node, DataTypeEncoders e, Predicate<Node> nodeFilter) {
     // For each node matching the filter, provide its peer information.
     Queue<List<ByteBuffer>> peerRows =
         new ArrayDeque<>(
@@ -180,12 +171,8 @@ public class PeerMetadataHandler implements StubMapping {
                 .filter(nodeFilter)
                 .map(
                     n -> {
-                      InetAddress address;
-                      if (n.getAddress() instanceof InetSocketAddress) {
-                        address = ((InetSocketAddress) n.getAddress()).getAddress();
-                      } else {
-                        address = InetAddress.getLoopbackAddress();
-                      }
+                      InetAddress address = resolveAddress(n);
+
                       return row(
                           e.inet(address),
                           e.inet(address),
@@ -231,5 +218,15 @@ public class PeerMetadataHandler implements StubMapping {
       long nodeOffset = nPos * ((long) Math.pow(2, 64) / node.getDataCenter().getNodes().size());
       return "" + (nodeOffset + dcOffset);
     }
+  }
+
+  private InetAddress resolveAddress(Node node) {
+    InetAddress address;
+    if (node.getAddress() instanceof InetSocketAddress) {
+      address = ((InetSocketAddress) node.getAddress()).getAddress();
+    } else {
+      address = InetAddress.getLoopbackAddress();
+    }
+    return address;
   }
 }

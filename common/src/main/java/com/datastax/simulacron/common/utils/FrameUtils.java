@@ -1,4 +1,4 @@
-package com.datastax.simulacron.server;
+package com.datastax.simulacron.common.utils;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;

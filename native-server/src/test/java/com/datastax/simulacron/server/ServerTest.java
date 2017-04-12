@@ -24,8 +24,8 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.concurrent.*;
 
+import static com.datastax.simulacron.common.utils.FrameUtils.wrapRequest;
 import static com.datastax.simulacron.server.AddressResolver.localAddressResolver;
-import static com.datastax.simulacron.server.FrameUtils.wrapRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 

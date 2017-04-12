@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.datastax.simulacron.server.FrameUtils.wrapResponse;
+import static com.datastax.simulacron.common.utils.FrameUtils.wrapResponse;
 
 public class BoundNode extends Node {
 
