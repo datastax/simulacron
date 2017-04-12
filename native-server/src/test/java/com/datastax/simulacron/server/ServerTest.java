@@ -120,14 +120,17 @@ public class ServerTest {
 
     // Create 2 nodes with the same address, this should cause issue since both can't be
     // bound to same interface.
-    dc.addNode().withAddress(address).build();
-    dc.addNode().withAddress(address).build();
+    Node node0 = dc.addNode().withAddress(address).build();
+    Node node1 = dc.addNode().withAddress(address).build();
 
     try {
       localServer.register(cluster).get(5, TimeUnit.SECONDS);
       fail();
     } catch (Exception e) {
-      assertThat(e.getCause()).isInstanceOf(ChannelException.class);
+      assertThat(e.getCause()).isInstanceOf(BindNodeException.class);
+      BindNodeException bne = (BindNodeException) e.getCause();
+      assertThat(bne.getAddress()).isSameAs(address);
+      assertThat(bne.getNode()).isIn(node0, node1);
       assertThat(localServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
     }
 

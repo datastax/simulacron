@@ -18,6 +18,11 @@
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.datastax.oss</groupId>
+            <artifactId>native-protocol</artifactId>
+            <version>${native-protocol.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

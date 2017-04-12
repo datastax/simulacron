@@ -6,6 +6,7 @@ import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -56,6 +57,9 @@ public final class Server {
    */
   private final long bindTimeoutInNanos;
 
+  /** The store that configures how to handle requests sent from a client. */
+  private final StubStore stubStore;
+
   /** Counter used to assign incrementing ids to clusters. */
   private final AtomicLong clusterCounter = new AtomicLong();
 
@@ -63,10 +67,14 @@ public final class Server {
   private final Map<Long, Cluster> clusters = new ConcurrentHashMap<>();
 
   private Server(
-      AddressResolver addressResolver, ServerBootstrap serverBootstrap, long bindTimeoutInNanos) {
+      AddressResolver addressResolver,
+      ServerBootstrap serverBootstrap,
+      long bindTimeoutInNanos,
+      StubStore stubStore) {
     this.serverBootstrap = serverBootstrap;
     this.addressResolver = addressResolver;
     this.bindTimeoutInNanos = bindTimeoutInNanos;
+    this.stubStore = stubStore;
   }
 
   /**
@@ -175,11 +183,15 @@ public final class Server {
           }
         }
         CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[] {}))
-            .thenAccept(
-                __ -> {
+            .whenComplete(
+                (__, ex) -> {
                   // remove cluster and complete future.
                   clusters.remove(clusterId);
-                  future.complete(foundCluster);
+                  if (ex != null) {
+                    future.completeExceptionally(ex);
+                  } else {
+                    future.complete(foundCluster);
+                  }
                 });
       } else {
         future.completeExceptionally(new IllegalArgumentException("Cluster not found."));
@@ -222,6 +234,11 @@ public final class Server {
     return this.clusters;
   }
 
+  /** @return The store that configures how to handle requests sent from a client. */
+  public StubStore getStubStore() {
+    return this.stubStore;
+  }
+
   private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent) {
     // Use node's address if set, otherwise generate a new one.
     SocketAddress address =
@@ -232,6 +249,9 @@ public final class Server {
         (ChannelFutureListener)
             channelFuture -> {
               if (channelFuture.isSuccess()) {
+                // TODO: Since nodes may be added in a different order when binding than when defined, we need some
+                // way of ensuring nodes are added to the new DataCenter in the same order as they were originally
+                // defined.
                 BoundNode node =
                     new BoundNode(
                         address,
@@ -242,13 +262,15 @@ public final class Server {
                         refNode.getCassandraVersion(),
                         refNode.getPeerInfo(),
                         parent,
-                        channelFuture.channel());
+                        channelFuture.channel(),
+                        stubStore);
                 logger.info("Bound {} to {}", node, channelFuture.channel());
                 channelFuture.channel().attr(HANDLER).set(node);
                 f.complete(node);
               } else {
                 // If failed, propagate it.
-                f.completeExceptionally(channelFuture.cause());
+                f.completeExceptionally(
+                    new BindNodeException(refNode, address, channelFuture.cause()));
               }
             });
 
@@ -257,12 +279,7 @@ public final class Server {
 
   private CompletableFuture<Node> close(BoundNode node) {
     CompletableFuture<Node> future = new CompletableFuture<>();
-    node.channel
-        .close()
-        .addListener(
-            channelFuture -> {
-              future.complete(node);
-            });
+    node.channel.close().addListener(channelFuture -> future.complete(node));
     return future;
   }
 
@@ -305,6 +322,8 @@ public final class Server {
 
     private long bindTimeoutInNanos = DEFAULT_BIND_TIMEOUT_IN_NANOS;
 
+    private StubStore stubStore;
+
     Builder(ServerBootstrap initialBootstrap) {
       this.serverBootstrap = initialBootstrap;
     }
@@ -334,9 +353,26 @@ public final class Server {
       return this;
     }
 
+    /**
+     * Sets the {@link StubStore} to be used by this server. By default creates a new one with
+     * built-in stubs for handling metadata requests for system.local and peers ({@link
+     * PeerMetadataHandler})
+     *
+     * @param stubStore stub store to use.
+     * @return This builder.
+     */
+    public Builder withStubStore(StubStore stubStore) {
+      this.stubStore = stubStore;
+      return this;
+    }
+
     /** @return a {@link Server} instance based on this builder's configuration. */
     public Server build() {
-      return new Server(addressResolver, serverBootstrap, bindTimeoutInNanos);
+      if (stubStore == null) {
+        stubStore = new StubStore();
+        stubStore.register(new PeerMetadataHandler());
+      }
+      return new Server(addressResolver, serverBootstrap, bindTimeoutInNanos, stubStore);
     }
   }
 
@@ -373,7 +409,7 @@ public final class Server {
       MDC.put("node", node.getId().toString());
 
       try {
-        logger.info("Got new connection {}", channel);
+        logger.debug("Got new connection {}", channel);
 
         pipeline
             .addLast("decoder", new FrameDecoder(frameCodec))
