@@ -29,7 +29,7 @@ public class PeerMetadataHandler implements StubMapping {
 
   private static final List<String> queries = new ArrayList<>();
 
-  private static final UUID schemaVersion = java.util.UUID.randomUUID();
+  static final UUID schemaVersion = java.util.UUID.randomUUID();
 
   private static final String queryPeers = "SELECT * FROM system.peers";
   private static final RowsMetadata querySystemPeersMetadata;

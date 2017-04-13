@@ -4,6 +4,7 @@ import com.datastax.oss.protocol.internal.ProtocolConstants.DataType;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -12,6 +13,8 @@ import com.github.benmanes.caffeine.cache.LoadingCache;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.UUID;
@@ -105,7 +108,17 @@ public class CqlMapper {
 
     @Override
     public String decode(ByteBuffer input) {
-      return null;
+      if (input == null) {
+        return null;
+      } else if (input.remaining() == 0) {
+        return "";
+      } else {
+        try {
+          return new String(Bytes.getArray(input), charset);
+        } catch (UnsupportedEncodingException e) {
+          throw new RuntimeException("Could not extract bytes", e);
+        }
+      }
     }
   }
 
@@ -139,7 +152,19 @@ public class CqlMapper {
 
     @Override
     public C decode(ByteBuffer input) {
-      return null;
+      if (input == null || input.remaining() == 0) return newInstance(0);
+      try {
+        ByteBuffer i = input.duplicate();
+        int size = readSize(i);
+        C coll = newInstance(size);
+        for (int pos = 0; pos < size; pos++) {
+          ByteBuffer databb = readValue(i);
+          coll.add(elementCodec.decode(databb));
+        }
+        return coll;
+      } catch (BufferUnderflowException e) {
+        throw new RuntimeException("Not enough bytes to deserialize collection", e);
+      }
     }
 
     protected abstract C newInstance(int size);
@@ -190,7 +215,13 @@ public class CqlMapper {
 
         @Override
         public InetAddress decode(ByteBuffer input) {
-          return null;
+          if (input == null || input.remaining() == 0) return null;
+          try {
+            return InetAddress.getByAddress(Bytes.getArray(input));
+          } catch (UnknownHostException e) {
+            throw new RuntimeException(
+                "Invalid bytes for inet value, got " + input.remaining() + " bytes");
+          }
         }
       };
 
@@ -207,7 +238,9 @@ public class CqlMapper {
 
         @Override
         public UUID decode(ByteBuffer input) {
-          return null;
+          return input == null || input.remaining() == 0
+              ? null
+              : new UUID(input.getLong(input.position()), input.getLong(input.position() + 8));
         }
       };
 
@@ -263,6 +296,27 @@ public class CqlMapper {
     }
   }
 
+  private int readSize(ByteBuffer input) {
+    switch (protocolVersion) {
+      case 1:
+      case 2:
+        return getUnsignedShort(input);
+      case 3:
+      case 4:
+      case 5:
+      case 65:
+        return input.getInt();
+      default:
+        throw new IllegalArgumentException(
+            "Protocol version " + protocolVersion + " is not supported.");
+    }
+  }
+
+  private static int getUnsignedShort(ByteBuffer bb) {
+    int length = (bb.get() & 0xFF) << 8;
+    return length | (bb.get() & 0xFF);
+  }
+
   private void writeSize(ByteBuffer output, int size) {
     switch (protocolVersion) {
       case 1:
@@ -284,6 +338,18 @@ public class CqlMapper {
         throw new IllegalArgumentException(
             "Protocol version " + protocolVersion + " is not supported.");
     }
+  }
+
+  private ByteBuffer readValue(ByteBuffer input) {
+    int size = readSize(input);
+    return size < 0 ? null : readBytes(input, size);
+  }
+
+  private ByteBuffer readBytes(ByteBuffer bb, int length) {
+    ByteBuffer copy = bb.duplicate();
+    copy.limit(copy.position() + length);
+    bb.position(bb.position() + length);
+    return copy;
   }
 
   private void writeValue(ByteBuffer output, ByteBuffer value) {

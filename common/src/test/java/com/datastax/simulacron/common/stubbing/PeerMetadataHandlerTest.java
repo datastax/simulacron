@@ -5,19 +5,20 @@ import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.request.Startup;
-import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.codec.CqlMapper;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.datastax.simulacron.common.Assertions.assertThat;
 
 public class PeerMetadataHandlerTest {
 
@@ -25,6 +26,7 @@ public class PeerMetadataHandlerTest {
   private static Cluster cluster;
   private static Node node0;
   private static Node node1;
+  private static CqlMapper mapper = CqlMapper.forVersion(4);
 
   private PeerMetadataHandler handler = new PeerMetadataHandler();
 
@@ -108,13 +110,56 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
     Message node0Message = ((MessageResponseAction) node0Action).getMessage();
-    assertThat(node0Message).isInstanceOf(Rows.class);
+    assertThat(node0Message)
+        .isRows()
+        .hasRows(1)
+        .hasColumnSpecs(12)
+        .hasColumn(0, 0, "local")
+        .hasColumn(0, 1, "COMPLETED")
+        .hasColumn(0, 2, ((InetSocketAddress) node0.getAddress()).getAddress())
+        .hasColumn(0, 3, cluster.getName())
+        .hasColumn(0, 4, "3.2.0")
+        .hasColumn(0, 5, node0.getDataCenter().getName())
+        .hasColumn(0, 6, ((InetSocketAddress) node0.getAddress()).getAddress())
+        .hasColumn(0, 7, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 8, "rack1")
+        .hasColumn(0, 9, "3.0.12")
+        .hasColumn(0, 10, Collections.singleton("0"))
+        .hasColumn(0, 11, PeerMetadataHandler.schemaVersion);
+  }
 
-    Rows rows = (Rows) node0Message;
-    assertThat(rows.data).hasSize(1);
-    assertThat(rows.metadata.columnSpecs).hasSize(12);
+  @Test
+  public void shouldHandleQueryLocalNode1() {
+    // querying the local table should return node info for node1
+    List<Action> node1Actions =
+        handler.getActions(node1, queryFrame("SELECT * FROM system.local WHERE key='local'"));
 
-    // TODO: Validate the actual data, need decoders for this.
+    assertThat(node1Actions).hasSize(1);
+
+    Action node1Action = node1Actions.get(0);
+    assertThat(node1Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node1Action).getMessage();
+    assertThat(node0Message)
+        .isRows()
+        .hasRows(1)
+        .hasColumnSpecs(12)
+        .hasColumn(0, 0, "local")
+        .hasColumn(0, 1, "COMPLETED")
+        .hasColumn(0, 2, ((InetSocketAddress) node1.getAddress()).getAddress())
+        .hasColumn(0, 3, cluster.getName())
+        .hasColumn(0, 4, "3.2.0")
+        .hasColumn(0, 5, node1.getDataCenter().getName())
+        .hasColumn(0, 6, ((InetSocketAddress) node1.getAddress()).getAddress())
+        .hasColumn(0, 7, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 8, "rack1")
+        .hasColumn(0, 9, "3.0.12")
+        .hasColumn(
+            0,
+            10,
+            Collections.singleton(
+                "100")) // since first node in second DC, should be offset 100 of 0
+        .hasColumn(0, 11, PeerMetadataHandler.schemaVersion);
   }
 
   @Test
@@ -129,13 +174,12 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
     Message node0Message = ((MessageResponseAction) node0Action).getMessage();
-    assertThat(node0Message).isInstanceOf(Rows.class);
 
-    Rows rows = (Rows) node0Message;
-    assertThat(rows.data).hasSize(1);
-    assertThat(rows.metadata.columnSpecs).hasSize(1);
-
-    // TODO: Validate the actual data, need decoders for this.
+    assertThat(node0Message)
+        .isRows()
+        .hasRows(1)
+        .hasColumnSpecs(1)
+        .hasColumn(0, 0, cluster.getName());
   }
 
   @Test
@@ -149,18 +193,13 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
     Message node0Message = ((MessageResponseAction) node0Action).getMessage();
-    assertThat(node0Message).isInstanceOf(Rows.class);
 
-    Rows rows = (Rows) node0Message;
     // should be 199 peers (200 node cluster - 1 for this node).
-    assertThat(rows.data).hasSize(199);
-    assertThat(rows.metadata.columnSpecs).hasSize(9);
-
-    // TODO: Validate the actual data, need decoders for this.
+    assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(9);
   }
 
   @Test
-  public void shouldHandleQuerySpecificPeer() {
+  public void shouldHandleQuerySpecificPeer() throws UnknownHostException {
     // when peer query is made for a peer in the cluster, we should get 1 row back.
     List<Action> node0Actions =
         handler.getActions(
@@ -172,15 +211,14 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
     Message node0Message = ((MessageResponseAction) node0Action).getMessage();
-    assertThat(node0Message).isInstanceOf(Rows.class);
 
-    Rows rows = (Rows) node0Message;
     // should be 1 matching peer
-    assertThat(rows.data).hasSize(1);
-    assertThat(rows.metadata.columnSpecs).hasSize(9);
-
-    // TODO: Validate the actual data, need decoders for this.
-
+    assertThat(node0Message)
+        .isRows()
+        .hasRows(1)
+        .hasColumnSpecs(9)
+        .hasColumn(0, 0, InetAddress.getByAddress(new byte[] {127, 0, 11, 17}))
+        .hasColumn(0, 2, "dc1");
   }
 
   @Test
@@ -196,11 +234,8 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
     Message node0Message = ((MessageResponseAction) node0Action).getMessage();
-    assertThat(node0Message).isInstanceOf(Rows.class);
 
-    Rows rows = (Rows) node0Message;
-    // should be 0 matching peers.
-    assertThat(rows.data).hasSize(0);
-    assertThat(rows.metadata.columnSpecs).hasSize(9);
+    // should be no rows since no peer matched.
+    assertThat(node0Message).isRows().hasRows(0).hasColumnSpecs(9);
   }
 }
