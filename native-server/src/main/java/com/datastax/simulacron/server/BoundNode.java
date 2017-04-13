@@ -1,7 +1,6 @@
 package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Query;
@@ -15,9 +14,7 @@ import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +53,7 @@ public class BoundNode extends Node {
     this.stubStore = stubStore;
   }
 
-  void handle(ChannelHandlerContext ctx, Frame frame, FrameCodec<ByteBuf> frameCodec) {
+  void handle(ChannelHandlerContext ctx, Frame frame) {
     logger.debug("Got request streamId: {} msg: {}", frame.streamId, frame.message);
 
     // On receiving a message, first check the stub store to see if there is handling logic for it.
@@ -69,7 +66,7 @@ public class BoundNode extends Node {
         // TODO maybe delegate this logic elsewhere
         if (action instanceof MessageResponseAction) {
           MessageResponseAction mAction = (MessageResponseAction) action;
-          sendMessage(ctx, frame, mAction.getMessage(), frameCodec);
+          sendMessage(ctx, frame, mAction.getMessage());
         }
       }
     } else {
@@ -94,22 +91,17 @@ public class BoundNode extends Node {
         }
       }
       if (response != null) {
-        sendMessage(ctx, frame, response, frameCodec);
+        sendMessage(ctx, frame, response);
       }
     }
   }
 
-  void sendMessage(
-      ChannelHandlerContext ctx,
-      Frame requestFrame,
-      Message responseMessage,
-      FrameCodec<ByteBuf> frameCodec) {
+  void sendMessage(ChannelHandlerContext ctx, Frame requestFrame, Message responseMessage) {
     Frame responseFrame = wrapResponse(requestFrame, responseMessage);
     logger.debug(
         "Sending response for streamId: {} with msg {}",
         responseFrame.streamId,
         responseFrame.message);
-    ByteBuf rsp = frameCodec.encode(responseFrame);
-    ChannelFuture cf = ctx.writeAndFlush(rsp);
+    ctx.writeAndFlush(responseFrame);
   }
 }

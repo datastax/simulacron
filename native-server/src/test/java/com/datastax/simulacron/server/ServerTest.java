@@ -1,30 +1,23 @@
 package com.datastax.simulacron.server;
 
-import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.oss.protocol.internal.FrameCodec;
-import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
-import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
-import io.netty.channel.local.LocalChannel;
 import io.netty.channel.local.LocalServerChannel;
 import org.junit.After;
 import org.junit.Test;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
-import static com.datastax.simulacron.common.utils.FrameUtils.wrapRequest;
 import static com.datastax.simulacron.server.AddressResolver.localAddressResolver;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
@@ -55,7 +48,7 @@ public class ServerTest {
     assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
         .isSameAs(boundNode.getCluster());
 
-    try (Client client = new Client(eventLoop)) {
+    try (MockClient client = new MockClient(eventLoop)) {
       client.connect(boundNode.getAddress());
       client.write(new Startup());
       // Expect a Ready response.
@@ -101,7 +94,7 @@ public class ServerTest {
         assertThat(node.getId()).isNotNull();
 
         // Each node should handle data.
-        try (Client client = new Client(eventLoop)) {
+        try (MockClient client = new MockClient(eventLoop)) {
           client.connect(node.getAddress());
           client.write(new Startup());
           // Expect a Ready response.
@@ -269,70 +262,6 @@ public class ServerTest {
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
-    }
-  }
-
-  public static class Client implements Closeable {
-
-    // Set up client bootstrap that interacts with server
-    Bootstrap cb = new Bootstrap();
-
-    BlockingQueue<Frame> responses = new LinkedBlockingQueue<>();
-
-    FrameCodec<ByteBuf> frameCodec =
-        FrameCodec.defaultClient(new ByteBufCodec(), Compressor.none());
-
-    private Channel channel;
-
-    Client(EventLoopGroup elg) {
-      // Set up so written Frames are encoded into bytes, received bytes are encoded into Frames put on queue.
-      cb.group(elg)
-          .channel(LocalChannel.class)
-          .handler(
-              new ChannelInitializer<LocalChannel>() {
-                @Override
-                protected void initChannel(LocalChannel ch) throws Exception {
-                  ch.pipeline()
-                      .addLast(new FrameEncoder(frameCodec))
-                      .addLast(new FrameDecoder(frameCodec))
-                      .addLast(
-                          new ChannelInboundHandlerAdapter() {
-                            @Override
-                            public void channelRead(ChannelHandlerContext ctx, Object msg)
-                                throws Exception {
-                              responses.offer((Frame) msg);
-                            }
-                          });
-                }
-              });
-    }
-
-    Client connect(SocketAddress address) throws Exception {
-      if (channel == null) {
-        this.channel = cb.connect(address).sync().channel();
-      }
-      return this;
-    }
-
-    void write(Message message) {
-      write(wrapRequest(message));
-    }
-
-    void write(Frame frame) {
-      this.channel.writeAndFlush(frame);
-    }
-
-    Frame next() throws InterruptedException {
-      return responses.poll(5, TimeUnit.SECONDS);
-    }
-
-    @Override
-    public void close() throws IOException {
-      try {
-        this.channel.close().sync();
-      } catch (InterruptedException e) {
-        //no op
-      }
     }
   }
 }

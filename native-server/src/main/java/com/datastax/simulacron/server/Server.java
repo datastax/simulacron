@@ -1,7 +1,6 @@
 package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Compressor;
-import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
@@ -376,30 +375,6 @@ public final class Server {
     }
   }
 
-  private static class RequestHandler extends ChannelInboundHandlerAdapter {
-
-    private BoundNode node;
-    private FrameCodec<ByteBuf> frameCodec;
-
-    private RequestHandler(BoundNode node, FrameCodec<ByteBuf> frameCodec) {
-      this.node = node;
-      this.frameCodec = frameCodec;
-    }
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-      MDC.put("node", node.getId().toString());
-
-      try {
-        @SuppressWarnings("unchecked")
-        Frame frame = (Frame) msg;
-        node.handle(ctx, frame, frameCodec);
-      } finally {
-        MDC.remove("node");
-      }
-    }
-  }
-
   static class Initializer extends ChannelInitializer<Channel> {
 
     @Override
@@ -413,7 +388,8 @@ public final class Server {
 
         pipeline
             .addLast("decoder", new FrameDecoder(frameCodec))
-            .addLast("requestHandler", new RequestHandler(node, frameCodec));
+            .addLast("encoder", new FrameEncoder(frameCodec))
+            .addLast("requestHandler", new RequestHandler(node));
       } finally {
         MDC.remove("node");
       }
