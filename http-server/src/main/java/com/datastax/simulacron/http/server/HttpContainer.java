@@ -40,6 +40,11 @@ public class HttpContainer {
     server.listen(port);
   }
 
+  public void stop() {
+    server.close();
+    vertx.close();
+  }
+
   public void addRoute(Handler<RoutingContext> handler, String path, HttpMethod method) {
     router.route(method, path).handler(handler);
   }
