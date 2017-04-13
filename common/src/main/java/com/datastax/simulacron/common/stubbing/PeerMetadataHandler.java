@@ -8,8 +8,9 @@ import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.codec.DataTypeEncoders;
-import com.datastax.simulacron.common.codec.EncoderCache;
+import com.datastax.simulacron.common.codec.Codec;
+import com.datastax.simulacron.common.codec.CodecUtils;
+import com.datastax.simulacron.common.codec.CqlMapper;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -22,7 +23,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
-import static com.datastax.simulacron.common.stubbing.Utils.*;
+import static com.datastax.simulacron.common.codec.CodecUtils.*;
 
 public class PeerMetadataHandler implements StubMapping {
 
@@ -98,23 +99,23 @@ public class PeerMetadataHandler implements StubMapping {
   @Override
   public List<Action> getActions(Node node, Frame frame) {
     if (frame.message instanceof Query) {
-      DataTypeEncoders e = EncoderCache.getEncoders(frame.protocolVersion);
+      CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
       Query query = (Query) frame.message;
 
       switch (query.query) {
         case queryLocal:
-          return handleSystemLocalQuery(node, e);
+          return handleSystemLocalQuery(node, mapper);
         case queryClusterName:
-          return handleClusterNameQuery(node, e);
+          return handleClusterNameQuery(node, mapper);
         case queryPeers:
-          return handlePeersQuery(node, e, n -> n != node);
+          return handlePeersQuery(node, mapper, n -> n != node);
         default:
           // if querying for particular peer, return information for only that peer.
           Matcher matcher = queryPeersWithAddr.matcher(query.query);
           if (matcher.matches()) {
             return handlePeersQuery(
                 node,
-                e,
+                mapper,
                 n -> {
                   InetAddress address;
                   if (n.getAddress() instanceof InetSocketAddress) {
@@ -131,38 +132,44 @@ public class PeerMetadataHandler implements StubMapping {
     return Collections.emptyList();
   }
 
-  List<Action> handleSystemLocalQuery(Node node, DataTypeEncoders e) {
+  List<Action> handleSystemLocalQuery(Node node, CqlMapper mapper) {
     InetAddress address = resolveAddress(node);
+    Codec<Set<String>> tokenCodec = mapper.codecFor(new RawType.RawSet(primitive(ASCII)));
 
     Queue<List<ByteBuffer>> localRow =
-        Utils.singletonRow(
-            encodePeerInfo(node, e::string, "key", "local"),
-            encodePeerInfo(node, e::string, "bootstrapped", "COMPLETED"),
-            e.inet(address),
-            e.string(node.getCluster().getName()),
-            encodePeerInfo(node, e::string, "cql_version", "3.2.0"),
-            e.string(node.getDataCenter().getName()),
-            e.inet(address),
+        CodecUtils.singletonRow(
+            encodePeerInfo(node, mapper.ascii::encode, "key", "local"),
+            encodePeerInfo(node, mapper.ascii::encode, "bootstrapped", "COMPLETED"),
+            mapper.inet.encode(address),
+            mapper.ascii.encode(node.getCluster().getName()),
+            encodePeerInfo(node, mapper.ascii::encode, "cql_version", "3.2.0"),
+            mapper.ascii.encode(node.getDataCenter().getName()),
+            mapper.inet.encode(address),
             encodePeerInfo(
-                node, e::string, "partitioner", "org.apache.cassandra.dht.Murmur3Partitioner"),
-            encodePeerInfo(node, e::string, "rack", "rack1"),
-            e.string(node.resolveCassandraVersion()),
-            e.setOf(e::string).apply(Collections.singleton(resolveToken(node))),
-            e.uuid(schemaVersion));
+                node,
+                mapper.ascii::encode,
+                "partitioner",
+                "org.apache.cassandra.dht.Murmur3Partitioner"),
+            encodePeerInfo(node, mapper.ascii::encode, "rack", "rack1"),
+            mapper.ascii.encode(node.resolveCassandraVersion()),
+            tokenCodec.encode(Collections.singleton(resolveToken(node))),
+            mapper.uuid.encode(schemaVersion));
     Rows rows = new Rows(queryLocalMetadata, localRow);
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
   }
 
-  List<Action> handleClusterNameQuery(Node node, DataTypeEncoders e) {
-    Queue<List<ByteBuffer>> clusterRow = Utils.singletonRow(e.string(node.getCluster().getName()));
+  List<Action> handleClusterNameQuery(Node node, CqlMapper mapper) {
+    Queue<List<ByteBuffer>> clusterRow =
+        CodecUtils.singletonRow(mapper.ascii.encode(node.getCluster().getName()));
     Rows rows = new Rows(queryClusterNameMetadata, clusterRow);
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
   }
 
-  List<Action> handlePeersQuery(Node node, DataTypeEncoders e, Predicate<Node> nodeFilter) {
+  List<Action> handlePeersQuery(Node node, CqlMapper mapper, Predicate<Node> nodeFilter) {
     // For each node matching the filter, provide its peer information.
+    Codec<Set<String>> tokenCodec = mapper.codecFor(new RawType.RawSet(primitive(ASCII)));
     Queue<List<ByteBuffer>> peerRows =
         new ArrayDeque<>(
             node.getCluster()
@@ -174,15 +181,15 @@ public class PeerMetadataHandler implements StubMapping {
                       InetAddress address = resolveAddress(n);
 
                       return row(
-                          e.inet(address),
-                          e.inet(address),
-                          e.string(n.getDataCenter().getName()),
-                          encodePeerInfo(n, e::string, "rack", "rack1"),
-                          e.string(n.resolveCassandraVersion()),
-                          e.setOf(e::string).apply(Collections.singleton(resolveToken(n))),
-                          e.inet(address),
-                          e.uuid(schemaVersion),
-                          e.uuid(schemaVersion));
+                          mapper.inet.encode(address),
+                          mapper.inet.encode(address),
+                          mapper.varchar.encode(n.getDataCenter().getName()),
+                          encodePeerInfo(n, mapper.varchar::encode, "rack", "rack1"),
+                          mapper.varchar.encode(n.resolveCassandraVersion()),
+                          tokenCodec.encode(Collections.singleton(resolveToken(n))),
+                          mapper.inet.encode(address),
+                          mapper.uuid.encode(schemaVersion),
+                          mapper.uuid.encode(schemaVersion));
                     })
                 .collect(Collectors.toList()));
 

@@ -23,6 +23,11 @@
             <artifactId>native-protocol</artifactId>
             <version>${native-protocol.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>${caffeine.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

@@ -1,10 +1,9 @@
-package com.datastax.simulacron.common.stubbing;
+package com.datastax.simulacron.common.codec;
 
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.codec.Encoder;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -17,7 +16,7 @@ import java.util.function.BiFunction;
  * A bunch of static convenience wrappers, mostly to make constructing values around column and row
  * data more fluent.
  */
-class Utils {
+public class CodecUtils {
 
   /**
    * Convenience wrapper for producing a row from a variable number of column values.
@@ -25,7 +24,7 @@ class Utils {
    * @param columns column value {@link ByteBuffer}s to map to a Row.
    * @return a List of the input column buffers.
    */
-  static List<ByteBuffer> row(ByteBuffer... columns) {
+  public static List<ByteBuffer> row(ByteBuffer... columns) {
     return Arrays.asList(columns);
   }
 
@@ -37,7 +36,7 @@ class Utils {
    * @param columns column value {@link ByteBuffer}s to map to a single Row.
    * @return a {@link Queue} with a single list containing the input columns.
    */
-  static Queue<List<ByteBuffer>> singletonRow(ByteBuffer... columns) {
+  public static Queue<List<ByteBuffer>> singletonRow(ByteBuffer... columns) {
     List<ByteBuffer> row = row(columns);
     return rows(row);
   }
@@ -51,7 +50,7 @@ class Utils {
    * @return a {@link Queue} with lists each representing a row.
    */
   @SafeVarargs
-  static Queue<List<ByteBuffer>> rows(List<ByteBuffer>... rows) {
+  public static Queue<List<ByteBuffer>> rows(List<ByteBuffer>... rows) {
     return new ArrayDeque<>(Arrays.asList(rows));
   }
 
@@ -66,7 +65,8 @@ class Utils {
    * @return Encoded column buffer
    */
   @SuppressWarnings("unchecked")
-  static <T> ByteBuffer encodePeerInfo(Node node, Encoder<T> encoder, String key, T defaultValue) {
+  public static <T> ByteBuffer encodePeerInfo(
+      Node node, Encoder<T> encoder, String key, T defaultValue) {
     // TODO: Handle type conversions
     return encoder.apply((T) node.resolvePeerInfo(key, defaultValue));
   }
@@ -77,7 +77,7 @@ class Utils {
    * @param code Type code as defined in native protocol for the data type.
    * @return The resolved {@link RawType}.
    */
-  static RawType primitive(int code) {
+  public static RawType primitive(int code) {
     return RawType.PRIMITIVES.get(code);
   }
 
@@ -87,7 +87,7 @@ class Utils {
    * @param colSpecs Column specs to put in list.
    * @return List of input {@link ColumnSpec}s
    */
-  static List<ColumnSpec> columnSpecs(ColumnSpec... colSpecs) {
+  public static List<ColumnSpec> columnSpecs(ColumnSpec... colSpecs) {
     return Arrays.asList(colSpecs);
   }
 
@@ -100,10 +100,10 @@ class Utils {
    * @param table The table to use for any {@link ColumnSpec} created from this builder function.
    * @return A function that takes a column name and type and produces a {@link ColumnSpec}.
    */
-  static ColumnSpecBuilder columnSpecBuilder(String keyspace, String table) {
+  public static ColumnSpecBuilder columnSpecBuilder(String keyspace, String table) {
     return (columnName, rawType) -> new ColumnSpec(keyspace, table, columnName, rawType);
   }
 
   /** see {@link #columnSpecBuilder(String, String)} */
-  interface ColumnSpecBuilder extends BiFunction<String, RawType, ColumnSpec> {}
+  public interface ColumnSpecBuilder extends BiFunction<String, RawType, ColumnSpec> {}
 }
