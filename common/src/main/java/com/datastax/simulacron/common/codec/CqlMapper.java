@@ -1,6 +1,5 @@
 package com.datastax.simulacron.common.codec;
 
-import com.datastax.oss.protocol.internal.ProtocolConstants.DataType;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
@@ -13,10 +12,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.UUID;
 
@@ -28,6 +31,9 @@ public class CqlMapper {
   private static final Logger logger = LoggerFactory.getLogger(CqlMapper.class);
 
   private final int protocolVersion;
+
+  private static final ByteBuffer TRUE = ByteBuffer.wrap(new byte[] {1});
+  private static final ByteBuffer FALSE = ByteBuffer.wrap(new byte[] {0});
 
   // TODO: Perhaps make these sizebound.
   // TODO: Follow optimizations that java driver makes in codec registry.
@@ -44,7 +50,7 @@ public class CqlMapper {
     return mapperCache.get(protocolVersion);
   }
 
-  CqlMapper(int protocolVersion) {
+  private CqlMapper(int protocolVersion) {
     this.protocolVersion = protocolVersion;
   }
 
@@ -79,8 +85,8 @@ public class CqlMapper {
     private final JavaType javaType;
     private final RawType cqlType;
 
-    AbstractCodec(JavaType javaType, RawType cqlType) {
-      this(javaType, cqlType, true);
+    AbstractCodec(Type type, RawType cqlType) {
+      this(typeFactory.constructType(type), cqlType, true);
     }
 
     AbstractCodec(JavaType javaType, RawType cqlType, boolean register) {
@@ -106,7 +112,7 @@ public class CqlMapper {
     private final String charset;
 
     StringCodec(String charset, RawType cqlType) {
-      super(typeFactory.constructType(String.class), cqlType);
+      super(String.class, cqlType);
       this.charset = charset;
     }
 
@@ -115,7 +121,7 @@ public class CqlMapper {
       try {
         return ByteBuffer.wrap(input.getBytes(charset));
       } catch (UnsupportedEncodingException uee) {
-        throw new RuntimeException("Invalid value " + input);
+        throw new InvalidTypeException("Invalid input for charset " + charset, uee);
       }
     }
 
@@ -129,7 +135,7 @@ public class CqlMapper {
         try {
           return new String(Bytes.getArray(input), charset);
         } catch (UnsupportedEncodingException e) {
-          throw new RuntimeException("Could not extract bytes", e);
+          throw new InvalidTypeException("Invalid bytes for charset " + charset, e);
         }
       }
     }
@@ -156,7 +162,7 @@ public class CqlMapper {
         try {
           bb = elementCodec.encode(elt);
         } catch (ClassCastException e) {
-          throw new RuntimeException("Invalid type for element");
+          throw new InvalidTypeException("Invalid type for element", e);
         }
         bbs[i++] = bb;
       }
@@ -176,7 +182,7 @@ public class CqlMapper {
         }
         return coll;
       } catch (BufferUnderflowException e) {
-        throw new RuntimeException("Not enough bytes to deserialize collection", e);
+        throw new InvalidTypeException("Not enough bytes to deserialize collection", e);
       }
     }
 
@@ -213,13 +219,226 @@ public class CqlMapper {
     }
   }
 
+  class LongCodec extends AbstractCodec<Long> {
+
+    LongCodec(RawType cqlType) {
+      super(Long.class, cqlType);
+    }
+
+    @Override
+    public ByteBuffer encode(Long input) {
+      ByteBuffer bb = ByteBuffer.allocate(8);
+      bb.putLong(0, input);
+      return bb;
+    }
+
+    @Override
+    public Long decode(ByteBuffer input) {
+      if (input == null || input.remaining() == 0) {
+        return 0L;
+      } else if (input.remaining() != 8) {
+        throw new InvalidTypeException(
+            "Invalid 64-bits long value, expecting 8 bytes but got " + input.remaining());
+      } else {
+        return input.getLong(input.position());
+      }
+    }
+  }
+
+  class UUIDCodec extends AbstractCodec<UUID> {
+
+    UUIDCodec(RawType cqlType) {
+      super(UUID.class, cqlType);
+    }
+
+    @Override
+    public ByteBuffer encode(UUID input) {
+      ByteBuffer buf = ByteBuffer.allocate(16);
+      buf.putLong(0, input.getMostSignificantBits());
+      buf.putLong(8, input.getLeastSignificantBits());
+      return buf;
+    }
+
+    @Override
+    public UUID decode(ByteBuffer input) {
+      return input == null || input.remaining() == 0
+          ? null
+          : new UUID(input.getLong(input.position()), input.getLong(input.position() + 8));
+    }
+  }
+
   public final Codec<String> ascii = new StringCodec("US-ASCII", primitive(ASCII));
+
+  public final Codec<Long> bigint = new LongCodec(primitive(BIGINT));
+
+  public final Codec<ByteBuffer> blob =
+      new AbstractCodec<ByteBuffer>(ByteBuffer.class, primitive(BLOB)) {
+
+        @Override
+        public ByteBuffer encode(ByteBuffer input) {
+          return input == null ? null : input.duplicate();
+        }
+
+        @Override
+        public ByteBuffer decode(ByteBuffer input) {
+          return encode(input);
+        }
+      };
+
+  public final Codec<Boolean> bool =
+      new AbstractCodec<Boolean>(Boolean.class, primitive(BOOLEAN)) {
+
+        @Override
+        public ByteBuffer encode(Boolean input) {
+          return input ? TRUE.duplicate() : FALSE.duplicate();
+        }
+
+        @Override
+        public Boolean decode(ByteBuffer input) {
+          if (input == null || input.remaining() == 0) {
+            return false;
+          } else if (input.remaining() != 1) {
+            throw new InvalidTypeException(
+                "Invalid boolean value, expecting 1 byte but got " + input.remaining());
+          } else {
+            return input.get(input.position()) != 0;
+          }
+        }
+      };
+
+  public final Codec<Long> counter = new LongCodec(primitive(COUNTER));
+
+  public final Codec<BigDecimal> decimal =
+      new AbstractCodec<BigDecimal>(BigDecimal.class, primitive(DECIMAL)) {
+        @Override
+        public ByteBuffer encode(BigDecimal input) {
+          if (input == null) return null;
+          BigInteger bi = input.unscaledValue();
+          int scale = input.scale();
+          byte[] bibytes = bi.toByteArray();
+
+          ByteBuffer bytes = ByteBuffer.allocate(4 + bibytes.length);
+          bytes.putInt(scale);
+          bytes.put(bibytes);
+          bytes.rewind();
+          return bytes;
+        }
+
+        @Override
+        public BigDecimal decode(ByteBuffer input) {
+          if (input == null || input.remaining() == 0) return null;
+          if (input.remaining() < 4)
+            throw new InvalidTypeException(
+                "Invalid decimal value, expecting at least 4 bytes but got " + input.remaining());
+
+          input = input.duplicate();
+          int scale = input.getInt();
+          byte[] bibytes = new byte[input.remaining()];
+          input.get(bibytes);
+
+          BigInteger bi = new BigInteger(bibytes);
+          return new BigDecimal(bi, scale);
+        }
+      };
+
+  public final Codec<Double> cdouble =
+      new AbstractCodec<Double>(Double.class, primitive(DOUBLE)) {
+
+        @Override
+        public ByteBuffer encode(Double input) {
+          ByteBuffer bb = ByteBuffer.allocate(8);
+          bb.putDouble(0, input);
+          return bb;
+        }
+
+        @Override
+        public Double decode(ByteBuffer input) {
+          if (input == null || input.remaining() == 0) return 0.0;
+          if (input.remaining() != 8)
+            throw new InvalidTypeException(
+                "Invalid 64-bits double value, expecting 8 bytes but got " + input.remaining());
+
+          return input.getDouble(input.position());
+        }
+      };
+
+  public final Codec<Float> cfloat =
+      new AbstractCodec<Float>(Float.class, primitive(FLOAT)) {
+        @Override
+        public ByteBuffer encode(Float input) {
+          ByteBuffer bb = ByteBuffer.allocate(4);
+          bb.putFloat(0, input);
+          return bb;
+        }
+
+        @Override
+        public Float decode(ByteBuffer input) {
+          if (input == null || input.remaining() == 0) return 0.0f;
+          if (input.remaining() != 4)
+            throw new InvalidTypeException(
+                "Invalid 32-bits float value, expecting 4 bytes but got " + input.remaining());
+
+          return input.getFloat(input.position());
+        }
+      };
+
+  public final Codec<Integer> cint =
+      new AbstractCodec<Integer>(Integer.class, primitive(INT)) {
+
+        @Override
+        public ByteBuffer encode(Integer input) {
+          ByteBuffer bb = ByteBuffer.allocate(4);
+          bb.putInt(0, input);
+          return bb;
+        }
+
+        @Override
+        public Integer decode(ByteBuffer input) {
+          if (input == null || input.remaining() == 0) return 0;
+          if (input.remaining() != 4)
+            throw new InvalidTypeException(
+                "Invalid 32-bits integer value, expecting 4 bytes but got " + input.remaining());
+
+          return input.getInt(input.position());
+        }
+      };
+
+  public final Codec<Date> timestamp =
+      new AbstractCodec<Date>(Date.class, primitive(TIMESTAMP)) {
+        @Override
+        public ByteBuffer encode(Date input) {
+          return input == null ? null : bigint.encode(input.getTime());
+        }
+
+        @Override
+        public Date decode(ByteBuffer input) {
+          return input == null || input.remaining() == 0 ? null : new Date(bigint.decode(input));
+        }
+      };
+
+  public final Codec<UUID> uuid = new UUIDCodec(primitive(UUID));
 
   public final Codec<String> varchar = new StringCodec("UTF-8", primitive(VARCHAR));
 
-  public Codec<InetAddress> inet =
-      new AbstractCodec<InetAddress>(
-          typeFactory.constructType(InetAddress.class), primitive(INET)) {
+  public final Codec<BigInteger> varint =
+      new AbstractCodec<BigInteger>(BigInteger.class, primitive(BIGINT)) {
+        @Override
+        public ByteBuffer encode(BigInteger input) {
+          return input == null ? null : ByteBuffer.wrap(input.toByteArray());
+        }
+
+        @Override
+        public BigInteger decode(ByteBuffer input) {
+          return input == null || input.remaining() == 0
+              ? null
+              : new BigInteger(Bytes.getArray(input));
+        }
+      };
+
+  public final Codec<UUID> timeuuid = new UUIDCodec(primitive(TIMEUUID));
+
+  public final Codec<InetAddress> inet =
+      new AbstractCodec<InetAddress>(InetAddress.class, primitive(INET)) {
 
         @Override
         public ByteBuffer encode(InetAddress input) {
@@ -232,28 +451,71 @@ public class CqlMapper {
           try {
             return InetAddress.getByAddress(Bytes.getArray(input));
           } catch (UnknownHostException e) {
-            throw new RuntimeException(
-                "Invalid bytes for inet value, got " + input.remaining() + " bytes");
+            throw new InvalidTypeException(
+                "Invalid bytes for inet value, got " + input.remaining() + " bytes", e);
           }
         }
       };
 
-  public Codec<UUID> uuid =
-      new AbstractCodec<UUID>(typeFactory.constructType(UUID.class), primitive(DataType.UUID)) {
-
+  public final Codec<LocalDate> date =
+      new AbstractCodec<LocalDate>(LocalDate.class, primitive(DATE)) {
         @Override
-        public ByteBuffer encode(UUID input) {
-          ByteBuffer buf = ByteBuffer.allocate(16);
-          buf.putLong(0, input.getMostSignificantBits());
-          buf.putLong(8, input.getLeastSignificantBits());
-          return buf;
+        public ByteBuffer encode(LocalDate input) {
+          if (input == null) return null;
+          int unsigned = (int) input.toEpochDay() - Integer.MIN_VALUE;
+          return cint.encode(unsigned);
         }
 
         @Override
-        public UUID decode(ByteBuffer input) {
-          return input == null || input.remaining() == 0
-              ? null
-              : new UUID(input.getLong(input.position()), input.getLong(input.position() + 8));
+        public LocalDate decode(ByteBuffer input) {
+          if (input == null || input.remaining() == 0) return null;
+          int unsigned = cint.decode(input);
+          int signed = unsigned + Integer.MIN_VALUE;
+          return LocalDate.ofEpochDay(signed);
+        }
+      };
+
+  public final Codec<Long> time = new LongCodec(primitive(TIME));
+
+  public final Codec<Short> smallint =
+      new AbstractCodec<Short>(Short.class, primitive(SMALLINT)) {
+
+        @Override
+        public ByteBuffer encode(Short input) {
+          ByteBuffer bb = ByteBuffer.allocate(2);
+          bb.putShort(0, input);
+          return bb;
+        }
+
+        @Override
+        public Short decode(ByteBuffer input) {
+          if (input == null || input.remaining() == 0) return 0;
+          if (input.remaining() != 2)
+            throw new InvalidTypeException(
+                "Invalid 16-bits integer value, expecting 2 bytes but got " + input.remaining());
+
+          return input.getShort(input.position());
+        }
+      };
+
+  public final Codec<Byte> tinyint =
+      new AbstractCodec<Byte>(Byte.class, primitive(TINYINT)) {
+
+        @Override
+        public ByteBuffer encode(Byte input) {
+          ByteBuffer bb = ByteBuffer.allocate(1);
+          bb.put(0, input);
+          return bb;
+        }
+
+        @Override
+        public Byte decode(ByteBuffer input) {
+          if (input == null || input.remaining() == 0) return 0;
+          if (input.remaining() != 1)
+            throw new InvalidTypeException(
+                "Invalid 8-bits integer value, expecting 1 byte but got " + input.remaining());
+
+          return input.get(input.position());
         }
       };
 
