@@ -12,6 +12,8 @@ import io.vertx.core.http.HttpMethod;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +24,7 @@ public class HttpContainerTest {
   private HttpContainer httpContainer;
   private Vertx vertx = null;
   private int portNum = 8187;
+  Logger logger = LoggerFactory.getLogger(HttpContainerTest.class);
 
   @Before
   public void setup() {
@@ -35,7 +38,18 @@ public class HttpContainerTest {
 
   @After
   public void tearDown() {
+
     httpContainer.stop();
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    vertx.close(
+        res -> {
+          future.complete(null);
+        });
+    try {
+      future.get();
+    } catch (Exception e) {
+      logger.error("Error encountered httpcontainertest cleanup", e);
+    }
     portNum++;
   }
 

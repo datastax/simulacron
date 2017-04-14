@@ -10,6 +10,7 @@ import io.vertx.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HttpContainer {
@@ -41,8 +42,16 @@ public class HttpContainer {
   }
 
   public void stop() {
-    server.close();
-    vertx.close();
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    vertx.close(
+        res -> {
+          future.complete(null);
+        });
+    try {
+      future.get();
+    } catch (Exception e) {
+      logger.error("Error encountered httpcontainer during shutdown", e);
+    }
   }
 
   public void addRoute(Handler<RoutingContext> handler, String path, HttpMethod method) {
