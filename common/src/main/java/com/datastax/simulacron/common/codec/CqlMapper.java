@@ -7,9 +7,10 @@ import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -24,12 +25,15 @@ import static com.datastax.simulacron.common.codec.CodecUtils.primitive;
 
 public class CqlMapper {
 
+  private static final Logger logger = LoggerFactory.getLogger(CqlMapper.class);
+
   private final int protocolVersion;
 
   // TODO: Perhaps make these sizebound.
   // TODO: Follow optimizations that java driver makes in codec registry.
   // For resolving by cqlType.
-  private final Cache<RawType, Codec<?>> cqlTypeCache = Caffeine.newBuilder().build();
+  private final LoadingCache<RawType, Codec<?>> cqlTypeCache =
+      Caffeine.newBuilder().build(this::loadCache);
 
   private final TypeFactory typeFactory = TypeFactory.defaultInstance();
 
@@ -49,22 +53,25 @@ public class CqlMapper {
   }
 
   @SuppressWarnings("unchecked")
+  private Codec<?> loadCache(RawType key) {
+    if (key instanceof RawSet) {
+      RawSet s = (RawSet) key;
+      Codec<?> elementCodec = cqlTypeCache.get(s.elementType);
+      return new SetCodec(elementCodec);
+    } else if (key instanceof RawList) {
+      RawList l = (RawList) key;
+      Codec<?> elementCodec = cqlTypeCache.get(l.elementType);
+      return new ListCodec(elementCodec);
+    } else {
+      // TODO support other collection(ish) codecs, Tuple, Map, UDT.
+      logger.warn("Could not resolve codec for {}, returning null instead.", key);
+      return null;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
   public <T> Codec<T> codecFor(RawType cqlType) {
-    return (Codec<T>)
-        cqlTypeCache.get(
-            cqlType,
-            (c) -> {
-              // todo this needs to be recursive.
-              // implement other collection types.
-              if (c instanceof RawSet) {
-                RawSet s = (RawSet) c;
-                return new SetCodec(cqlTypeCache.getIfPresent(s.elementType));
-              } else if (c instanceof RawList) {
-                RawList l = (RawList) c;
-                return new ListCodec(cqlTypeCache.getIfPresent(l.elementType));
-              }
-              return null;
-            });
+    return (Codec<T>) cqlTypeCache.get(cqlType);
   }
 
   abstract class AbstractCodec<T> implements Codec<T> {
@@ -73,9 +80,15 @@ public class CqlMapper {
     private final RawType cqlType;
 
     AbstractCodec(JavaType javaType, RawType cqlType) {
+      this(javaType, cqlType, true);
+    }
+
+    AbstractCodec(JavaType javaType, RawType cqlType, boolean register) {
       this.javaType = javaType;
       this.cqlType = cqlType;
-      register(this);
+      if (register) {
+        register(this);
+      }
     }
 
     @Override
@@ -127,7 +140,7 @@ public class CqlMapper {
     private final Codec<E> elementCodec;
 
     CollectionCodec(JavaType javaType, RawType cqlType, Codec<E> elementCodec) {
-      super(javaType, cqlType);
+      super(javaType, cqlType, false);
       this.elementCodec = elementCodec;
     }
 
