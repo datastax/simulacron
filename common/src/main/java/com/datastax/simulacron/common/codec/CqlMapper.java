@@ -119,7 +119,7 @@ public class CqlMapper {
     @Override
     public ByteBuffer encode(String input) {
       try {
-        return ByteBuffer.wrap(input.getBytes(charset));
+        return input == null ? null : ByteBuffer.wrap(input.getBytes(charset));
       } catch (UnsupportedEncodingException uee) {
         throw new InvalidTypeException("Invalid input for charset " + charset, uee);
       }
@@ -152,6 +152,9 @@ public class CqlMapper {
 
     @Override
     public ByteBuffer encode(C input) {
+      if (input == null) {
+        return null;
+      }
       ByteBuffer[] bbs = new ByteBuffer[input.size()];
       int i = 0;
       for (E elt : input) {
@@ -227,6 +230,9 @@ public class CqlMapper {
 
     @Override
     public ByteBuffer encode(Long input) {
+      if (input == null) {
+        return null;
+      }
       ByteBuffer bb = ByteBuffer.allocate(8);
       bb.putLong(0, input);
       return bb;
@@ -253,6 +259,9 @@ public class CqlMapper {
 
     @Override
     public ByteBuffer encode(UUID input) {
+      if (input == null) {
+        return null;
+      }
       ByteBuffer buf = ByteBuffer.allocate(16);
       buf.putLong(0, input.getMostSignificantBits());
       buf.putLong(8, input.getLeastSignificantBits());
@@ -290,7 +299,7 @@ public class CqlMapper {
 
         @Override
         public ByteBuffer encode(Boolean input) {
-          return input ? TRUE.duplicate() : FALSE.duplicate();
+          return input != null && input ? TRUE.duplicate() : FALSE.duplicate();
         }
 
         @Override
@@ -346,6 +355,9 @@ public class CqlMapper {
 
         @Override
         public ByteBuffer encode(Double input) {
+          if (input == null) {
+            return null;
+          }
           ByteBuffer bb = ByteBuffer.allocate(8);
           bb.putDouble(0, input);
           return bb;
@@ -366,6 +378,9 @@ public class CqlMapper {
       new AbstractCodec<Float>(Float.class, primitive(FLOAT)) {
         @Override
         public ByteBuffer encode(Float input) {
+          if (input == null) {
+            return null;
+          }
           ByteBuffer bb = ByteBuffer.allocate(4);
           bb.putFloat(0, input);
           return bb;
@@ -387,6 +402,9 @@ public class CqlMapper {
 
         @Override
         public ByteBuffer encode(Integer input) {
+          if (input == null) {
+            return null;
+          }
           ByteBuffer bb = ByteBuffer.allocate(4);
           bb.putInt(0, input);
           return bb;
@@ -421,7 +439,7 @@ public class CqlMapper {
   public final Codec<String> varchar = new StringCodec("UTF-8", primitive(VARCHAR));
 
   public final Codec<BigInteger> varint =
-      new AbstractCodec<BigInteger>(BigInteger.class, primitive(BIGINT)) {
+      new AbstractCodec<BigInteger>(BigInteger.class, primitive(VARINT)) {
         @Override
         public ByteBuffer encode(BigInteger input) {
           return input == null ? null : ByteBuffer.wrap(input.toByteArray());
@@ -442,6 +460,9 @@ public class CqlMapper {
 
         @Override
         public ByteBuffer encode(InetAddress input) {
+          if (input == null) {
+            return null;
+          }
           return ByteBuffer.wrap(input.getAddress());
         }
 
@@ -482,6 +503,9 @@ public class CqlMapper {
 
         @Override
         public ByteBuffer encode(Short input) {
+          if (input == null) {
+            return null;
+          }
           ByteBuffer bb = ByteBuffer.allocate(2);
           bb.putShort(0, input);
           return bb;
@@ -503,6 +527,9 @@ public class CqlMapper {
 
         @Override
         public ByteBuffer encode(Byte input) {
+          if (input == null) {
+            return null;
+          }
           ByteBuffer bb = ByteBuffer.allocate(1);
           bb.put(0, input);
           return bb;
