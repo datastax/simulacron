@@ -84,18 +84,49 @@ public class CqlMapper {
 
     private final JavaType javaType;
     private final RawType cqlType;
+    private final int minProtocolVersion;
 
     AbstractCodec(Type type, RawType cqlType) {
-      this(typeFactory.constructType(type), cqlType, true);
+      this(typeFactory.constructType(type), cqlType, 0);
     }
 
-    AbstractCodec(JavaType javaType, RawType cqlType, boolean register) {
+    AbstractCodec(Type type, RawType cqlType, int minProtocolVersion) {
+      this(typeFactory.constructType(type), cqlType, minProtocolVersion, true);
+    }
+
+    AbstractCodec(JavaType javaType, RawType cqlType, int minProtocolVersion, boolean register) {
       this.javaType = javaType;
       this.cqlType = cqlType;
+      this.minProtocolVersion = minProtocolVersion;
       if (register) {
+        // only register if requested and meets protocol version requirement.
         register(this);
       }
     }
+
+    private void checkProtocolVersion() {
+      if (minProtocolVersion > protocolVersion) {
+        throw new ProtocolVersionException(cqlType, protocolVersion, minProtocolVersion);
+      }
+    }
+
+    @Override
+    public ByteBuffer encode(T input) {
+      checkProtocolVersion();
+      if (input == null) {
+        return null;
+      }
+      return encodeInternal(input);
+    }
+
+    public T decode(ByteBuffer input) {
+      checkProtocolVersion();
+      return decodeInternal(input);
+    }
+
+    abstract ByteBuffer encodeInternal(T input);
+
+    abstract T decodeInternal(ByteBuffer input);
 
     @Override
     public JavaType getJavaType() {
@@ -117,16 +148,16 @@ public class CqlMapper {
     }
 
     @Override
-    public ByteBuffer encode(String input) {
+    ByteBuffer encodeInternal(String input) {
       try {
-        return input == null ? null : ByteBuffer.wrap(input.getBytes(charset));
+        return ByteBuffer.wrap(input.getBytes(charset));
       } catch (UnsupportedEncodingException uee) {
         throw new InvalidTypeException("Invalid input for charset " + charset, uee);
       }
     }
 
     @Override
-    public String decode(ByteBuffer input) {
+    public String decodeInternal(ByteBuffer input) {
       if (input == null) {
         return null;
       } else if (input.remaining() == 0) {
@@ -146,15 +177,12 @@ public class CqlMapper {
     private final Codec<E> elementCodec;
 
     CollectionCodec(JavaType javaType, RawType cqlType, Codec<E> elementCodec) {
-      super(javaType, cqlType, false);
+      super(javaType, cqlType, 1, false);
       this.elementCodec = elementCodec;
     }
 
     @Override
-    public ByteBuffer encode(C input) {
-      if (input == null) {
-        return null;
-      }
+    ByteBuffer encodeInternal(C input) {
       ByteBuffer[] bbs = new ByteBuffer[input.size()];
       int i = 0;
       for (E elt : input) {
@@ -173,7 +201,7 @@ public class CqlMapper {
     }
 
     @Override
-    public C decode(ByteBuffer input) {
+    C decodeInternal(ByteBuffer input) {
       if (input == null || input.remaining() == 0) return newInstance(0);
       try {
         ByteBuffer i = input.duplicate();
@@ -225,21 +253,22 @@ public class CqlMapper {
   class LongCodec extends AbstractCodec<Long> {
 
     LongCodec(RawType cqlType) {
-      super(Long.class, cqlType);
+      this(cqlType, 0);
+    }
+
+    LongCodec(RawType cqlType, int minProtocolVersion) {
+      super(Long.class, cqlType, minProtocolVersion);
     }
 
     @Override
-    public ByteBuffer encode(Long input) {
-      if (input == null) {
-        return null;
-      }
+    ByteBuffer encodeInternal(Long input) {
       ByteBuffer bb = ByteBuffer.allocate(8);
       bb.putLong(0, input);
       return bb;
     }
 
     @Override
-    public Long decode(ByteBuffer input) {
+    Long decodeInternal(ByteBuffer input) {
       if (input == null || input.remaining() == 0) {
         return 0L;
       } else if (input.remaining() != 8) {
@@ -258,10 +287,7 @@ public class CqlMapper {
     }
 
     @Override
-    public ByteBuffer encode(UUID input) {
-      if (input == null) {
-        return null;
-      }
+    ByteBuffer encodeInternal(UUID input) {
       ByteBuffer buf = ByteBuffer.allocate(16);
       buf.putLong(0, input.getMostSignificantBits());
       buf.putLong(8, input.getLeastSignificantBits());
@@ -269,7 +295,7 @@ public class CqlMapper {
     }
 
     @Override
-    public UUID decode(ByteBuffer input) {
+    UUID decodeInternal(ByteBuffer input) {
       return input == null || input.remaining() == 0
           ? null
           : new UUID(input.getLong(input.position()), input.getLong(input.position() + 8));
@@ -284,12 +310,12 @@ public class CqlMapper {
       new AbstractCodec<ByteBuffer>(ByteBuffer.class, primitive(BLOB)) {
 
         @Override
-        public ByteBuffer encode(ByteBuffer input) {
-          return input == null ? null : input.duplicate();
+        ByteBuffer encodeInternal(ByteBuffer input) {
+          return input.duplicate();
         }
 
         @Override
-        public ByteBuffer decode(ByteBuffer input) {
+        ByteBuffer decodeInternal(ByteBuffer input) {
           return encode(input);
         }
       };
@@ -298,12 +324,12 @@ public class CqlMapper {
       new AbstractCodec<Boolean>(Boolean.class, primitive(BOOLEAN)) {
 
         @Override
-        public ByteBuffer encode(Boolean input) {
-          return input != null && input ? TRUE.duplicate() : FALSE.duplicate();
+        ByteBuffer encodeInternal(Boolean input) {
+          return input ? TRUE.duplicate() : FALSE.duplicate();
         }
 
         @Override
-        public Boolean decode(ByteBuffer input) {
+        Boolean decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) {
             return false;
           } else if (input.remaining() != 1) {
@@ -320,8 +346,7 @@ public class CqlMapper {
   public final Codec<BigDecimal> decimal =
       new AbstractCodec<BigDecimal>(BigDecimal.class, primitive(DECIMAL)) {
         @Override
-        public ByteBuffer encode(BigDecimal input) {
-          if (input == null) return null;
+        ByteBuffer encodeInternal(BigDecimal input) {
           BigInteger bi = input.unscaledValue();
           int scale = input.scale();
           byte[] bibytes = bi.toByteArray();
@@ -334,7 +359,7 @@ public class CqlMapper {
         }
 
         @Override
-        public BigDecimal decode(ByteBuffer input) {
+        BigDecimal decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) return null;
           if (input.remaining() < 4)
             throw new InvalidTypeException(
@@ -354,17 +379,14 @@ public class CqlMapper {
       new AbstractCodec<Double>(Double.class, primitive(DOUBLE)) {
 
         @Override
-        public ByteBuffer encode(Double input) {
-          if (input == null) {
-            return null;
-          }
+        ByteBuffer encodeInternal(Double input) {
           ByteBuffer bb = ByteBuffer.allocate(8);
           bb.putDouble(0, input);
           return bb;
         }
 
         @Override
-        public Double decode(ByteBuffer input) {
+        Double decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) return 0.0;
           if (input.remaining() != 8)
             throw new InvalidTypeException(
@@ -377,17 +399,14 @@ public class CqlMapper {
   public final Codec<Float> cfloat =
       new AbstractCodec<Float>(Float.class, primitive(FLOAT)) {
         @Override
-        public ByteBuffer encode(Float input) {
-          if (input == null) {
-            return null;
-          }
+        ByteBuffer encodeInternal(Float input) {
           ByteBuffer bb = ByteBuffer.allocate(4);
           bb.putFloat(0, input);
           return bb;
         }
 
         @Override
-        public Float decode(ByteBuffer input) {
+        Float decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) return 0.0f;
           if (input.remaining() != 4)
             throw new InvalidTypeException(
@@ -401,17 +420,14 @@ public class CqlMapper {
       new AbstractCodec<Integer>(Integer.class, primitive(INT)) {
 
         @Override
-        public ByteBuffer encode(Integer input) {
-          if (input == null) {
-            return null;
-          }
+        ByteBuffer encodeInternal(Integer input) {
           ByteBuffer bb = ByteBuffer.allocate(4);
           bb.putInt(0, input);
           return bb;
         }
 
         @Override
-        public Integer decode(ByteBuffer input) {
+        Integer decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) return 0;
           if (input.remaining() != 4)
             throw new InvalidTypeException(
@@ -424,12 +440,12 @@ public class CqlMapper {
   public final Codec<Date> timestamp =
       new AbstractCodec<Date>(Date.class, primitive(TIMESTAMP)) {
         @Override
-        public ByteBuffer encode(Date input) {
+        ByteBuffer encodeInternal(Date input) {
           return input == null ? null : bigint.encode(input.getTime());
         }
 
         @Override
-        public Date decode(ByteBuffer input) {
+        Date decodeInternal(ByteBuffer input) {
           return input == null || input.remaining() == 0 ? null : new Date(bigint.decode(input));
         }
       };
@@ -441,12 +457,12 @@ public class CqlMapper {
   public final Codec<BigInteger> varint =
       new AbstractCodec<BigInteger>(BigInteger.class, primitive(VARINT)) {
         @Override
-        public ByteBuffer encode(BigInteger input) {
-          return input == null ? null : ByteBuffer.wrap(input.toByteArray());
+        ByteBuffer encodeInternal(BigInteger input) {
+          return ByteBuffer.wrap(input.toByteArray());
         }
 
         @Override
-        public BigInteger decode(ByteBuffer input) {
+        BigInteger decodeInternal(ByteBuffer input) {
           return input == null || input.remaining() == 0
               ? null
               : new BigInteger(Bytes.getArray(input));
@@ -459,15 +475,12 @@ public class CqlMapper {
       new AbstractCodec<InetAddress>(InetAddress.class, primitive(INET)) {
 
         @Override
-        public ByteBuffer encode(InetAddress input) {
-          if (input == null) {
-            return null;
-          }
+        ByteBuffer encodeInternal(InetAddress input) {
           return ByteBuffer.wrap(input.getAddress());
         }
 
         @Override
-        public InetAddress decode(ByteBuffer input) {
+        InetAddress decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) return null;
           try {
             return InetAddress.getByAddress(Bytes.getArray(input));
@@ -479,16 +492,15 @@ public class CqlMapper {
       };
 
   public final Codec<LocalDate> date =
-      new AbstractCodec<LocalDate>(LocalDate.class, primitive(DATE)) {
+      new AbstractCodec<LocalDate>(LocalDate.class, primitive(DATE), 4) {
         @Override
-        public ByteBuffer encode(LocalDate input) {
-          if (input == null) return null;
+        ByteBuffer encodeInternal(LocalDate input) {
           int unsigned = (int) input.toEpochDay() - Integer.MIN_VALUE;
           return cint.encode(unsigned);
         }
 
         @Override
-        public LocalDate decode(ByteBuffer input) {
+        LocalDate decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) return null;
           int unsigned = cint.decode(input);
           int signed = unsigned + Integer.MIN_VALUE;
@@ -496,23 +508,20 @@ public class CqlMapper {
         }
       };
 
-  public final Codec<Long> time = new LongCodec(primitive(TIME));
+  public final Codec<Long> time = new LongCodec(primitive(TIME), 4);
 
   public final Codec<Short> smallint =
-      new AbstractCodec<Short>(Short.class, primitive(SMALLINT)) {
+      new AbstractCodec<Short>(Short.class, primitive(SMALLINT), 4) {
 
         @Override
-        public ByteBuffer encode(Short input) {
-          if (input == null) {
-            return null;
-          }
+        ByteBuffer encodeInternal(Short input) {
           ByteBuffer bb = ByteBuffer.allocate(2);
           bb.putShort(0, input);
           return bb;
         }
 
         @Override
-        public Short decode(ByteBuffer input) {
+        Short decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) return 0;
           if (input.remaining() != 2)
             throw new InvalidTypeException(
@@ -523,20 +532,17 @@ public class CqlMapper {
       };
 
   public final Codec<Byte> tinyint =
-      new AbstractCodec<Byte>(Byte.class, primitive(TINYINT)) {
+      new AbstractCodec<Byte>(Byte.class, primitive(TINYINT), 4) {
 
         @Override
-        public ByteBuffer encode(Byte input) {
-          if (input == null) {
-            return null;
-          }
+        ByteBuffer encodeInternal(Byte input) {
           ByteBuffer bb = ByteBuffer.allocate(1);
           bb.put(0, input);
           return bb;
         }
 
         @Override
-        public Byte decode(ByteBuffer input) {
+        Byte decodeInternal(ByteBuffer input) {
           if (input == null || input.remaining() == 0) return 0;
           if (input.remaining() != 1)
             throw new InvalidTypeException(
@@ -561,85 +567,19 @@ public class CqlMapper {
   }
 
   private int sizeOfValue(ByteBuffer value) {
-    switch (protocolVersion) {
-      case 1:
-      case 2:
-        int elemSize = value.remaining();
-        if (elemSize > 65535)
-          throw new IllegalArgumentException(
-              String.format(
-                  "Native protocol version %d supports only elements with size up to 65535 bytes - but element size is %d bytes",
-                  protocolVersion, elemSize));
-        return 2 + elemSize;
-      case 3:
-      case 4:
-      case 5:
-      case 65:
-        return value == null ? 4 : 4 + value.remaining();
-      default:
-        throw new IllegalArgumentException(
-            "Protocol version " + protocolVersion + " is not supported.");
-    }
+    return value == null ? 4 : 4 + value.remaining();
   }
 
   private int sizeOfCollectionSize() {
-    switch (protocolVersion) {
-      case 1:
-      case 2:
-        return 2;
-      case 3:
-      case 4:
-      case 5:
-      case 65:
-        return 4;
-      default:
-        throw new IllegalArgumentException(
-            "Protocol version " + protocolVersion + " is not supported.");
-    }
+    return 4;
   }
 
   private int readSize(ByteBuffer input) {
-    switch (protocolVersion) {
-      case 1:
-      case 2:
-        return getUnsignedShort(input);
-      case 3:
-      case 4:
-      case 5:
-      case 65:
-        return input.getInt();
-      default:
-        throw new IllegalArgumentException(
-            "Protocol version " + protocolVersion + " is not supported.");
-    }
-  }
-
-  private static int getUnsignedShort(ByteBuffer bb) {
-    int length = (bb.get() & 0xFF) << 8;
-    return length | (bb.get() & 0xFF);
+    return input.getInt();
   }
 
   private void writeSize(ByteBuffer output, int size) {
-    switch (protocolVersion) {
-      case 1:
-      case 2:
-        if (size > 65535)
-          throw new IllegalArgumentException(
-              String.format(
-                  "Native protocol version %d supports up to 65535 elements in any collection - but collection contains %d elements",
-                  protocolVersion, size));
-        output.putShort((short) size);
-        break;
-      case 3:
-      case 4:
-      case 5:
-      case 65:
-        output.putInt(size);
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "Protocol version " + protocolVersion + " is not supported.");
-    }
+    output.putInt(size);
   }
 
   private ByteBuffer readValue(ByteBuffer input) {
@@ -655,27 +595,11 @@ public class CqlMapper {
   }
 
   private void writeValue(ByteBuffer output, ByteBuffer value) {
-    switch (protocolVersion) {
-      case 1:
-      case 2:
-        assert value != null;
-        output.putShort((short) value.remaining());
-        output.put(value.duplicate());
-        break;
-      case 3:
-      case 4:
-      case 5:
-      case 65:
-        if (value == null) {
-          output.putInt(-1);
-        } else {
-          output.putInt(value.remaining());
-          output.put(value.duplicate());
-        }
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "Protocol version " + protocolVersion + " is not supported.");
+    if (value == null) {
+      output.putInt(-1);
+    } else {
+      output.putInt(value.remaining());
+      output.put(value.duplicate());
     }
   }
 }

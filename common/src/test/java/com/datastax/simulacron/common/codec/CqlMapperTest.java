@@ -1,5 +1,6 @@
 package com.datastax.simulacron.common.codec;
 
+import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
 import com.datastax.oss.protocol.internal.util.Bytes;
@@ -68,7 +69,7 @@ public class CqlMapperTest {
 
     encodeAndDecode(booleanCodec, true, "0x01");
     encodeAndDecode(booleanCodec, false, "0x00");
-    encodeAndDecode(booleanCodec, null, "0x00", false);
+    encodeAndDecode(booleanCodec, null, null, false);
 
     try {
       // too many bytes
@@ -252,8 +253,8 @@ public class CqlMapperTest {
     encodeAndDecode(tinyintCodec, null, null, (byte) 0);
 
     try {
-      // not enough bytes.
-      tinyintCodec.decode(Bytes.fromHexString("0x"));
+      // too many bytes
+      tinyintCodec.decode(Bytes.fromHexString("0x0404"));
     } catch (InvalidTypeException e) {
       // expected
     }
@@ -358,6 +359,36 @@ public class CqlMapperTest {
         setListDoubleCodec,
         s,
         "0x0000000200000010000000010000000840c0f18b851eb8520000001c00000002000000084055b0000000000000000008403ee66666666666");
+  }
+
+  @Test
+  public void shouldNotAllowProtocolV4CodecsToBeUsedForProtocolV3() {
+    List<RawType> rawTypes = new ArrayList<>();
+    rawTypes.add(primitive(TINYINT));
+    rawTypes.add(primitive(SMALLINT));
+    rawTypes.add(primitive(DATE));
+    rawTypes.add(primitive(TIME));
+
+    CqlMapper mapper = CqlMapper.forVersion(3);
+    for (RawType rawType : rawTypes) {
+      Codec<?> codec = mapper.codecFor(rawType);
+      try {
+        codec.decode(null);
+        fail("Shouldn't have been able to decode " + rawType);
+      } catch (ProtocolVersionException e) {
+        assertThat(e.getMinVersion()).isEqualTo(4);
+        assertThat(e.getVersion()).isEqualTo(3);
+        assertThat(e.getType()).isEqualTo(rawType);
+      }
+      try {
+        codec.encode(null);
+        fail("Shouldn't have been able to encode " + rawType);
+      } catch (ProtocolVersionException e) {
+        assertThat(e.getMinVersion()).isEqualTo(4);
+        assertThat(e.getVersion()).isEqualTo(3);
+        assertThat(e.getType()).isEqualTo(rawType);
+      }
+    }
   }
 
   <T> void encodeAndDecode(Codec<T> codec, T input, String expectedByteStr) {
