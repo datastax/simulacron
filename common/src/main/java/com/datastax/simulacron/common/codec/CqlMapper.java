@@ -2,6 +2,7 @@ package com.datastax.simulacron.common.codec;
 
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
+import com.datastax.oss.protocol.internal.response.result.RawType.RawMap;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.fasterxml.jackson.databind.JavaType;
@@ -68,6 +69,11 @@ public class CqlMapper {
       RawList l = (RawList) key;
       Codec<?> elementCodec = cqlTypeCache.get(l.elementType);
       return new ListCodec(elementCodec);
+    } else if (key instanceof RawMap) {
+      RawMap m = (RawMap) key;
+      Codec<?> keyCodec = cqlTypeCache.get(m.keyType);
+      Codec<?> valueCodec = cqlTypeCache.get(m.valueType);
+      return new MapCodec(keyCodec, valueCodec);
     } else {
       // TODO support other collection(ish) codecs, Tuple, Map, UDT.
       logger.warn("Could not resolve codec for {}, returning null instead.", key);
@@ -197,7 +203,7 @@ public class CqlMapper {
         }
         bbs[i++] = bb;
       }
-      return pack(bbs);
+      return pack(bbs, input.size());
     }
 
     @Override
@@ -247,6 +253,80 @@ public class CqlMapper {
     @Override
     protected List<E> newInstance(int size) {
       return new ArrayList<>(size);
+    }
+  }
+
+  class MapCodec<K, V> extends AbstractCodec<Map<K, V>> {
+
+    private final Codec<K> keyCodec;
+    private final Codec<V> valueCodec;
+
+    MapCodec(Codec<K> keyCodec, Codec<V> valueCodec) {
+      super(
+          typeFactory.constructMapLikeType(
+              Map.class, keyCodec.getJavaType(), valueCodec.getJavaType()),
+          new RawMap(keyCodec.getCqlType(), valueCodec.getCqlType()));
+      this.keyCodec = keyCodec;
+      this.valueCodec = valueCodec;
+    }
+
+    @Override
+    ByteBuffer encodeInternal(Map<K, V> input) {
+      int i = 0;
+      ByteBuffer[] bbs = new ByteBuffer[2 * input.size()];
+      for (Map.Entry<K, V> entry : input.entrySet()) {
+        ByteBuffer bbk;
+        K key = entry.getKey();
+
+        try {
+          bbk = keyCodec.encode(key);
+        } catch (ClassCastException e) {
+          throw new InvalidTypeException(
+              String.format(
+                  "Invalid type for map key, expecting %s but got %s",
+                  keyCodec.getJavaType(), key.getClass()),
+              e);
+        }
+
+        ByteBuffer bbv;
+        V value = entry.getValue();
+        if (value == null) {
+          throw new NullPointerException("Map values cannot be null");
+        }
+
+        try {
+          bbv = valueCodec.encode(value);
+        } catch (ClassCastException e) {
+          throw new InvalidTypeException(
+              String.format(
+                  "Invalid type for map value, expecting %s but got %s",
+                  valueCodec.getJavaType(), value.getClass()),
+              e);
+        }
+        bbs[i++] = bbk;
+        bbs[i++] = bbv;
+      }
+      return pack(bbs, input.size());
+    }
+
+    @Override
+    Map<K, V> decodeInternal(ByteBuffer input) {
+      if (input == null || input.remaining() == 0) {
+        return new LinkedHashMap<>();
+      }
+      try {
+        ByteBuffer bytes = input.duplicate();
+        int n = readSize(bytes);
+        Map<K, V> m = new LinkedHashMap<>(n);
+        for (int i = 0; i < n; i++) {
+          ByteBuffer kbb = readValue(bytes);
+          ByteBuffer vbb = readValue(bytes);
+          m.put(keyCodec.decode(kbb), valueCodec.decode(vbb));
+        }
+        return m;
+      } catch (BufferUnderflowException | IllegalArgumentException e) {
+        throw new InvalidTypeException("Not enough bytes to deserialize a map", e);
+      }
     }
   }
 
@@ -552,14 +632,14 @@ public class CqlMapper {
         }
       };
 
-  private ByteBuffer pack(ByteBuffer[] buffers) {
+  private ByteBuffer pack(ByteBuffer[] buffers, int elements) {
     int size = 0;
     for (ByteBuffer bb : buffers) {
       int elemSize = sizeOfValue(bb);
       size += elemSize;
     }
     ByteBuffer result = ByteBuffer.allocate(sizeOfCollectionSize() + size);
-    writeSize(result, buffers.length);
+    writeSize(result, elements);
     for (ByteBuffer bb : buffers) {
       writeValue(result, bb);
     }
@@ -595,11 +675,7 @@ public class CqlMapper {
   }
 
   private void writeValue(ByteBuffer output, ByteBuffer value) {
-    if (value == null) {
-      output.putInt(-1);
-    } else {
-      output.putInt(value.remaining());
-      output.put(value.duplicate());
-    }
+    output.putInt(value.remaining());
+    output.put(value.duplicate());
   }
 }

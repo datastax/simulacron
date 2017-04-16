@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.*;
@@ -311,9 +312,32 @@ public class CqlMapperTest {
     encodeAndDecode(listStringCodec, Collections.emptyList(), "0x00000000");
     encodeAndDecode(listStringCodec, null, null, Collections.emptyList());
 
+    // Null value in List
     try {
       encodeAndDecode(listStringCodec, Collections.singletonList(null), null);
+      fail("Expected NPE");
     } catch (NullPointerException e) { // expected
+    }
+
+    // List not matching type for Codec
+    try {
+      List intList = new ArrayList<>();
+      intList.add(1);
+      encodeAndDecode(listStringCodec, intList, "");
+      fail("Expected InvalidTypeException");
+    } catch (InvalidTypeException e) {
+      assertThat(e.getCause()).isInstanceOf(ClassCastException.class);
+    }
+
+    // Underflow while decoding
+    try {
+      ByteBuffer buf = listStringCodec.encode(l);
+      // half limit so buffer is truncated.
+      buf.limit(buf.limit() / 2);
+      listStringCodec.decode(buf);
+      fail("Expected InvalidTypeException");
+    } catch (InvalidTypeException e) {
+      assertThat(e.getCause()).isInstanceOf(BufferUnderflowException.class);
     }
   }
 
@@ -333,9 +357,94 @@ public class CqlMapperTest {
     encodeAndDecode(setIntCodec, Collections.emptySet(), "0x00000000");
     encodeAndDecode(setIntCodec, null, null, Collections.emptySet());
 
+    // Null value in Set
     try {
       encodeAndDecode(setIntCodec, Collections.singleton(null), null);
+      fail("Expected NPE");
     } catch (NullPointerException e) { // expected
+    }
+
+    // Set not matching type for Codec
+    try {
+      Set stringSet = new LinkedHashSet<>();
+      stringSet.add("hello");
+      encodeAndDecode(setIntCodec, stringSet, "");
+      fail("Expected InvalidTypeException");
+    } catch (InvalidTypeException e) {
+      assertThat(e.getCause()).isInstanceOf(ClassCastException.class);
+    }
+
+    // Underflow while decoding
+    try {
+      ByteBuffer buf = setIntCodec.encode(s);
+      // half limit so buffer is truncated.
+      buf.limit(buf.limit() / 2);
+      setIntCodec.decode(buf);
+      fail("Expected InvalidTypeException");
+    } catch (InvalidTypeException e) {
+      assertThat(e.getCause()).isInstanceOf(BufferUnderflowException.class);
+    }
+  }
+
+  @Test
+  @SuppressWarnings("Unchecked")
+  public void shouldHandleMap() {
+    Codec<Map<String, Integer>> mapCodec =
+        mapper.codecFor(new RawType.RawMap(primitive(ASCII), primitive(INT)));
+    Codec<Map<String, Integer>> mapCodec2 =
+        mapper.codecFor(new RawType.RawMap(primitive(ASCII), primitive(INT)));
+    assertThat(mapCodec).isSameAs(mapCodec2);
+
+    Map<String, Integer> m = new LinkedHashMap<>();
+    m.put("hello", 8675);
+    m.put("world", 309);
+
+    encodeAndDecode(
+        mapCodec,
+        m,
+        "0x000000020000000568656c6c6f00000004000021e300000005776f726c640000000400000135");
+    encodeAndDecode(mapCodec, null, null, Collections.emptyMap());
+
+    // Null values not allowed.
+    try {
+      Map<String, Integer> mWithNull = new LinkedHashMap<>();
+      mWithNull.put("Hello", null);
+      encodeAndDecode(mapCodec, mWithNull, "");
+      fail("Expected NPE");
+    } catch (NullPointerException e) {
+      // expected
+    }
+
+    // Map not matching codec for key.
+    try {
+      Map mIntKey = new LinkedHashMap<>();
+      mIntKey.put(5, 6);
+      encodeAndDecode(mapCodec, mIntKey, "");
+      fail("Expected InvalidTypeException");
+    } catch (InvalidTypeException e) {
+      // expected
+      assertThat(e.getCause()).isInstanceOf(ClassCastException.class);
+    }
+
+    // Map not matching codec for value.
+    try {
+      Map mStrVal = new LinkedHashMap<>();
+      mStrVal.put("hello", "world");
+      encodeAndDecode(mapCodec, mStrVal, "");
+      fail("Expected InvalidTypeException");
+    } catch (InvalidTypeException e) {
+      // expected
+      assertThat(e.getCause()).isInstanceOf(ClassCastException.class);
+    }
+
+    // Underflow while decoding
+    try {
+      ByteBuffer buf = mapCodec.encode(m);
+      // half limit so buffer is truncated.
+      buf.limit(buf.limit() / 2);
+      mapCodec.decode(buf);
+      fail("Expected InvalidTypeException");
+    } catch (InvalidTypeException e) { // expected
     }
   }
 
