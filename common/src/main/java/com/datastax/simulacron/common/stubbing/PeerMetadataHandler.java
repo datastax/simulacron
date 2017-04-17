@@ -56,6 +56,8 @@ public class PeerMetadataHandler implements StubMapping {
             systemLocal.apply("schema_version", primitive(UUID)));
     queryLocalMetadata = new RowsMetadata(queryLocalSpecs, null, new int[] {0});
 
+    // Redeclare to reset indices.
+    systemLocal = columnSpecBuilder("system", "local");
     List<ColumnSpec> queryClusterNameSpecs =
         columnSpecs(systemLocal.apply("cluster_name", primitive(ASCII)));
     queryClusterNameMetadata = new RowsMetadata(queryClusterNameSpecs, null, new int[] {});

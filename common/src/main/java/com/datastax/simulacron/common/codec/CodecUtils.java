@@ -10,6 +10,7 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
 /**
@@ -101,7 +102,9 @@ public class CodecUtils {
    * @return A function that takes a column name and type and produces a {@link ColumnSpec}.
    */
   public static ColumnSpecBuilder columnSpecBuilder(String keyspace, String table) {
-    return (columnName, rawType) -> new ColumnSpec(keyspace, table, columnName, rawType);
+    AtomicInteger counter = new AtomicInteger(0);
+    return (columnName, rawType) ->
+        new ColumnSpec(keyspace, table, columnName, counter.getAndIncrement(), rawType);
   }
 
   /** see {@link #columnSpecBuilder(String, String)} */
