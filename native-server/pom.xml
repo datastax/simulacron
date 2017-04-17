@@ -28,6 +28,11 @@
             <artifactId>netty-handler</artifactId>
             <version>${netty.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.datastax.cassandra</groupId>
+            <artifactId>cassandra-driver-core</artifactId>
+            <version>${java-driver.version}</version>
+        </dependency>
     </dependencies>
 
 </project>
