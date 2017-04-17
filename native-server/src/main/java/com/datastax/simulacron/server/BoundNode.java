@@ -13,22 +13,27 @@ import com.datastax.oss.protocol.internal.response.result.Void;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
+import com.datastax.simulacron.common.stubbing.CloseConnectionAction;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.datastax.simulacron.common.utils.FrameUtils.wrapResponse;
 
-public class BoundNode extends Node {
+class BoundNode extends Node {
 
   private static Logger logger = LoggerFactory.getLogger(BoundNode.class);
 
@@ -61,14 +66,9 @@ public class BoundNode extends Node {
     // Otherwise delegate to default behavior.
     List<Action> actions = stubStore.handle(this, frame);
     if (actions.size() != 0) {
-      for (Action action : actions) {
-        // TODO handle delay
-        // TODO maybe delegate this logic elsewhere
-        if (action instanceof MessageResponseAction) {
-          MessageResponseAction mAction = (MessageResponseAction) action;
-          sendMessage(ctx, frame, mAction.getMessage());
-        }
-      }
+      // TODO: It might be useful to tie behavior to completion of actions but for now this isn't necessary.
+      CompletableFuture<Void> future = new CompletableFuture<>();
+      handleActions(actions.iterator(), ctx, frame, future);
     } else {
       Message response = null;
       if (frame.message instanceof Startup || frame.message instanceof Register) {
@@ -96,12 +96,51 @@ public class BoundNode extends Node {
     }
   }
 
-  void sendMessage(ChannelHandlerContext ctx, Frame requestFrame, Message responseMessage) {
+  private void handleActions(
+      Iterator<Action> nextActions,
+      ChannelHandlerContext ctx,
+      Frame frame,
+      CompletableFuture<Void> doneFuture) {
+    if (!nextActions.hasNext()) {
+      doneFuture.complete(null);
+      return;
+    }
+    // TODO handle delay
+    // TODO maybe delegate this logic elsewhere
+    ChannelFuture future = null;
+    Action action = nextActions.next();
+    if (action instanceof MessageResponseAction) {
+      MessageResponseAction mAction = (MessageResponseAction) action;
+      future = sendMessage(ctx, frame, mAction.getMessage());
+    } else if (action instanceof CloseConnectionAction) {
+      CloseConnectionAction cAction = (CloseConnectionAction) action;
+      future = ctx.close();
+    } else {
+      logger.warn("Got action {} that we don't know how to handle.", action);
+    }
+
+    if (future != null) {
+      future.addListener(
+          (ChannelFutureListener)
+              f -> {
+                if (!f.isSuccess()) {
+                  doneFuture.completeExceptionally(f.cause());
+                } else {
+                  handleActions(nextActions, ctx, frame, doneFuture);
+                }
+              });
+    } else {
+      handleActions(nextActions, ctx, frame, doneFuture);
+    }
+  }
+
+  private ChannelFuture sendMessage(
+      ChannelHandlerContext ctx, Frame requestFrame, Message responseMessage) {
     Frame responseFrame = wrapResponse(requestFrame, responseMessage);
     logger.debug(
         "Sending response for streamId: {} with msg {}",
         responseFrame.streamId,
         responseFrame.message);
-    ctx.writeAndFlush(responseFrame);
+    return ctx.writeAndFlush(responseFrame);
   }
 }

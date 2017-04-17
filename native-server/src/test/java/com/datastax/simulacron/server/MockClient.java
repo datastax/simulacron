@@ -27,7 +27,7 @@ public class MockClient implements Closeable {
 
   FrameCodec<ByteBuf> frameCodec = FrameCodec.defaultClient(new ByteBufCodec(), Compressor.none());
 
-  private Channel channel;
+  Channel channel;
 
   MockClient(EventLoopGroup elg) {
     // Set up so written Frames are encoded into bytes, received bytes are encoded into Frames put on queue.
@@ -59,12 +59,12 @@ public class MockClient implements Closeable {
     return this;
   }
 
-  void write(Message message) {
-    write(wrapRequest(message));
+  ChannelFuture write(Message message) {
+    return write(wrapRequest(message));
   }
 
-  void write(Frame frame) {
-    this.channel.writeAndFlush(frame);
+  ChannelFuture write(Frame frame) {
+    return this.channel.writeAndFlush(frame);
   }
 
   Frame next() throws InterruptedException {
