@@ -48,7 +48,8 @@ public class HttpContainerTest {
     try {
       future.get();
     } catch (Exception e) {
-      logger.error("Error encountered httpcontainertest cleanup", e);
+      logger.error("Error encountered during cleanup", e);
+      fail("Error encountered during cleanup");
     }
     portNum++;
   }

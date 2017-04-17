@@ -38,7 +38,17 @@ public class HttpContainer {
   public void start() {
 
     server.requestHandler(router::accept);
-    server.listen(port);
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    server.listen(
+        port,
+        res -> {
+          future.complete(null);
+        });
+    try {
+      future.get();
+    } catch (Exception e) {
+      logger.error("Error encountered during Start", e);
+    }
   }
 
   public void stop() {
@@ -50,7 +60,7 @@ public class HttpContainer {
     try {
       future.get();
     } catch (Exception e) {
-      logger.error("Error encountered httpcontainer during shutdown", e);
+      logger.error("Error encountered during shutdown", e);
     }
   }
 
