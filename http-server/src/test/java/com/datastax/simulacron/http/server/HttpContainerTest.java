@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
 
@@ -24,13 +25,14 @@ public class HttpContainerTest {
   private HttpContainer httpContainer;
   private Vertx vertx = null;
   private int portNum = 8187;
+  private Server nativeServer;
   Logger logger = LoggerFactory.getLogger(HttpContainerTest.class);
 
   @Before
   public void setup() {
     vertx = Vertx.vertx();
     httpContainer = new HttpContainer(portNum, true);
-    Server nativeServer = Server.builder().build();
+    nativeServer = Server.builder().build();
     ClusterManager provisioner = new ClusterManager(nativeServer);
     provisioner.registerWithRouter(httpContainer.getRouter());
     httpContainer.start();
@@ -51,6 +53,13 @@ public class HttpContainerTest {
       logger.error("Error encountered during cleanup", e);
       fail("Error encountered during cleanup");
     }
+
+    try {
+      nativeServer.unregisterAll().get(5, TimeUnit.SECONDS);
+    } catch (Exception e) {
+      logger.error("Error encountered unregistering native server clusters", e);
+    }
+
     portNum++;
   }
 

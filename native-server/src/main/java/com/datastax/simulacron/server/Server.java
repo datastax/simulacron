@@ -201,6 +201,18 @@ public final class Server {
   }
 
   /**
+   * Unregister all currently registered clusters.
+   *
+   * @return future that is completed when all clusters are unregistered.
+   */
+  public CompletableFuture<Void> unregisterAll() {
+    List<CompletableFuture<Cluster>> futures =
+        clusters.keySet().stream().map(this::unregister).collect(Collectors.toList());
+
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
+  }
+
+  /**
    * Convenience method that registers a {@link Node} by wrapping it in a 'dummy' {@link Cluster}
    * and registering that.
    *
