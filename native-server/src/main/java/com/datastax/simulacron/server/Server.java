@@ -393,6 +393,7 @@ public final class Server {
     protected void initChannel(Channel channel) throws Exception {
       ChannelPipeline pipeline = channel.pipeline();
       BoundNode node = channel.parent().attr(HANDLER).get();
+      node.clientChannelGroup.add(channel);
       MDC.put("node", node.getId().toString());
 
       try {

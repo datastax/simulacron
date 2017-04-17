@@ -4,9 +4,12 @@ import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.response.Supported;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
-import com.datastax.simulacron.common.stubbing.CloseConnectionAction;
+import com.datastax.simulacron.common.stubbing.CloseAction;
+import com.datastax.simulacron.common.stubbing.CloseAction.Scope;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 import io.netty.channel.ChannelFuture;
@@ -17,9 +20,7 @@ import org.junit.After;
 import org.junit.Test;
 
 import java.nio.channels.ClosedChannelException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -41,25 +42,13 @@ public class CloseActionTest {
   }
 
   @Test
-  public void testClose() throws Exception {
-    // Validate that connection closes when a stubbed action tells it to.
+  public void testCloseConnection() throws Exception {
+    // Validate that when a stub dictates to close a connection it does so and does not close the Node's channel so it
+    // can remain accepting traffic.
     Node node = Node.builder().build();
-    Node boundNode = localServer.register(node).get(5, TimeUnit.SECONDS);
+    BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
 
-    localServer
-        .getStubStore()
-        .register(
-            new StubMapping() {
-              @Override
-              public boolean matches(Node node, Frame frame) {
-                return frame.message instanceof Startup;
-              }
-
-              @Override
-              public List<Action> getActions(Node node, Frame frame) {
-                return Collections.singletonList(new CloseConnectionAction());
-              }
-            });
+    stubCloseOnStartup(Scope.CONNECTION);
 
     try (MockClient client = new MockClient(eventLoop)) {
       client.connect(boundNode.getAddress());
@@ -75,13 +64,15 @@ public class CloseActionTest {
         assertThat(e.getCause()).isInstanceOf(ClosedChannelException.class);
       } finally {
         assertThat(client.channel.isOpen()).isFalse();
+        // node should still accept connections.
+        assertThat(boundNode.channel.isOpen()).isTrue();
       }
     }
   }
 
   @Test
   public void testMessageWithClose() throws Exception {
-    // Validate that connection closes a stub dictates to send a message and then close.
+    // Validates that a stub that dictates to send a message and then close a connection does so.
     Node node = Node.builder().build();
     Node boundNode = localServer.register(node).get(5, TimeUnit.SECONDS);
 
@@ -98,7 +89,7 @@ public class CloseActionTest {
               public List<Action> getActions(Node node, Frame frame) {
                 ArrayList<Action> actions = new ArrayList<>();
                 actions.add(new MessageResponseAction(new Supported(Collections.emptyMap())));
-                actions.add(new CloseConnectionAction());
+                actions.add(new CloseAction());
                 return actions;
               }
             });
@@ -120,5 +111,176 @@ public class CloseActionTest {
         assertThat(client.channel.isOpen()).isFalse();
       }
     }
+  }
+
+  @Test
+  public void testCloseNode() throws Exception {
+    // Validates that a stub that dictates to close a node's connections does so.
+    Cluster cluster = Cluster.builder().withNodes(2, 2).build();
+    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
+
+    DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
+    Iterator<Node> nodes = dc0.getNodes().iterator();
+    BoundNode boundNode = (BoundNode) nodes.next();
+    stubCloseOnStartup(Scope.NODE);
+
+    Map<Node, MockClient> nodeToClients = new HashMap<>();
+    MockClient client = null;
+    try {
+      // Create a connection to each node.
+      for (Node node : boundCluster.getNodes()) {
+        MockClient client0 = new MockClient(eventLoop);
+        client0.connect(node.getAddress());
+        nodeToClients.put(node, client0);
+      }
+
+      client = new MockClient(eventLoop);
+      client.connect(boundNode.getAddress());
+
+      // Sending a write should cause the connection to close.
+      ChannelFuture f = client.write(new Startup());
+      // Future should be successful since write was successful.
+      f.get(5, TimeUnit.SECONDS);
+      // Next write should fail because the channel was closed.
+      f = client.write(Options.INSTANCE);
+      try {
+        f.get();
+      } catch (ExecutionException e) {
+        assertThat(e.getCause()).isInstanceOf(ClosedChannelException.class);
+      }
+    } finally {
+      if (client != null) {
+        // client that sent request should close.
+        assertThat(client.channel.isOpen()).isFalse();
+      }
+      // All clients should remain open except the ones to the node that received the request.
+      nodeToClients
+          .entrySet()
+          .stream()
+          .filter(e -> e.getKey() != boundNode)
+          .forEach(e -> assertThat(e.getValue().channel.isOpen()).isTrue());
+      nodeToClients
+          .entrySet()
+          .stream()
+          .filter(e -> e.getKey() == boundNode)
+          .forEach(e -> assertThat(e.getValue().channel.isOpen()).isFalse());
+    }
+  }
+
+  @Test
+  public void testCloseDataCenter() throws Exception {
+    // Validates that a stub that dictates to close a node's DC's connections does so.
+    Cluster cluster = Cluster.builder().withNodes(2, 2).build();
+    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
+
+    DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
+    Iterator<Node> nodes = dc0.getNodes().iterator();
+    BoundNode boundNode = (BoundNode) nodes.next();
+    stubCloseOnStartup(Scope.DATACENTER);
+
+    Map<Node, MockClient> nodeToClients = new HashMap<>();
+    MockClient client = null;
+    try {
+      // Create a connection to each node.
+      for (Node node : boundCluster.getNodes()) {
+        MockClient client0 = new MockClient(eventLoop);
+        client0.connect(node.getAddress());
+        nodeToClients.put(node, client0);
+      }
+
+      client = new MockClient(eventLoop);
+      client.connect(boundNode.getAddress());
+
+      // Sending a write should cause the connection to close.
+      ChannelFuture f = client.write(new Startup());
+      // Future should be successful since write was successful.
+      f.get(5, TimeUnit.SECONDS);
+      // Next write should fail because the channel was closed.
+      f = client.write(Options.INSTANCE);
+      try {
+        f.get();
+      } catch (ExecutionException e) {
+        assertThat(e.getCause()).isInstanceOf(ClosedChannelException.class);
+      }
+    } finally {
+      if (client != null) {
+        // client that sent request should close.
+        assertThat(client.channel.isOpen()).isFalse();
+      }
+      // Clients connecting to a different DC should remain open.
+      nodeToClients
+          .entrySet()
+          .stream()
+          .filter(e -> e.getKey().getDataCenter() != boundNode.getDataCenter())
+          .forEach(e -> assertThat(e.getValue().channel.isOpen()).isTrue());
+      // Clients connecting to same DC should close.
+      nodeToClients
+          .entrySet()
+          .stream()
+          .filter(e -> e.getKey().getDataCenter() == boundNode.getDataCenter())
+          .forEach(e -> assertThat(e.getValue().channel.isOpen()).isFalse());
+    }
+  }
+
+  @Test
+  public void testCloseCluster() throws Exception {
+    // Validates that a stub that dictates to close a node's Cluster's connections does so.
+    Cluster cluster = Cluster.builder().withNodes(2, 2).build();
+    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
+
+    DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
+    Iterator<Node> nodes = dc0.getNodes().iterator();
+    BoundNode boundNode = (BoundNode) nodes.next();
+    stubCloseOnStartup(Scope.CLUSTER);
+
+    Map<Node, MockClient> nodeToClients = new HashMap<>();
+    MockClient client = null;
+    try {
+      // Create a connection to each node.
+      for (Node node : boundCluster.getNodes()) {
+        MockClient client0 = new MockClient(eventLoop);
+        client0.connect(node.getAddress());
+        nodeToClients.put(node, client0);
+      }
+
+      client = new MockClient(eventLoop);
+      client.connect(boundNode.getAddress());
+
+      // Sending a write should cause the connection to close.
+      ChannelFuture f = client.write(new Startup());
+      // Future should be successful since write was successful.
+      f.get(5, TimeUnit.SECONDS);
+      // Next write should fail because the channel was closed.
+      f = client.write(Options.INSTANCE);
+      try {
+        f.get();
+      } catch (ExecutionException e) {
+        assertThat(e.getCause()).isInstanceOf(ClosedChannelException.class);
+      }
+    } finally {
+      if (client != null) {
+        // client that sent request should close.
+        assertThat(client.channel.isOpen()).isFalse();
+      }
+      // All clients should close
+      nodeToClients.entrySet().forEach(e -> assertThat(e.getValue().channel.isOpen()).isFalse());
+    }
+  }
+
+  private void stubCloseOnStartup(Scope scope) {
+    localServer
+        .getStubStore()
+        .register(
+            new StubMapping() {
+              @Override
+              public boolean matches(Node node, Frame frame) {
+                return frame.message instanceof Startup;
+              }
+
+              @Override
+              public List<Action> getActions(Node node, Frame frame) {
+                return Collections.singletonList(new CloseAction(scope));
+              }
+            });
   }
 }
