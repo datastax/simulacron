@@ -54,7 +54,7 @@ public class HttpContainerTest {
   }
 
   @Test
-  public void testClutterCreationSimple() {
+  public void testClusterCreationSimple() {
     HttpClient client = vertx.createHttpClient();
     CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
     client
@@ -104,7 +104,7 @@ public class HttpContainerTest {
   }
 
   @Test
-  public void testClutterCreationLarge() {
+  public void testClusterCreationLarge() {
     try {
       HttpClient client = vertx.createHttpClient();
       CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
