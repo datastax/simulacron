@@ -71,6 +71,8 @@ public class PeerMetadataIntegrationTest {
           dc0.getNodes().stream().map(Node::getAddress).collect(Collectors.toList());
 
       assertThat(connectedHosts).hasSameElementsAs(dcHosts);
+    } finally {
+      server.unregister(boundCluster.getId()).get(5, TimeUnit.SECONDS);
     }
   }
 }
