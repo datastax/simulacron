@@ -1,6 +1,6 @@
 package com.datastax.simulacron.common.stubbing;
 
-public class CloseAction implements Action {
+public class DisconnectAction implements Action {
 
   public enum Scope {
     CONNECTION,
@@ -13,15 +13,15 @@ public class CloseAction implements Action {
 
   private final long delayInMs;
 
-  public CloseAction() {
+  public DisconnectAction() {
     this(Scope.CONNECTION, 0L);
   }
 
-  public CloseAction(Scope scope) {
+  public DisconnectAction(Scope scope) {
     this(scope, 0L);
   }
 
-  public CloseAction(Scope scope, long delayInMs) {
+  public DisconnectAction(Scope scope, long delayInMs) {
     this.scope = scope;
     this.delayInMs = delayInMs;
   }
@@ -37,6 +37,6 @@ public class CloseAction implements Action {
 
   @Override
   public String toString() {
-    return "CloseAction{" + "scope=" + scope + ", delayInMs=" + delayInMs + '}';
+    return "DisconnectAction{" + "scope=" + scope + ", delayInMs=" + delayInMs + '}';
   }
 }

@@ -8,8 +8,8 @@ import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
-import com.datastax.simulacron.common.stubbing.CloseAction;
-import com.datastax.simulacron.common.stubbing.CloseAction.Scope;
+import com.datastax.simulacron.common.stubbing.DisconnectAction;
+import com.datastax.simulacron.common.stubbing.DisconnectAction.Scope;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 import io.netty.channel.ChannelFuture;
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 import static com.datastax.simulacron.server.AddressResolver.localAddressResolver;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CloseActionTest {
+public class DisconnectActionTest {
 
   private final EventLoopGroup eventLoop = new DefaultEventLoop();
 
@@ -89,7 +89,7 @@ public class CloseActionTest {
               public List<Action> getActions(Node node, Frame frame) {
                 ArrayList<Action> actions = new ArrayList<>();
                 actions.add(new MessageResponseAction(new Supported(Collections.emptyMap())));
-                actions.add(new CloseAction());
+                actions.add(new DisconnectAction());
                 return actions;
               }
             });
@@ -279,7 +279,7 @@ public class CloseActionTest {
 
               @Override
               public List<Action> getActions(Node node, Frame frame) {
-                return Collections.singletonList(new CloseAction(scope));
+                return Collections.singletonList(new DisconnectAction(scope));
               }
             });
   }

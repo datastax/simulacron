@@ -12,7 +12,7 @@ import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
-import com.datastax.simulacron.common.stubbing.CloseAction;
+import com.datastax.simulacron.common.stubbing.DisconnectAction;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -155,8 +155,8 @@ class BoundNode extends Node {
     if (action instanceof MessageResponseAction) {
       MessageResponseAction mAction = (MessageResponseAction) action;
       future = completable(sendMessage(ctx, frame, mAction.getMessage()));
-    } else if (action instanceof CloseAction) {
-      CloseAction cAction = (CloseAction) action;
+    } else if (action instanceof DisconnectAction) {
+      DisconnectAction cAction = (DisconnectAction) action;
       switch (cAction.getScope()) {
         case CONNECTION:
           future = completable(ctx.disconnect());
