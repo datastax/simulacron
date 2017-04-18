@@ -12,6 +12,7 @@ import io.netty.channel.local.LocalServerChannel;
 import org.junit.After;
 import org.junit.Test;
 
+import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -310,6 +311,99 @@ public class ServerTest {
         // Expect a Ready response.
         response = client3.next();
         assertThat(response.message).isInstanceOf(Ready.class);
+      }
+    }
+  }
+
+  @Test
+  public void testShouldStopAcceptingConnectionsAndAcceptAgain() throws Exception {
+    Node node = Node.builder().build();
+
+    // Should bind within 5 seconds and get a bound node back.
+    BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
+    assertThat(boundNode).isInstanceOf(BoundNode.class);
+
+    // Should be wrapped and registered in a dummy cluster.
+    assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+        .isSameAs(boundNode.getCluster());
+
+    try (MockClient client = new MockClient(eventLoop)) {
+      client.connect(boundNode.getAddress());
+      client.write(new Startup());
+      // Expect a Ready response.
+      Frame response = client.next();
+      assertThat(response.message).isInstanceOf(Ready.class);
+
+      boundNode.rejectNewConnections(-1, BoundNode.RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
+
+      // client should remain connected.
+      assertThat(client.channel.isOpen()).isTrue();
+
+      // New client should not be able to open connection
+      try (MockClient client2 = new MockClient(eventLoop)) {
+        try {
+          client2.connect(boundNode.getAddress());
+          fail("Did not expect to be able to connect");
+        } catch (ConnectException ce) { // Expected
+        }
+      }
+
+      // Start accepting new connections again.
+      boundNode.acceptNewConnections().get(5, TimeUnit.SECONDS);
+
+      // New client should open connection and receive 'Ready' to 'Startup' request.
+      try (MockClient client3 = new MockClient(eventLoop)) {
+        client3.connect(boundNode.getAddress());
+        client3.write(new Startup());
+        // Expect a Ready response.
+        response = client3.next();
+        assertThat(response.message).isInstanceOf(Ready.class);
+      }
+    }
+  }
+
+  @Test
+  public void testShouldStopAcceptingConnectionsAfter5() throws Exception {
+    Node node = Node.builder().build();
+
+    // Should bind within 5 seconds and get a bound node back.
+    BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
+    assertThat(boundNode).isInstanceOf(BoundNode.class);
+
+    // Should be wrapped and registered in a dummy cluster.
+    assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+        .isSameAs(boundNode.getCluster());
+
+    try (MockClient client = new MockClient(eventLoop)) {
+      client.connect(boundNode.getAddress());
+      client.write(new Startup());
+      // Expect a Ready response.
+      Frame response = client.next();
+      assertThat(response.message).isInstanceOf(Ready.class);
+
+      boundNode.rejectNewConnections(5, BoundNode.RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
+
+      // client should remain connected.
+      assertThat(client.channel.isOpen()).isTrue();
+
+      // open 5 connections, they should all be successful
+      for (int i = 0; i < 5; i++) {
+        try (MockClient client2 = new MockClient(eventLoop)) {
+          client2.connect(boundNode.getAddress());
+          client2.write(new Startup());
+          // Expect a Ready response.
+          response = client2.next();
+          assertThat(response.message).isInstanceOf(Ready.class);
+        }
+      }
+
+      // on 5th attempt listener should be unbound, so new connections should not work.
+      try (MockClient client2 = new MockClient(eventLoop)) {
+        try {
+          client2.connect(boundNode.getAddress());
+          fail("Did not expect to be able to connect");
+        } catch (ConnectException ce) { // Expected
+        }
       }
     }
   }

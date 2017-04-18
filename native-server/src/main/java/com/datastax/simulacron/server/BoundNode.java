@@ -100,11 +100,11 @@ class BoundNode extends Node {
   }
 
   CompletableFuture<Node> unbind() {
+    logger.debug("Unbinding listener on {}", channel);
     return completable(channel.get().close()).thenApply(v -> this);
   }
 
   CompletableFuture<Node> rebind() {
-    Channel currentChannel = this.channel.get();
     if (this.channel.get().isOpen()) {
       // already accepting...
       return CompletableFuture.completedFuture(this);
@@ -115,7 +115,8 @@ class BoundNode extends Node {
         (ChannelFutureListener)
             channelFuture -> {
               if (channelFuture.isSuccess()) {
-                logger.info("Bound {} to {}", BoundNode.this, channelFuture.channel());
+                channelFuture.channel().attr(Server.HANDLER).set(this);
+                logger.debug("Bound {} to {}", BoundNode.this, channelFuture.channel());
                 future.complete(BoundNode.this);
                 channel.set(channelFuture.channel());
               } else {
@@ -176,11 +177,12 @@ class BoundNode extends Node {
         } else if (state.rejectAfter > 0) {
           // Decrement rejectAfter indicating a new initialization attempt.
           state.rejectAfter--;
-        } else if (state.rejectAfter <= 0 && state.rejectAfter != Integer.MIN_VALUE) {
-          // If reject after is 0 or less, indicate that it's time to stop listening (but allow this one)
-          state.rejectAfter = -1;
-          state.listeningForNewConnections = false;
-          rejectNewConnections(-1, state.scope);
+          if (state.rejectAfter == 0) {
+            // If reject after is now 0, indicate that it's time to stop listening (but allow this one)
+            state.rejectAfter = -1;
+            state.listeningForNewConnections = false;
+            rejectNewConnections(-1, state.scope);
+          }
         }
         response = new Ready();
       } else if (frame.message instanceof Options) {

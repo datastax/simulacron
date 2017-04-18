@@ -36,7 +36,7 @@ public final class Server {
 
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
 
-  private static final AttributeKey<BoundNode> HANDLER = AttributeKey.valueOf("NODE");
+  static final AttributeKey<BoundNode> HANDLER = AttributeKey.valueOf("NODE");
 
   private static final FrameCodec<ByteBuf> frameCodec =
       FrameCodec.defaultServer(new ByteBufCodec(), Compressor.none());
