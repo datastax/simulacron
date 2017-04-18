@@ -14,13 +14,12 @@ import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
+import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.ChannelGroupFuture;
-import io.netty.channel.group.ChannelGroupFutureListener;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
@@ -32,12 +31,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.datastax.oss.protocol.internal.response.result.Void.INSTANCE;
 import static com.datastax.simulacron.common.utils.FrameUtils.wrapResponse;
+import static com.datastax.simulacron.server.ChannelUtils.completable;
 
 class BoundNode extends Node {
 
@@ -46,12 +47,41 @@ class BoundNode extends Node {
   private static final Pattern useKeyspacePattern =
       Pattern.compile("\\s*use\\s+(.*)$", Pattern.CASE_INSENSITIVE);
 
-  final transient Channel channel;
+  private final ServerBootstrap bootstrap;
+
+  // TODO: Isn't really a good reason for this to be an AtomicReference as if binding fails we don't reset
+  // the channel, but leaving it this way for now in case there is a future use case.
+  final transient AtomicReference<Channel> channel;
 
   final transient ChannelGroup clientChannelGroup =
       new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
+  // TODO: There could be a lot of concurrency issues around simultaneous calls to reject/accept, however
+  // in the general case we don't expect it.   Leave this as AtomicReference in case we want to handle it better.
+  private final AtomicReference<RejectState> rejectState = new AtomicReference<>(new RejectState());
+
   private final transient StubStore stubStore;
+
+  enum RejectScope {
+    UNBIND, // unbind the channel so can't establish TCP connection
+    REJECT_STARTUP // keep channel bound so can establish TCP connection, but doesn't reply to startup.
+  }
+
+  private static class RejectState {
+    private final RejectScope scope;
+    private volatile int rejectAfter;
+    private volatile boolean listeningForNewConnections;
+
+    RejectState() {
+      this(true, Integer.MIN_VALUE, null);
+    }
+
+    RejectState(boolean listeningForNewConnections, int rejectAfter, RejectScope scope) {
+      this.listeningForNewConnections = listeningForNewConnections;
+      this.rejectAfter = rejectAfter;
+      this.scope = scope;
+    }
+  }
 
   BoundNode(
       SocketAddress address,
@@ -60,11 +90,69 @@ class BoundNode extends Node {
       String cassandraVersion,
       Map<String, Object> peerInfo,
       DataCenter parent,
+      ServerBootstrap bootstrap,
       Channel channel,
       StubStore stubStore) {
     super(address, name, id, cassandraVersion, peerInfo, parent);
-    this.channel = channel;
+    this.bootstrap = bootstrap;
+    this.channel = new AtomicReference<>(channel);
     this.stubStore = stubStore;
+  }
+
+  CompletableFuture<Node> unbind() {
+    return completable(channel.get().close()).thenApply(v -> this);
+  }
+
+  CompletableFuture<Node> rebind() {
+    Channel currentChannel = this.channel.get();
+    if (this.channel.get().isOpen()) {
+      // already accepting...
+      return CompletableFuture.completedFuture(this);
+    }
+    CompletableFuture<Node> future = new CompletableFuture<>();
+    ChannelFuture bindFuture = bootstrap.bind(this.getAddress());
+    bindFuture.addListener(
+        (ChannelFutureListener)
+            channelFuture -> {
+              if (channelFuture.isSuccess()) {
+                logger.info("Bound {} to {}", BoundNode.this, channelFuture.channel());
+                future.complete(BoundNode.this);
+                channel.set(channelFuture.channel());
+              } else {
+                // If failed, propagate it.
+                future.completeExceptionally(
+                    new BindNodeException(BoundNode.this, getAddress(), channelFuture.cause()));
+              }
+            });
+    return future;
+  }
+
+  CompletableFuture<Node> acceptNewConnections() {
+    logger.debug("Accepting New Connections");
+    rejectState.set(new RejectState());
+    // Reopen listening interface if not currently open.
+    if (!channel.get().isOpen()) {
+      return rebind();
+    } else {
+      return CompletableFuture.completedFuture(this);
+    }
+  }
+
+  CompletableFuture<Node> rejectNewConnections(int after, RejectScope scope) {
+    RejectState state;
+    if (after <= 0) {
+      logger.debug("Rejecting new connections with scope {}", scope);
+      state = new RejectState(false, Integer.MIN_VALUE, scope);
+    } else {
+      logger.debug("Rejecting new connections after {} attempts with scope {}", after, scope);
+      state = new RejectState(true, after, scope);
+    }
+    rejectState.set(state);
+    if (after <= 0 && scope == RejectScope.UNBIND) {
+      return unbind();
+    } else {
+      return CompletableFuture.completedFuture(this);
+    }
   }
 
   void handle(ChannelHandlerContext ctx, Frame frame) {
@@ -81,6 +169,19 @@ class BoundNode extends Node {
     } else {
       Message response = null;
       if (frame.message instanceof Startup || frame.message instanceof Register) {
+        RejectState state = rejectState.get();
+        // We aren't listening for new connections, return immediately.
+        if (!state.listeningForNewConnections) {
+          return;
+        } else if (state.rejectAfter > 0) {
+          // Decrement rejectAfter indicating a new initialization attempt.
+          state.rejectAfter--;
+        } else if (state.rejectAfter <= 0 && state.rejectAfter != Integer.MIN_VALUE) {
+          // If reject after is 0 or less, indicate that it's time to stop listening (but allow this one)
+          state.rejectAfter = -1;
+          state.listeningForNewConnections = false;
+          rejectNewConnections(-1, state.scope);
+        }
         response = new Ready();
       } else if (frame.message instanceof Options) {
         response = new Supported(new HashMap<>());
@@ -103,40 +204,6 @@ class BoundNode extends Node {
         sendMessage(ctx, frame, response);
       }
     }
-  }
-
-  /**
-   * Convenience method to convert a {@link ChannelFuture} into a {@link CompletableFuture}
-   *
-   * @param future future to convert.
-   * @return converted future.
-   */
-  private static CompletableFuture<Void> completable(ChannelFuture future) {
-    CompletableFuture<Void> cf = new CompletableFuture<>();
-    future.addListener(
-        (ChannelFutureListener)
-            future1 -> {
-              if (future1.isSuccess()) {
-                cf.complete(null);
-              } else {
-                cf.completeExceptionally(future1.cause());
-              }
-            });
-    return cf;
-  }
-
-  private static CompletableFuture<Void> completable(ChannelGroupFuture future) {
-    CompletableFuture<Void> cf = new CompletableFuture<>();
-    future.addListener(
-        (ChannelGroupFutureListener)
-            future1 -> {
-              if (future1.isSuccess()) {
-                cf.complete(null);
-              } else {
-                cf.completeExceptionally(future1.cause());
-              }
-            });
-    return cf;
   }
 
   private void handleActions(

@@ -211,7 +211,7 @@ public class ServerTest {
     assertThat(nodes).hasSize(4);
     for (Node node : nodes) {
       // Each node's channel should be open.
-      assertThat(((BoundNode) node).channel.isOpen()).isTrue();
+      assertThat(((BoundNode) node).channel.get().isOpen()).isTrue();
     }
 
     // Unregistering the cluster should close each nodes channel and remove cluster.
@@ -224,7 +224,7 @@ public class ServerTest {
     // All node's channels should be closed.
     for (Node node : nodes) {
       // Each node's channel should be open.
-      assertThat(((BoundNode) node).channel.isOpen()).isFalse();
+      assertThat(((BoundNode) node).channel.get().isOpen()).isFalse();
     }
   }
 
@@ -262,6 +262,55 @@ public class ServerTest {
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
+    }
+  }
+
+  @Test
+  public void testShouldStopAcceptingStartupAndAcceptAgain() throws Exception {
+    Node node = Node.builder().build();
+
+    // Should bind within 5 seconds and get a bound node back.
+    BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
+    assertThat(boundNode).isInstanceOf(BoundNode.class);
+
+    // Should be wrapped and registered in a dummy cluster.
+    assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+        .isSameAs(boundNode.getCluster());
+
+    try (MockClient client = new MockClient(eventLoop)) {
+      client.connect(boundNode.getAddress());
+      client.write(new Startup());
+      // Expect a Ready response.
+      Frame response = client.next();
+      assertThat(response.message).isInstanceOf(Ready.class);
+
+      boundNode
+          .rejectNewConnections(-1, BoundNode.RejectScope.REJECT_STARTUP)
+          .get(5, TimeUnit.SECONDS);
+
+      // client should remain connected.
+      assertThat(client.channel.isOpen()).isTrue();
+
+      // New client should open connection, but fail to get response to startup since not listening.
+      try (MockClient client2 = new MockClient(eventLoop)) {
+        client2.connect(boundNode.getAddress());
+        client2.write(new Startup());
+        // Expect a Ready response.
+        response = client2.nextQuick();
+        assertThat(response).isNull();
+      }
+
+      // Start accepting new connections again.
+      boundNode.acceptNewConnections().get(5, TimeUnit.SECONDS);
+
+      // New client should open connection and receive 'Ready' to 'Startup' request.
+      try (MockClient client3 = new MockClient(eventLoop)) {
+        client3.connect(boundNode.getAddress());
+        client3.write(new Startup());
+        // Expect a Ready response.
+        response = client3.next();
+        assertThat(response.message).isInstanceOf(Ready.class);
+      }
     }
   }
 }

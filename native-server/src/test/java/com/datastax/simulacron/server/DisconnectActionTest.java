@@ -65,7 +65,7 @@ public class DisconnectActionTest {
       } finally {
         assertThat(client.channel.isOpen()).isFalse();
         // node should still accept connections.
-        assertThat(boundNode.channel.isOpen()).isTrue();
+        assertThat(boundNode.channel.get().isOpen()).isTrue();
       }
     }
   }

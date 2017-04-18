@@ -71,10 +71,16 @@ public class MockClient implements Closeable {
     return responses.poll(5, TimeUnit.SECONDS);
   }
 
+  Frame nextQuick() throws InterruptedException {
+    return responses.poll(500, TimeUnit.MILLISECONDS);
+  }
+
   @Override
   public void close() throws IOException {
     try {
-      this.channel.close().sync();
+      if (this.channel != null) {
+        this.channel.close().sync();
+      }
     } catch (InterruptedException e) {
       //no op
     }

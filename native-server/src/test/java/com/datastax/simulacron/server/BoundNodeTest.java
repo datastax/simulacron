@@ -42,6 +42,7 @@ public class BoundNodeTest {
           "1.2.19",
           Collections.emptyMap(),
           dc,
+          null,
           null, // channel reference only needed for closing, not useful in context of this test.
           stubStore);
 

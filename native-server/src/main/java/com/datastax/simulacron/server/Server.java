@@ -273,6 +273,7 @@ public final class Server {
                         refNode.getCassandraVersion(),
                         refNode.getPeerInfo(),
                         parent,
+                        serverBootstrap,
                         channelFuture.channel(),
                         stubStore);
                 logger.info("Bound {} to {}", node, channelFuture.channel());
@@ -289,22 +290,15 @@ public final class Server {
   }
 
   private CompletableFuture<Node> close(BoundNode node) {
-    CompletableFuture<Node> future = new CompletableFuture<>();
     logger.debug("Closing {}.", node);
-    node.channel
-        .close()
-        .addListener(
-            channelFuture -> {
-              if (channelFuture.isSuccess()) {
-                // Release the node's address when closed so it may be reused.
-                logger.debug(
-                    "Releasing {} back to address resolver so it may be reused.",
-                    node.getAddress());
-                addressResolver.release(node.getAddress());
-              }
-              future.complete(node);
+    return node.unbind()
+        .thenApply(
+            n -> {
+              logger.debug(
+                  "Releasing {} back to address resolver so it may be reused.", node.getAddress());
+              addressResolver.release(n.getAddress());
+              return n;
             });
-    return future;
   }
 
   /**
