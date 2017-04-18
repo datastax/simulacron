@@ -290,7 +290,20 @@ public final class Server {
 
   private CompletableFuture<Node> close(BoundNode node) {
     CompletableFuture<Node> future = new CompletableFuture<>();
-    node.channel.close().addListener(channelFuture -> future.complete(node));
+    logger.debug("Closing {}.", node);
+    node.channel
+        .close()
+        .addListener(
+            channelFuture -> {
+              if (channelFuture.isSuccess()) {
+                // Release the node's address when closed so it may be reused.
+                logger.debug(
+                    "Releasing {} back to address resolver so it may be reused.",
+                    node.getAddress());
+                addressResolver.release(node.getAddress());
+              }
+              future.complete(node);
+            });
     return future;
   }
 

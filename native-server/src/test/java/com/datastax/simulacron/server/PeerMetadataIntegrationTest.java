@@ -1,12 +1,10 @@
 package com.datastax.simulacron.server;
 
 import com.datastax.driver.core.Host;
-import com.datastax.driver.core.NettyOptions;
 import com.datastax.driver.core.Session;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
-import io.netty.channel.EventLoopGroup;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -15,27 +13,12 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static com.datastax.simulacron.server.IntegrationUtils.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PeerMetadataIntegrationTest {
 
   private final Server server = Server.builder().build();
-
-  /**
-   * A custom {@link NettyOptions} that shuts down the {@link EventLoopGroup} after no quiet time.
-   */
-  private static NettyOptions nonQuietClusterCloseOptions =
-      new NettyOptions() {
-        @Override
-        public void onClusterClose(EventLoopGroup eventLoopGroup) {
-          eventLoopGroup.shutdownGracefully(0, 15, SECONDS).syncUninterruptibly();
-        }
-      };
-
-  private static com.datastax.driver.core.Cluster.Builder defaultBuilder() {
-    return com.datastax.driver.core.Cluster.builder().withNettyOptions(nonQuietClusterCloseOptions);
-  }
 
   @Test
   public void testClusterDiscovery() throws Exception {
