@@ -4,7 +4,6 @@ import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.fasterxml.jackson.databind.JavaType;
 
 import java.nio.ByteBuffer;
-import java.util.Optional;
 
 public interface Codec<T> {
 
@@ -16,9 +15,9 @@ public interface Codec<T> {
 
   T decode(ByteBuffer input);
 
-  Optional<T> toNativeType(Object input);
+  T toNativeType(Object input);
 
-  default Optional<ByteBuffer> encodeObject(Object input) {
-    return toNativeType(input).map(this::encode);
+  default ByteBuffer encodeObject(Object input) {
+    return encode(toNativeType(input));
   }
 }

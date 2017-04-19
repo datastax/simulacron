@@ -131,11 +131,13 @@ public class CqlMapper {
     }
 
     @SuppressWarnings("unchecked")
-    public Optional<T> toNativeType(Object input) {
-      if (javaType.isTypeOrSubTypeOf(input.getClass())) {
-        return Optional.of((T) input);
+    public T toNativeType(Object input) {
+      if (input == null) {
+        return null;
+      } else if (javaType.getRawClass().isAssignableFrom(input.getClass())) {
+        return (T) input;
       } else {
-        return Optional.ofNullable(toNativeTypeInternal(input));
+        return toNativeTypeInternal(input);
       }
     }
 
@@ -474,6 +476,8 @@ public class CqlMapper {
         Boolean toNativeTypeInternal(Object input) {
           if (input instanceof String) {
             return Boolean.parseBoolean((String) input);
+          } else if (input instanceof Number) {
+            return ((Number) input).intValue() != 0;
           }
           return null;
         }
@@ -636,7 +640,9 @@ public class CqlMapper {
       new AbstractCodec<Date>(Date.class, primitive(TIMESTAMP)) {
         @Override
         Date toNativeTypeInternal(Object input) {
-          if (input instanceof Number) {
+          if (input instanceof String) {
+            return new Date(Long.parseLong((String) input));
+          } else if (input instanceof Number) {
             return new Date(((Number) input).longValue());
           }
           return null;

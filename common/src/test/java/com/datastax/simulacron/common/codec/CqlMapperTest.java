@@ -14,6 +14,8 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
 import static com.datastax.simulacron.common.Assertions.assertThat;
@@ -45,6 +47,12 @@ public class CqlMapperTest {
     encodeAndDecode(bigintCodec, Long.MAX_VALUE, "0x7fffffffffffffff");
     encodeAndDecode(bigintCodec, null, null, 0L);
 
+    encodeObjectAndDecode(bigintCodec, null, null, 0L);
+    encodeObjectAndDecode(bigintCodec, 7L, "0x0000000000000007", 7L);
+    encodeObjectAndDecode(bigintCodec, 7, "0x0000000000000007", 7L);
+    encodeObjectAndDecode(bigintCodec, "7", "0x0000000000000007", 7L);
+    encodeObjectAndDecode(bigintCodec, Optional.of(12), null, 0L);
+
     try {
       // not enough bytes.
       bigintCodec.decode(Bytes.fromHexString("0x00ff"));
@@ -61,6 +69,12 @@ public class CqlMapperTest {
     encodeAndDecode(blobCodec, Bytes.fromHexString("0x"), "0x");
     encodeAndDecode(blobCodec, Bytes.fromHexString("0x742f7e"), "0x742f7e");
     encodeAndDecode(blobCodec, null, null);
+
+    ByteBuffer buf = Bytes.fromHexString("0x8679FE");
+    encodeObjectAndDecode(blobCodec, null, null, null);
+    encodeObjectAndDecode(blobCodec, "0x8679FE", "0x8679fe", buf);
+    encodeObjectAndDecode(blobCodec, buf, "0x8679fe", buf);
+    encodeObjectAndDecode(blobCodec, Optional.of(12), null, null);
   }
 
   @Test
@@ -71,6 +85,12 @@ public class CqlMapperTest {
     encodeAndDecode(booleanCodec, true, "0x01");
     encodeAndDecode(booleanCodec, false, "0x00");
     encodeAndDecode(booleanCodec, null, null, false);
+
+    encodeObjectAndDecode(booleanCodec, false, "0x00", false);
+    encodeObjectAndDecode(booleanCodec, "TRUE", "0x01", true);
+    encodeObjectAndDecode(booleanCodec, 2, "0x01", true);
+    encodeObjectAndDecode(booleanCodec, null, null, false);
+    encodeObjectAndDecode(booleanCodec, Optional.of(12), null, false);
 
     try {
       // too many bytes
@@ -92,6 +112,13 @@ public class CqlMapperTest {
     encodeAndDecode(dateCodec, LocalDate.of(1970, 1, 1), "0x80000000");
     encodeAndDecode(dateCodec, LocalDate.of(1969, 12, 31), "0x7fffffff");
     encodeAndDecode(dateCodec, null, null);
+
+    encodeObjectAndDecode(
+        dateCodec, LocalDate.of(2017, 7, 4), "0x800043c7", LocalDate.of(2017, 7, 4));
+    encodeObjectAndDecode(dateCodec, 0, "0x80000000", LocalDate.of(1970, 1, 1));
+    encodeObjectAndDecode(dateCodec, null, null, null);
+    encodeObjectAndDecode(dateCodec, "2018-05-03", "0x800044f6", LocalDate.parse("2018-05-03"));
+    encodeObjectAndDecode(dateCodec, Optional.of(12), null, null);
   }
 
   @Test
@@ -103,6 +130,17 @@ public class CqlMapperTest {
         decimalCodec, new BigDecimal(8675e39), "0x00000000639588a2c184700000000000000000000000");
     encodeAndDecode(decimalCodec, new BigDecimal(0), "0x0000000000");
     encodeAndDecode(decimalCodec, null, null);
+
+    encodeObjectAndDecode(
+        decimalCodec,
+        new BigDecimal(8675e39),
+        "0x00000000639588a2c184700000000000000000000000",
+        new BigDecimal(8675e39));
+
+    encodeObjectAndDecode(decimalCodec, null, null, null);
+    encodeObjectAndDecode(decimalCodec, 5, "0x0000000005", new BigDecimal(5));
+    encodeObjectAndDecode(decimalCodec, "5", "0x0000000005", new BigDecimal(5));
+    encodeObjectAndDecode(decimalCodec, Optional.of(12), null, null);
 
     try {
       // not enough bytes.
@@ -123,6 +161,13 @@ public class CqlMapperTest {
     encodeAndDecode(doubleCodec, Double.MAX_VALUE, "0x7fefffffffffffff");
     encodeAndDecode(doubleCodec, null, null, 0.0);
 
+    encodeObjectAndDecode(doubleCodec, 86.765309, "0x4055b0fad2999568", 86.765309);
+    // precision loss
+    encodeObjectAndDecode(doubleCodec, 86.765309f, "0x4055b0fae0000000", 86.76531219482422);
+    encodeObjectAndDecode(doubleCodec, "86.765309", "0x4055b0fad2999568", 86.765309);
+    encodeObjectAndDecode(doubleCodec, null, null, 0.0);
+    encodeObjectAndDecode(doubleCodec, Optional.of(12), null, 0.0);
+
     try {
       // not enough bytes.
       doubleCodec.decode(Bytes.fromHexString("0x00ffef"));
@@ -142,6 +187,12 @@ public class CqlMapperTest {
     encodeAndDecode(floatCodec, Float.MAX_VALUE, "0x7f7fffff");
     encodeAndDecode(floatCodec, null, null, 0.0f);
 
+    encodeObjectAndDecode(floatCodec, 86.765309, "0x42ad87d7", 86.765309f);
+    encodeObjectAndDecode(floatCodec, 86.765309f, "0x42ad87d7", 86.765309f);
+    encodeObjectAndDecode(floatCodec, "86.765309", "0x42ad87d7", 86.765309f);
+    encodeObjectAndDecode(floatCodec, null, null, 0.0f);
+    encodeObjectAndDecode(floatCodec, Optional.of(12), null, 0.0f);
+
     try {
       // not enough bytes.
       floatCodec.decode(Bytes.fromHexString("0x00ff"));
@@ -155,15 +206,23 @@ public class CqlMapperTest {
     Codec<InetAddress> inetCodec = mapper.codecFor(primitive(INET));
     assertThat(inetCodec).isSameAs(mapper.inet);
 
-    // ipv4
-    encodeAndDecode(inetCodec, InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), "0x7f000001");
-    // ipv6
-    encodeAndDecode(
-        inetCodec,
+    InetAddress ipv6 =
         InetAddress.getByAddress(
-            new byte[] {127, 0, 0, 1, 127, 0, 0, 2, 127, 0, 0, 3, 122, 127, 125, 124}),
-        "0x7f0000017f0000027f0000037a7f7d7c");
+            new byte[] {127, 0, 0, 1, 127, 0, 0, 2, 127, 0, 0, 3, 122, 127, 125, 124});
+
+    InetAddress ipv4 = InetAddress.getByAddress(new byte[] {127, 0, 0, 1});
+
+    // ipv4
+    encodeAndDecode(inetCodec, ipv4, "0x7f000001");
+    // ipv6
+    encodeAndDecode(inetCodec, ipv6, "0x7f0000017f0000027f0000037a7f7d7c");
     encodeAndDecode(inetCodec, null, null);
+
+    encodeObjectAndDecode(inetCodec, ipv4, "0x7f000001", ipv4);
+    encodeObjectAndDecode(inetCodec, "127.0.0.1", "0x7f000001", ipv4);
+    encodeObjectAndDecode(inetCodec, "notanip.>>>", null, null);
+    encodeObjectAndDecode(inetCodec, null, null, null);
+    encodeObjectAndDecode(inetCodec, Optional.of(12), null, null);
 
     try {
       // invalid number of bytes.
@@ -184,6 +243,12 @@ public class CqlMapperTest {
     encodeAndDecode(intCodec, Integer.MIN_VALUE, "0x80000000");
     encodeAndDecode(intCodec, null, null, 0);
 
+    encodeObjectAndDecode(intCodec, 1, "0x00000001", 1);
+    encodeObjectAndDecode(intCodec, 1.0, "0x00000001", 1);
+    encodeObjectAndDecode(intCodec, "1", "0x00000001", 1);
+    encodeObjectAndDecode(intCodec, null, null, 0);
+    encodeObjectAndDecode(intCodec, Optional.of(12), null, 0);
+
     try {
       // not enough bytes.
       intCodec.decode(Bytes.fromHexString("0x00ff"));
@@ -201,6 +266,12 @@ public class CqlMapperTest {
     encodeAndDecode(smallintCodec, Short.MAX_VALUE, "0x7fff");
     encodeAndDecode(smallintCodec, Short.MIN_VALUE, "0x8000");
     encodeAndDecode(smallintCodec, null, null, (short) 0);
+
+    encodeObjectAndDecode(smallintCodec, (short) 1, "0x0001", (short) 1);
+    encodeObjectAndDecode(smallintCodec, 1.0, "0x0001", (short) 1);
+    encodeObjectAndDecode(smallintCodec, "1", "0x0001", (short) 1);
+    encodeObjectAndDecode(smallintCodec, null, null, (short) 0);
+    encodeObjectAndDecode(smallintCodec, Optional.of(12), null, (short) 0.0);
 
     try {
       // not enough bytes.
@@ -220,6 +291,12 @@ public class CqlMapperTest {
     encodeAndDecode(timeCodec, Long.MIN_VALUE, "0x8000000000000000");
     encodeAndDecode(timeCodec, Long.MAX_VALUE, "0x7fffffffffffffff");
     encodeAndDecode(timeCodec, null, null, 0L);
+
+    encodeObjectAndDecode(timeCodec, null, null, 0L);
+    encodeObjectAndDecode(timeCodec, 7L, "0x0000000000000007", 7L);
+    encodeObjectAndDecode(timeCodec, 7, "0x0000000000000007", 7L);
+    encodeObjectAndDecode(timeCodec, "7", "0x0000000000000007", 7L);
+    encodeObjectAndDecode(timeCodec, Optional.of(12), null, 0L);
   }
 
   @Test
@@ -229,6 +306,11 @@ public class CqlMapperTest {
 
     encodeAndDecode(timestampCodec, new Date(0), "0x0000000000000000");
     encodeAndDecode(timestampCodec, null, null);
+
+    encodeObjectAndDecode(timestampCodec, null, null, null);
+    encodeObjectAndDecode(timestampCodec, 7L, "0x0000000000000007", new Date(7));
+    encodeObjectAndDecode(timestampCodec, "7", "0x0000000000000007", new Date(7));
+    encodeObjectAndDecode(timestampCodec, Optional.of(12), null, null);
   }
 
   @Test
@@ -236,11 +318,16 @@ public class CqlMapperTest {
     Codec<UUID> timeuuidCodec = mapper.codecFor(primitive(TIMEUUID));
     assertThat(timeuuidCodec).isSameAs(mapper.timeuuid);
 
-    encodeAndDecode(
-        timeuuidCodec,
-        java.util.UUID.fromString("5bc64000-2157-11e7-bf6d-934d002a66ff"),
-        "0x5bc64000215711e7bf6d934d002a66ff");
+    String uuidStr = "5bc64000-2157-11e7-bf6d-934d002a66ff";
+    UUID uuid = java.util.UUID.fromString(uuidStr);
+    String byteStr = "0x5bc64000215711e7bf6d934d002a66ff";
+    encodeAndDecode(timeuuidCodec, uuid, byteStr);
     encodeAndDecode(timeuuidCodec, null, null);
+
+    encodeObjectAndDecode(timeuuidCodec, uuidStr, byteStr, uuid);
+    encodeObjectAndDecode(timeuuidCodec, uuid, byteStr, uuid);
+    encodeObjectAndDecode(timeuuidCodec, null, null, null);
+    encodeObjectAndDecode(timeuuidCodec, Optional.of(12), null, null);
   }
 
   @Test
@@ -252,6 +339,12 @@ public class CqlMapperTest {
     encodeAndDecode(tinyintCodec, Byte.MAX_VALUE, "0x7f");
     encodeAndDecode(tinyintCodec, Byte.MIN_VALUE, "0x80");
     encodeAndDecode(tinyintCodec, null, null, (byte) 0);
+
+    encodeObjectAndDecode(tinyintCodec, (byte) 1, "0x01", (byte) 1);
+    encodeObjectAndDecode(tinyintCodec, 1.0, "0x01", (byte) 1);
+    encodeObjectAndDecode(tinyintCodec, "1", "0x01", (byte) 1);
+    encodeObjectAndDecode(tinyintCodec, null, null, (byte) 0);
+    encodeObjectAndDecode(tinyintCodec, Optional.of(12), null, (byte) 0);
 
     try {
       // too many bytes
@@ -266,11 +359,16 @@ public class CqlMapperTest {
     Codec<UUID> uuidCodec = mapper.codecFor(primitive(UUID));
     assertThat(uuidCodec).isSameAs(mapper.uuid);
 
-    encodeAndDecode(
-        uuidCodec,
-        java.util.UUID.fromString("d79c8651-b8de-4f1c-b965-d41258e2373c"),
-        "0xd79c8651b8de4f1cb965d41258e2373c");
+    String uuidStr = "d79c8651-b8de-4f1c-b965-d41258e2373c";
+    UUID uuid = java.util.UUID.fromString(uuidStr);
+    String byteStr = "0xd79c8651b8de4f1cb965d41258e2373c";
+    encodeAndDecode(uuidCodec, uuid, byteStr);
     encodeAndDecode(uuidCodec, null, null);
+
+    encodeObjectAndDecode(uuidCodec, uuidStr, byteStr, uuid);
+    encodeObjectAndDecode(uuidCodec, uuid, byteStr, uuid);
+    encodeObjectAndDecode(uuidCodec, null, null, null);
+    encodeObjectAndDecode(uuidCodec, Optional.of(12), null, null);
   }
 
   @Test
@@ -282,6 +380,10 @@ public class CqlMapperTest {
     encodeAndDecode(varcharCodec, "", "0x");
     encodeAndDecode(varcharCodec, "∆yøπ", "0xe2888679c3b8cf80");
     encodeAndDecode(varcharCodec, null, null);
+
+    encodeObjectAndDecode(varcharCodec, "hello", "0x68656c6c6f", "hello");
+    encodeObjectAndDecode(varcharCodec, 5, "0x35", "5");
+    encodeObjectAndDecode(varcharCodec, null, null, null);
   }
 
   @Test
@@ -289,9 +391,18 @@ public class CqlMapperTest {
     Codec<BigInteger> varintCodec = mapper.codecFor(primitive(VARINT));
     assertThat(varintCodec).isSameAs(mapper.varint);
 
+    BigInteger bigInt = new BigInteger("8574747744773434", 10);
+    String bigIntStr = "0x1e76b0095da53a";
+
     encodeAndDecode(varintCodec, BigInteger.ZERO, "0x00");
-    encodeAndDecode(varintCodec, new BigInteger("8574747744773434", 10), "0x1e76b0095da53a");
+    encodeAndDecode(varintCodec, bigInt, bigIntStr);
     encodeAndDecode(varintCodec, null, null);
+
+    encodeObjectAndDecode(varintCodec, bigInt, bigIntStr, bigInt);
+    encodeObjectAndDecode(varintCodec, "8574747744773434", bigIntStr, bigInt);
+    encodeObjectAndDecode(varintCodec, 8577, "0x2181", BigInteger.valueOf(8577));
+    encodeObjectAndDecode(varintCodec, null, null, null);
+    encodeObjectAndDecode(varintCodec, Optional.of(12), null, null);
   }
 
   @Test
@@ -305,12 +416,18 @@ public class CqlMapperTest {
     l.add("one");
     l.add("two");
     l.add("one");
+    String listStr = "0x00000003000000036f6e650000000374776f000000036f6e65";
 
     encodeAndDecode(
         listStringCodec, Collections.singletonList("hello"), "0x000000010000000568656c6c6f");
-    encodeAndDecode(listStringCodec, l, "0x00000003000000036f6e650000000374776f000000036f6e65");
+    encodeAndDecode(listStringCodec, l, listStr);
     encodeAndDecode(listStringCodec, Collections.emptyList(), "0x00000000");
     encodeAndDecode(listStringCodec, null, null, Collections.emptyList());
+
+    encodeObjectAndDecode(listStringCodec, l, listStr, l);
+    encodeObjectAndDecode(listStringCodec, new LinkedBlockingQueue<>(l), listStr, l);
+    encodeObjectAndDecode(listStringCodec, null, null, Collections.emptyList());
+    encodeObjectAndDecode(listStringCodec, Optional.of(12), null, Collections.emptyList());
 
     // Null value in List
     try {
@@ -351,11 +468,17 @@ public class CqlMapperTest {
     s.add(1);
     s.add(2);
     s.add(-40);
+    String setStr = "0x000000030000000400000001000000040000000200000004ffffffd8";
 
     encodeAndDecode(setIntCodec, Collections.singleton(77), "0x00000001000000040000004d");
-    encodeAndDecode(setIntCodec, s, "0x000000030000000400000001000000040000000200000004ffffffd8");
+    encodeAndDecode(setIntCodec, s, setStr);
     encodeAndDecode(setIntCodec, Collections.emptySet(), "0x00000000");
     encodeAndDecode(setIntCodec, null, null, Collections.emptySet());
+
+    encodeObjectAndDecode(setIntCodec, s, setStr, s);
+    encodeObjectAndDecode(setIntCodec, new ArrayList<>(s), setStr, s);
+    encodeObjectAndDecode(setIntCodec, null, null, Collections.emptySet());
+    encodeObjectAndDecode(setIntCodec, Optional.of(12), null, Collections.emptySet());
 
     // Null value in Set
     try {
@@ -398,12 +521,15 @@ public class CqlMapperTest {
     Map<String, Integer> m = new LinkedHashMap<>();
     m.put("hello", 8675);
     m.put("world", 309);
+    String mapStr =
+        "0x000000020000000568656c6c6f00000004000021e300000005776f726c640000000400000135";
 
-    encodeAndDecode(
-        mapCodec,
-        m,
-        "0x000000020000000568656c6c6f00000004000021e300000005776f726c640000000400000135");
+    encodeAndDecode(mapCodec, m, mapStr);
     encodeAndDecode(mapCodec, null, null, Collections.emptyMap());
+
+    encodeObjectAndDecode(mapCodec, m, mapStr, m);
+    encodeObjectAndDecode(mapCodec, null, null, Collections.emptyMap());
+    encodeObjectAndDecode(mapCodec, Optional.of(12), null, Collections.emptyMap());
 
     // Null values not allowed.
     try {
@@ -506,6 +632,12 @@ public class CqlMapperTest {
 
   <T> void encodeAndDecode(Codec<T> codec, T input, String expectedByteStr, T expected) {
     ByteBuffer byteBuf = codec.encode(input);
+    assertThat(byteBuf).hasBytes(expectedByteStr);
+    assertThat(codec.decode(byteBuf)).isEqualTo(expected);
+  }
+
+  <T> void encodeObjectAndDecode(Codec<T> codec, Object input, String expectedByteStr, T expected) {
+    ByteBuffer byteBuf = codec.encodeObject(input);
     assertThat(byteBuf).hasBytes(expectedByteStr);
     assertThat(codec.decode(byteBuf)).isEqualTo(expected);
   }
