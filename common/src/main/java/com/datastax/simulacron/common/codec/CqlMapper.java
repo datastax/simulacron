@@ -130,9 +130,20 @@ public class CqlMapper {
       return decodeInternal(input);
     }
 
+    @SuppressWarnings("unchecked")
+    public Optional<T> toNativeType(Object input) {
+      if (javaType.isTypeOrSubTypeOf(input.getClass())) {
+        return Optional.of((T) input);
+      } else {
+        return Optional.ofNullable(toNativeTypeInternal(input));
+      }
+    }
+
     abstract ByteBuffer encodeInternal(T input);
 
     abstract T decodeInternal(ByteBuffer input);
+
+    abstract T toNativeTypeInternal(Object input);
 
     @Override
     public JavaType getJavaType() {
@@ -175,6 +186,12 @@ public class CqlMapper {
           throw new InvalidTypeException("Invalid bytes for charset " + charset, e);
         }
       }
+    }
+
+    /** @return The result of {@link Object#toString()}. */
+    @Override
+    String toNativeTypeInternal(Object input) {
+      return input.toString();
     }
   }
 
@@ -239,6 +256,15 @@ public class CqlMapper {
     protected Set<E> newInstance(int size) {
       return new LinkedHashSet<>(size);
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    Set<E> toNativeTypeInternal(Object input) {
+      if (input instanceof Collection) {
+        return new LinkedHashSet<>((Collection<E>) input);
+      }
+      return null;
+    }
   }
 
   class ListCodec<E> extends CollectionCodec<E, List<E>> {
@@ -253,6 +279,15 @@ public class CqlMapper {
     @Override
     protected List<E> newInstance(int size) {
       return new ArrayList<>(size);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    List<E> toNativeTypeInternal(Object input) {
+      if (input instanceof Collection) {
+        return new ArrayList<>((Collection<E>) input);
+      }
+      return null;
     }
   }
 
@@ -328,6 +363,12 @@ public class CqlMapper {
         throw new InvalidTypeException("Not enough bytes to deserialize a map", e);
       }
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    Map<K, V> toNativeTypeInternal(Object input) {
+      return null;
+    }
   }
 
   class LongCodec extends AbstractCodec<Long> {
@@ -358,6 +399,16 @@ public class CqlMapper {
         return input.getLong(input.position());
       }
     }
+
+    @Override
+    Long toNativeTypeInternal(Object input) {
+      if (input instanceof String) {
+        return Long.parseLong(((String) input));
+      } else if (input instanceof Number) {
+        return ((Number) input).longValue();
+      }
+      return null;
+    }
   }
 
   class UUIDCodec extends AbstractCodec<UUID> {
@@ -380,6 +431,14 @@ public class CqlMapper {
           ? null
           : new UUID(input.getLong(input.position()), input.getLong(input.position() + 8));
     }
+
+    @Override
+    UUID toNativeTypeInternal(Object input) {
+      if (input instanceof String) {
+        return java.util.UUID.fromString((String) input);
+      }
+      return null;
+    }
   }
 
   public final Codec<String> ascii = new StringCodec("US-ASCII", primitive(ASCII));
@@ -388,6 +447,14 @@ public class CqlMapper {
 
   public final Codec<ByteBuffer> blob =
       new AbstractCodec<ByteBuffer>(ByteBuffer.class, primitive(BLOB)) {
+
+        @Override
+        ByteBuffer toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return Bytes.fromHexString((String) input);
+          }
+          return null;
+        }
 
         @Override
         ByteBuffer encodeInternal(ByteBuffer input) {
@@ -402,6 +469,14 @@ public class CqlMapper {
 
   public final Codec<Boolean> bool =
       new AbstractCodec<Boolean>(Boolean.class, primitive(BOOLEAN)) {
+
+        @Override
+        Boolean toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return Boolean.parseBoolean((String) input);
+          }
+          return null;
+        }
 
         @Override
         ByteBuffer encodeInternal(Boolean input) {
@@ -425,6 +500,16 @@ public class CqlMapper {
 
   public final Codec<BigDecimal> decimal =
       new AbstractCodec<BigDecimal>(BigDecimal.class, primitive(DECIMAL)) {
+        @Override
+        BigDecimal toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return new BigDecimal((String) input);
+          } else if (input instanceof Number) {
+            return new BigDecimal(((Number) input).doubleValue());
+          }
+          return null;
+        }
+
         @Override
         ByteBuffer encodeInternal(BigDecimal input) {
           BigInteger bi = input.unscaledValue();
@@ -459,6 +544,16 @@ public class CqlMapper {
       new AbstractCodec<Double>(Double.class, primitive(DOUBLE)) {
 
         @Override
+        Double toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return Double.parseDouble((String) input);
+          } else if (input instanceof Number) {
+            return ((Number) input).doubleValue();
+          }
+          return null;
+        }
+
+        @Override
         ByteBuffer encodeInternal(Double input) {
           ByteBuffer bb = ByteBuffer.allocate(8);
           bb.putDouble(0, input);
@@ -478,6 +573,16 @@ public class CqlMapper {
 
   public final Codec<Float> cfloat =
       new AbstractCodec<Float>(Float.class, primitive(FLOAT)) {
+        @Override
+        Float toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return Float.parseFloat((String) input);
+          } else if (input instanceof Number) {
+            return ((Number) input).floatValue();
+          }
+          return null;
+        }
+
         @Override
         ByteBuffer encodeInternal(Float input) {
           ByteBuffer bb = ByteBuffer.allocate(4);
@@ -500,6 +605,16 @@ public class CqlMapper {
       new AbstractCodec<Integer>(Integer.class, primitive(INT)) {
 
         @Override
+        Integer toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return Integer.parseInt((String) input);
+          } else if (input instanceof Number) {
+            return ((Number) input).intValue();
+          }
+          return null;
+        }
+
+        @Override
         ByteBuffer encodeInternal(Integer input) {
           ByteBuffer bb = ByteBuffer.allocate(4);
           bb.putInt(0, input);
@@ -520,6 +635,14 @@ public class CqlMapper {
   public final Codec<Date> timestamp =
       new AbstractCodec<Date>(Date.class, primitive(TIMESTAMP)) {
         @Override
+        Date toNativeTypeInternal(Object input) {
+          if (input instanceof Number) {
+            return new Date(((Number) input).longValue());
+          }
+          return null;
+        }
+
+        @Override
         ByteBuffer encodeInternal(Date input) {
           return input == null ? null : bigint.encode(input.getTime());
         }
@@ -537,6 +660,16 @@ public class CqlMapper {
   public final Codec<BigInteger> varint =
       new AbstractCodec<BigInteger>(BigInteger.class, primitive(VARINT)) {
         @Override
+        BigInteger toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return new BigInteger((String) input);
+          } else if (input instanceof Number) {
+            return BigInteger.valueOf(((Number) input).longValue());
+          }
+          return null;
+        }
+
+        @Override
         ByteBuffer encodeInternal(BigInteger input) {
           return ByteBuffer.wrap(input.toByteArray());
         }
@@ -553,6 +686,19 @@ public class CqlMapper {
 
   public final Codec<InetAddress> inet =
       new AbstractCodec<InetAddress>(InetAddress.class, primitive(INET)) {
+
+        @Override
+        InetAddress toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            try {
+              // TODO switch to implementation which doesn't use resolv
+              return InetAddress.getByName((String) input);
+            } catch (UnknownHostException e) {
+              logger.error("Failure resolving host: ", input, e);
+            }
+          }
+          return null;
+        }
 
         @Override
         ByteBuffer encodeInternal(InetAddress input) {
@@ -574,6 +720,16 @@ public class CqlMapper {
   public final Codec<LocalDate> date =
       new AbstractCodec<LocalDate>(LocalDate.class, primitive(DATE), 4) {
         @Override
+        LocalDate toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return LocalDate.parse((String) input);
+          } else if (input instanceof Number) {
+            return LocalDate.ofEpochDay(((Number) input).longValue());
+          }
+          return null;
+        }
+
+        @Override
         ByteBuffer encodeInternal(LocalDate input) {
           int unsigned = (int) input.toEpochDay() - Integer.MIN_VALUE;
           return cint.encode(unsigned);
@@ -592,6 +748,16 @@ public class CqlMapper {
 
   public final Codec<Short> smallint =
       new AbstractCodec<Short>(Short.class, primitive(SMALLINT), 4) {
+
+        @Override
+        Short toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return Short.parseShort((String) input);
+          } else if (input instanceof Number) {
+            return ((Number) input).shortValue();
+          }
+          return null;
+        }
 
         @Override
         ByteBuffer encodeInternal(Short input) {
@@ -613,6 +779,16 @@ public class CqlMapper {
 
   public final Codec<Byte> tinyint =
       new AbstractCodec<Byte>(Byte.class, primitive(TINYINT), 4) {
+
+        @Override
+        Byte toNativeTypeInternal(Object input) {
+          if (input instanceof String) {
+            return Byte.parseByte((String) input);
+          } else if (input instanceof Number) {
+            return ((Number) input).byteValue();
+          }
+          return null;
+        }
 
         @Override
         ByteBuffer encodeInternal(Byte input) {
