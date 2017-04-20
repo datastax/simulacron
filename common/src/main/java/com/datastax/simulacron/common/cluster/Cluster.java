@@ -19,6 +19,8 @@ public class Cluster extends AbstractNodeProperties {
 
   @JsonIgnore private final transient AtomicLong dcCounter = new AtomicLong(0);
 
+  @JsonIgnore private final transient ActivityLog activityLog = new ActivityLog();
+
   Cluster() {
     // Default constructor for jackson deserialization.
     this(null, null, null, null, Collections.emptyMap());
@@ -120,5 +122,9 @@ public class Cluster extends AbstractNodeProperties {
       }
       return cluster;
     }
+  }
+
+  public ActivityLog getActivityLog() {
+    return this.activityLog;
   }
 }

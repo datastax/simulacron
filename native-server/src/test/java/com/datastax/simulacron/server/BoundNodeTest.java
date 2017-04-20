@@ -2,19 +2,19 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
+import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Prepare;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.request.Startup;
+import com.datastax.oss.protocol.internal.request.query.QueryOptions;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.result.Prepared;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.oss.protocol.internal.response.result.Void;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import com.datastax.simulacron.common.stubbing.StubMapping;
@@ -171,5 +171,36 @@ public class BoundNodeTest {
     // Should be another action that is processed immediately after that is an options message.
     frame = channel.readOutbound();
     assertThat(frame.message).isSameAs(Options.INSTANCE);
+  }
+
+  @Test
+  public void shouldStoreFrameHistory() {
+    Frame request1 = FrameUtils.wrapRequest(new Query("use myks"));
+    QueryOptions options =
+        new QueryOptions(
+            ProtocolConstants.ConsistencyLevel.QUORUM,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            false,
+            -1,
+            null,
+            ProtocolConstants.ConsistencyLevel.SERIAL,
+            Long.MIN_VALUE);
+    Query query2 = new Query("select * from table1", options);
+    Frame request2 = FrameUtils.wrapRequest(query2);
+    channel.writeInbound(request1);
+    channel.readOutbound();
+    channel.writeInbound(request2);
+    channel.readOutbound();
+
+    assertThat(node.getCluster().getActivityLog()).isInstanceOf(ActivityLog.class);
+    ActivityLog activityLog = node.getCluster().getActivityLog();
+    assertThat(activityLog.getSize()).isEqualTo(2);
+    QueryLog log1 = activityLog.getLogs().get(0);
+    assertThat(log1.getQuery()).isEqualTo("use myks");
+    assertThat(log1.getConsistency()).isEqualTo(ProtocolConstants.ConsistencyLevel.ONE);
+    QueryLog log2 = activityLog.getLogs().get(1);
+    assertThat(log2.getQuery()).isEqualTo("select * from table1");
+    assertThat(log2.getConsistency()).isEqualTo(ProtocolConstants.ConsistencyLevel.QUORUM);
   }
 }

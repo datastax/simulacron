@@ -1,16 +1,22 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.driver.core.*;
+import com.datastax.oss.protocol.internal.ProtocolConstants;
+import com.datastax.oss.protocol.internal.request.Query;
+import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.oss.protocol.internal.request.query.QueryOptions;
 import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
+import com.datastax.simulacron.common.utils.FrameUtils;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpMethod;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -20,6 +26,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ConsistencyLevel.QUORUM;
+import static com.datastax.simulacron.common.utils.FrameUtils.wrapRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 
@@ -313,6 +321,59 @@ public class HttpContainerIntegrationTest {
     }
   }
 
+  @Test
+  public void testVerifyQueriesiFromCluster() {
+    try {
+      HttpClient client = vertx.createHttpClient();
+      Cluster clusterCreated = this.createSingleNodeCluster(client);
+
+      createSimplePrimedQuery("Select * FROM TABLE1");
+      createSimplePrimedQuery("Select * FROM TABLE2");
+
+      String contactPoint = getContactPointString(clusterCreated);
+      makeNativeQuery("Select * FROM TABLE1", contactPoint);
+      makeNativeQuery("Select * FROM TABLE2", contactPoint);
+
+      HttpTestResponse queryLogResponse = getQueryLog(client, clusterCreated.getId().toString());
+      assertThat(queryLogResponse.body).isNotEmpty();
+      QueryLog[] queryLogs = om.readValue(queryLogResponse.body, QueryLog[].class);
+
+      assertThat(queryLogs).isNotNull();
+      assertThat(queryLogs.length).isGreaterThan(2);
+    } catch (Exception e) {
+      fail("error encountered");
+    }
+  }
+
+  @Test
+  public void testVerifyQueriesFromDataCenterAndNode() {
+    try {
+      HttpClient client = vertx.createHttpClient();
+      Cluster clusterCreated = this.createMultiNodeCluster(client, "3,3");
+
+      createSimplePrimedQuery("Select * FROM TABLE1");
+      createSimplePrimedQuery("Select * FROM TABLE2");
+
+      String contactPoint = getContactPointString(clusterCreated);
+      makeNativeQuery("Select * FROM TABLE1", contactPoint);
+      makeNativeQuery("Select * FROM TABLE2", contactPoint);
+
+      HttpTestResponse queryLogResponse = getQueryLog(client, clusterCreated.getId() + "/0/0");
+      assertThat(queryLogResponse.body).isNotEmpty();
+      QueryLog[] queryLogs = om.readValue(queryLogResponse.body, QueryLog[].class);
+      assertThat(queryLogs).isNotNull();
+      assertThat(queryLogs.length).isEqualTo(2);
+
+      queryLogResponse = getQueryLog(client, clusterCreated.getId() + "/1");
+      assertThat(queryLogResponse.body).isNotEmpty();
+      queryLogs = om.readValue(queryLogResponse.body, QueryLog[].class);
+      assertThat(queryLogs).isNotNull();
+      assertThat(queryLogs.length).isEqualTo(0);
+    } catch (Exception e) {
+      fail("error encountered");
+    }
+  }
+
   private String getContactPointString(Cluster cluster) {
     String rawaddress = cluster.getNodes().get(0).getAddress().toString();
     return rawaddress.substring(1, rawaddress.length() - 5);
@@ -407,6 +468,64 @@ public class HttpContainerIntegrationTest {
       fail("Exception encountered");
       return null;
     }
+  }
+
+  private Cluster createMultiNodeCluster(HttpClient client, String datacenters) {
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.POST,
+            portNum,
+            "127.0.0.1",
+            "/cluster/?data_centers=" + datacenters,
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    String body = totalBuffer.toString();
+                    HttpTestResponse testResponse = new HttpTestResponse(response, body);
+                    future.complete(testResponse);
+                  });
+            })
+        .end();
+
+    try {
+      HttpTestResponse responseToValidate = future.get();
+      ObjectMapper om = ClusterMapper.getMapper();
+      //create cluster object from json return code
+      assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
+      Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
+      return cluster;
+    } catch (Exception e) {
+      fail("Exception encountered");
+      return null;
+    }
+  }
+
+  private HttpTestResponse getQueryLog(HttpClient client, String logPath) {
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    try {
+      client
+          .request(
+              HttpMethod.GET,
+              portNum,
+              "127.0.0.1",
+              "/log/" + logPath,
+              response -> {
+                response.bodyHandler(
+                    totalBuffer -> {
+                      future.complete(new HttpTestResponse(response, totalBuffer.toString()));
+                    });
+              })
+          .end();
+
+      HttpTestResponse responseToValidate = future.get();
+      assertThat(responseToValidate.response.statusCode()).isEqualTo(200);
+      return responseToValidate;
+    } catch (Exception e) {
+      logger.error("Exception", e);
+      fail("Exception encountered");
+    }
+    return null;
   }
 
   private void validateCluster(HttpTestResponse responseToValidate, int expectedStatusCode)

@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -214,6 +215,11 @@ class BoundNode extends Node {
 
   void handle(ChannelHandlerContext ctx, Frame frame) {
     logger.debug("Got request streamId: {} msg: {}", frame.streamId, frame.message);
+
+    //store the frame in history
+    Node clusterNode =
+        getCluster().getNodes().stream().filter(n -> n.getId() == getId()).findFirst().get();
+    getCluster().getActivityLog().addLog(clusterNode, frame);
 
     // On receiving a message, first check the stub store to see if there is handling logic for it.
     // If there is, handle each action.

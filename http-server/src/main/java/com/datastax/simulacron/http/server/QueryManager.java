@@ -1,7 +1,7 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.oss.protocol.internal.response.result.RawType;
-import com.datastax.simulacron.common.cluster.QueryPrime;
+import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
@@ -10,6 +10,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+
+import static com.datastax.simulacron.http.server.HttpUtils.handleError;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,6 +109,87 @@ public class QueryManager implements HttpListener {
   }
 
   /**
+   * This is an async callback that will be invoked whenever a request to /log is submitted with
+   * GET. When a clusterId is provided in the format of /log/:clusterId, we will fetch that specific
+   * id.
+   *
+   * <p>Example supported HTTP requests
+   *
+   * <p>GET http://iphere:porthere/log/:clusterId Will return all queries invoked by clients to a
+   * cluster
+   *
+   * <p>GET http://iphere:porthere/log/:clusterId/:datacenterId Will return all queries invoked by
+   * clients to a datacenter of a cluster
+   *
+   * <p>GET http://iphere:porthere/log/:clusterIdi/:datacenterId/:nodeId Will return all queries
+   * invoked by clients to a node of a datacenter of a cluster
+   *
+   * @param context RoutingContext Provided by vertx
+   */
+  private void getQueryLog(RoutingContext context) {
+    context
+        .request()
+        .bodyHandler(
+            totalBuffer -> {
+              try {
+                Map<Long, Cluster> clusters = this.server.getClusterRegistry();
+                ObjectMapper om = ClusterMapper.getMapper();
+                StringBuilder response = new StringBuilder();
+                String idToFetch = context.request().getParam("clusterId");
+                String dcIdToFetch = context.request().getParam("datacenterId");
+                String nodeIdToFetch = context.request().getParam("nodeId");
+                if (idToFetch != null) {
+                  Long id = Long.parseLong(idToFetch);
+                  Cluster cluster = clusters.get(id);
+                  if (cluster == null) {
+                    handleError(
+                        new ErrorMessage("No cluster registered with id " + id, 404), context);
+                  }
+
+                  List<QueryLog> logs = cluster.getActivityLog().getLogs();
+
+                  if (dcIdToFetch != null && nodeIdToFetch != null) {
+                    try {
+                      long datacenterId = Long.parseLong(dcIdToFetch);
+                      long nodeId = Long.parseLong(nodeIdToFetch);
+                      logs = cluster.getActivityLog().getLogsFromNode(datacenterId, nodeId);
+                    } catch (NumberFormatException exception) {
+                      handleError(new ErrorMessage(exception.getMessage(), 404), context);
+                    }
+                  }
+
+                  if (dcIdToFetch != null && nodeIdToFetch == null) {
+                    try {
+                      long datacenterId = Long.parseLong(dcIdToFetch);
+                      logs = cluster.getActivityLog().getLogsFromDatacenter(datacenterId);
+                    } catch (NumberFormatException exception) {
+                      handleError(new ErrorMessage(exception.getMessage(), 404), context);
+                    }
+                  }
+
+                  String activityLogStr =
+                      om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
+                  response.append(activityLogStr);
+
+                } else {
+
+                  String clusterStr =
+                      om.writerWithDefaultPrettyPrinter().writeValueAsString(clusters.values());
+                  response.append(clusterStr);
+                }
+                context
+                    .request()
+                    .response()
+                    .putHeader("content-type", "application/json")
+                    .setStatusCode(200)
+                    .end(response.toString());
+              } catch (Exception e) {
+                handleError(new ErrorMessage(e, 404), context);
+              }
+            });
+  }
+
+  /**
    * Convenience method to set failure on response and print a relative error messaged
    *
    * @param e Exception thrown
@@ -127,5 +215,10 @@ public class QueryManager implements HttpListener {
   public void registerWithRouter(Router router) {
     router.route(HttpMethod.POST, "/prime*").handler(this::primerQuery);
     router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
+    router.route(HttpMethod.GET, "/log/:clusterId").handler(this::getQueryLog);
+    router.route(HttpMethod.GET, "/log/:clusterId/:datacenterId").handler(this::getQueryLog);
+    router
+        .route(HttpMethod.GET, "/log/:clusterId/:datacenterId/:nodeId")
+        .handler(this::getQueryLog);
   }
 }
