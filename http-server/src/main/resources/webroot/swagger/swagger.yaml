@@ -105,6 +105,18 @@ paths:
           schema:
             $ref: '#/definitions/Cluster'
 definitions:
+  PeerInfo:
+    type: object
+    properties:
+      rack:
+        type: string
+        example: rack1
+      bootstrapped:
+        type: string
+        example: COMPLETED
+      cql_version:
+        type: string
+        example: "3.2.0"
   Node:
     type: object
     required:
@@ -119,6 +131,8 @@ definitions:
       cassandra_version:
         type: string
         example: 3.0.13
+      peer_info:
+        $ref: '#/definitions/PeerInfo'
   DataCenter:
     type: object
     required:
@@ -138,6 +152,8 @@ definitions:
       cassandra_version:
         type: string
         example: 3.0.13
+      peer_info:
+        $ref: '#/definitions/PeerInfo'
   Cluster:
     type: object
     required:
@@ -157,3 +173,23 @@ definitions:
       cassandra_version:
         type: string
         example: 3.0.13
+      peer_info:
+        $ref: '#/definitions/PeerInfo'
+    example:
+      name: "cluster0"
+      data_centers:
+        - name: "dc0"
+          nodes:
+          - name: "node0"
+            peer_info:
+              rack: "rack0"
+          - name: "node1"
+            peer_info:
+              rack: "rack1"
+          - name: "node2"
+            peer_info:
+              rack: "rack2"
+        - name: "dc1"
+          nodes:
+          - name: "node0"
+          - name: "node1"

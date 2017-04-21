@@ -11,7 +11,9 @@ public class SwaggerUI implements HttpListener {
     staticHandler.setWebRoot("META-INF/resources/webjars");
     router.route("/static/*").handler(staticHandler);
 
-    StaticHandler swaggerHandler = StaticHandler.create().setWebRoot("webroot/swagger");
+    // Disable caching so you don't need to clear cache everytime yaml changes.
+    StaticHandler swaggerHandler =
+        StaticHandler.create().setWebRoot("webroot/swagger").setCachingEnabled(false);
     router.route("/doc/*").handler(swaggerHandler);
   }
 }
