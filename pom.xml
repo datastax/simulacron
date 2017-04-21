@@ -20,6 +20,7 @@
         <module>common</module>
         <module>native-server</module>
         <module>http-server</module>
+        <module>standalone</module>
     </modules>
 
     <properties>
@@ -35,6 +36,7 @@
         <caffeine.version>2.4.0</caffeine.version>
         <java-driver.version>3.2.0</java-driver.version>
         <swagger-ui.version>3.0.5</swagger-ui.version>
+        <jcommander.version>1.64</jcommander.version>
         <format.validateOnly>true</format.validateOnly>
     </properties>
 

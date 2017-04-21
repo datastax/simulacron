@@ -18,6 +18,7 @@ public class HttpContainer {
 
   public static final int DEFAULT_PORT = 8187;
 
+  private String host;
   private int port = DEFAULT_PORT;
   private boolean enableLogging = true;
   private Router router = null;
@@ -27,6 +28,11 @@ public class HttpContainer {
       new ConcurrentHashMap<String, Object>();
 
   public HttpContainer(int port, boolean enableLogging) {
+    this("localhost", port, enableLogging);
+  }
+
+  public HttpContainer(String host, int port, boolean enableLogging) {
+    this.host = host;
     this.port = port;
     this.enableLogging = enableLogging;
     vertx = Vertx.vertx();
@@ -41,6 +47,7 @@ public class HttpContainer {
     CompletableFuture<Void> future = new CompletableFuture<>();
     server.listen(
         port,
+        host,
         res -> {
           future.complete(null);
         });
