@@ -28,10 +28,20 @@ public class PeerMetadataHandlerTest {
   private static Node node1;
   private static CqlMapper mapper = CqlMapper.forVersion(4);
 
+  // A 3 node cluster mimicking DSE 5.1.
+  private static Cluster dseCluster;
+  private static Node dseNode0;
+
   private PeerMetadataHandler handler = new PeerMetadataHandler();
 
   static {
     cluster = Cluster.builder().withName("cluster0").build();
+    dseCluster = Cluster.builder().withName("dseCluster0").withDSEVersion("5.0.8").build();
+    DataCenter dseDc0 = dseCluster.addDataCenter().withName("dseDc0").build();
+    dseNode0 = dseDc0.addNode().withPeerInfo("graph", true).build();
+    dseDc0.addNode().build();
+    dseDc0.addNode().build();
+
     DataCenter dc0 = cluster.addDataCenter().withName("dc0").build();
     DataCenter dc1 = cluster.addDataCenter().withName("dc1").build();
     try {
@@ -129,6 +139,38 @@ public class PeerMetadataHandlerTest {
   }
 
   @Test
+  public void shouldHandleQueryLocalDSE() {
+    // querying the local table should return node info and include dse specific columns
+    List<Action> node0Actions =
+        handler.getActions(dseNode0, queryFrame("SELECT * FROM system.local WHERE key='local'"));
+
+    assertThat(node0Actions).hasSize(1);
+
+    Action node0Action = node0Actions.get(0);
+    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+    assertThat(node0Message)
+        .isRows()
+        .hasRows(1)
+        .hasColumnSpecs(14) // should include dse_version and graph columns
+        .hasColumn(0, 0, "local")
+        .hasColumn(0, 1, "COMPLETED")
+        .hasColumn(0, 2, InetAddress.getLoopbackAddress())
+        .hasColumn(0, 3, dseCluster.getName())
+        .hasColumn(0, 4, "3.2.0")
+        .hasColumn(0, 5, dseNode0.getDataCenter().getName())
+        .hasColumn(0, 6, InetAddress.getLoopbackAddress())
+        .hasColumn(0, 7, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 8, "rack1")
+        .hasColumn(0, 9, "3.0.12")
+        .hasColumn(0, 10, Collections.singleton("0"))
+        .hasColumn(0, 11, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 12, "5.0.8")
+        .hasColumn(0, 13, true);
+  }
+
+  @Test
   public void shouldHandleQueryLocalNode1() {
     // querying the local table should return node info for node1
     List<Action> node1Actions =
@@ -154,11 +196,7 @@ public class PeerMetadataHandlerTest {
         .hasColumn(0, 7, "org.apache.cassandra.dht.Murmur3Partitioner")
         .hasColumn(0, 8, "rack1")
         .hasColumn(0, 9, "3.0.12")
-        .hasColumn(
-            0,
-            10,
-            Collections.singleton(
-                "100")) // since first node in second DC, should be offset 100 of 0
+        .hasColumn(0, 10, Collections.singleton("0"))
         .hasColumn(0, 11, PeerMetadataHandler.schemaVersion);
   }
 
@@ -196,6 +234,23 @@ public class PeerMetadataHandlerTest {
 
     // should be 199 peers (200 node cluster - 1 for this node).
     assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(9);
+  }
+
+  @Test
+  public void shouldHandleQueryAllPeersDSE() {
+    // querying for peers should return a row for each other node in the cluster and return DSE columns
+    List<Action> node0Actions =
+        handler.getActions(dseNode0, queryFrame("SELECT * FROM system.peers"));
+
+    assertThat(node0Actions).hasSize(1);
+
+    Action node0Action = node0Actions.get(0);
+    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+    // should be 2 peers and 11 columns (2 extra for dse)
+    assertThat(node0Message).isRows().hasRows(2).hasColumnSpecs(11);
   }
 
   @Test

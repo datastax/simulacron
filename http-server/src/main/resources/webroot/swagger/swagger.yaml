@@ -117,6 +117,12 @@ definitions:
       cql_version:
         type: string
         example: "3.2.0"
+      token:
+        type: string
+        example: 6148914691236517204
+      graph:
+        type: boolean
+        example: false
   Node:
     type: object
     required:
@@ -131,6 +137,9 @@ definitions:
       cassandra_version:
         type: string
         example: 3.0.13
+      dse_version:
+        type: string
+        example: 5.0.8
       peer_info:
         $ref: '#/definitions/PeerInfo'
   DataCenter:
@@ -152,6 +161,9 @@ definitions:
       cassandra_version:
         type: string
         example: 3.0.13
+      dse_version:
+        type: string
+        example: 5.0.8
       peer_info:
         $ref: '#/definitions/PeerInfo'
   Cluster:
@@ -173,10 +185,14 @@ definitions:
       cassandra_version:
         type: string
         example: 3.0.13
+      dse_version:
+        type: string
+        example: 5.0.8
       peer_info:
         $ref: '#/definitions/PeerInfo'
     example:
       name: "cluster0"
+      dse_version: "5.0.8"
       data_centers:
         - name: "dc0"
           nodes:

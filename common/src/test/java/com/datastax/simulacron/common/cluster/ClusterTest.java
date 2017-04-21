@@ -96,6 +96,7 @@ public class ClusterTest {
             .withId(1L)
             .withName("cluster0")
             .withCassandraVersion("3.0.11")
+            .withDSEVersion("5.1.0")
             .withPeerInfo("hello", "world")
             .build();
 

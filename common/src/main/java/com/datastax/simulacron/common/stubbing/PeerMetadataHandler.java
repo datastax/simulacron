@@ -6,7 +6,6 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
-import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.codec.Codec;
 import com.datastax.simulacron.common.codec.CodecUtils;
@@ -32,49 +31,15 @@ public class PeerMetadataHandler implements StubMapping {
   static final UUID schemaVersion = java.util.UUID.randomUUID();
 
   private static final String queryPeers = "SELECT * FROM system.peers";
-  private static final RowsMetadata querySystemPeersMetadata;
   private static final String queryClusterName = "select cluster_name from system.local";
   private static final RowsMetadata queryClusterNameMetadata;
   private static final String queryLocal = "SELECT * FROM system.local WHERE key='local'";
-  private static final RowsMetadata queryLocalMetadata;
 
   static {
     ColumnSpecBuilder systemLocal = columnSpecBuilder("system", "local");
-    List<ColumnSpec> queryLocalSpecs =
-        columnSpecs(
-            systemLocal.apply("key", primitive(ASCII)),
-            systemLocal.apply("bootstrapped", primitive(ASCII)),
-            systemLocal.apply("broadcast_address", primitive(INET)),
-            systemLocal.apply("cluster_name", primitive(ASCII)),
-            systemLocal.apply("cql_version", primitive(ASCII)),
-            systemLocal.apply("data_center", primitive(ASCII)),
-            systemLocal.apply("listen_address", primitive(INET)),
-            systemLocal.apply("partitioner", primitive(ASCII)),
-            systemLocal.apply("rack", primitive(ASCII)),
-            systemLocal.apply("release_version", primitive(ASCII)),
-            systemLocal.apply("tokens", new RawType.RawSet(primitive(ASCII))),
-            systemLocal.apply("schema_version", primitive(UUID)));
-    queryLocalMetadata = new RowsMetadata(queryLocalSpecs, null, new int[] {0});
-
-    // Redeclare to reset indices.
-    systemLocal = columnSpecBuilder("system", "local");
     List<ColumnSpec> queryClusterNameSpecs =
         columnSpecs(systemLocal.apply("cluster_name", primitive(ASCII)));
     queryClusterNameMetadata = new RowsMetadata(queryClusterNameSpecs, null, new int[] {});
-
-    ColumnSpecBuilder systemPeers = columnSpecBuilder("system", "peers");
-    List<ColumnSpec> querySystemPeersSpecs =
-        columnSpecs(
-            systemPeers.apply("peer", primitive(INET)),
-            systemPeers.apply("rpc_address", primitive(INET)),
-            systemPeers.apply("data_center", primitive(ASCII)),
-            systemPeers.apply("rack", primitive(ASCII)),
-            systemPeers.apply("release_version", primitive(ASCII)),
-            systemPeers.apply("tokens", new RawType.RawSet(primitive(ASCII))),
-            systemPeers.apply("listen_address", primitive(INET)),
-            systemPeers.apply("host_id", primitive(UUID)),
-            systemPeers.apply("schema_version", primitive(UUID)));
-    querySystemPeersMetadata = new RowsMetadata(querySystemPeersSpecs, null, new int[] {0});
   }
 
   private static final Pattern queryPeersWithAddr =
@@ -134,12 +99,21 @@ public class PeerMetadataHandler implements StubMapping {
     return Collections.emptyList();
   }
 
-  List<Action> handleSystemLocalQuery(Node node, CqlMapper mapper) {
+  private Set<String> resolveTokens(Node node) {
+    String[] t = ((String) node.resolvePeerInfo("token", "0")).split(",");
+    Set<String> tokens = new HashSet<>(t.length);
+    for (int i = 0; i < t.length; i++) {
+      tokens.add(t[i]);
+    }
+    return tokens;
+  }
+
+  private List<Action> handleSystemLocalQuery(Node node, CqlMapper mapper) {
     InetAddress address = resolveAddress(node);
     Codec<Set<String>> tokenCodec = mapper.codecFor(new RawType.RawSet(primitive(ASCII)));
 
-    Queue<List<ByteBuffer>> localRow =
-        CodecUtils.singletonRow(
+    List<ByteBuffer> localRow =
+        CodecUtils.row(
             encodePeerInfo(node, mapper.ascii::encode, "key", "local"),
             encodePeerInfo(node, mapper.ascii::encode, "bootstrapped", "COMPLETED"),
             mapper.inet.encode(address),
@@ -154,14 +128,20 @@ public class PeerMetadataHandler implements StubMapping {
                 "org.apache.cassandra.dht.Murmur3Partitioner"),
             encodePeerInfo(node, mapper.ascii::encode, "rack", "rack1"),
             mapper.ascii.encode(node.resolveCassandraVersion()),
-            tokenCodec.encode(Collections.singleton(resolveToken(node))),
+            tokenCodec.encode(resolveTokens(node)),
             mapper.uuid.encode(schemaVersion));
-    Rows rows = new Rows(queryLocalMetadata, localRow);
+
+    if (node.resolveDSEVersion() != null) {
+      localRow.add(mapper.ascii.encode(node.resolveDSEVersion()));
+      localRow.add(encodePeerInfo(node, mapper.bool::encode, "graph", false));
+    }
+
+    Rows rows = new Rows(buildSystemLocalRowsMetadata(node), CodecUtils.rows(localRow));
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
   }
 
-  List<Action> handleClusterNameQuery(Node node, CqlMapper mapper) {
+  private List<Action> handleClusterNameQuery(Node node, CqlMapper mapper) {
     Queue<List<ByteBuffer>> clusterRow =
         CodecUtils.singletonRow(mapper.ascii.encode(node.getCluster().getName()));
     Rows rows = new Rows(queryClusterNameMetadata, clusterRow);
@@ -169,7 +149,7 @@ public class PeerMetadataHandler implements StubMapping {
     return Collections.singletonList(action);
   }
 
-  List<Action> handlePeersQuery(Node node, CqlMapper mapper, Predicate<Node> nodeFilter) {
+  private List<Action> handlePeersQuery(Node node, CqlMapper mapper, Predicate<Node> nodeFilter) {
     // For each node matching the filter, provide its peer information.
     Codec<Set<String>> tokenCodec = mapper.codecFor(new RawType.RawSet(primitive(ASCII)));
     Queue<List<ByteBuffer>> peerRows =
@@ -182,51 +162,28 @@ public class PeerMetadataHandler implements StubMapping {
                     n -> {
                       InetAddress address = resolveAddress(n);
 
-                      return row(
-                          mapper.inet.encode(address),
-                          mapper.inet.encode(address),
-                          mapper.varchar.encode(n.getDataCenter().getName()),
-                          encodePeerInfo(n, mapper.varchar::encode, "rack", "rack1"),
-                          mapper.varchar.encode(n.resolveCassandraVersion()),
-                          tokenCodec.encode(Collections.singleton(resolveToken(n))),
-                          mapper.inet.encode(address),
-                          mapper.uuid.encode(schemaVersion),
-                          mapper.uuid.encode(schemaVersion));
+                      List<ByteBuffer> row =
+                          row(
+                              mapper.inet.encode(address),
+                              mapper.inet.encode(address),
+                              mapper.varchar.encode(n.getDataCenter().getName()),
+                              encodePeerInfo(n, mapper.varchar::encode, "rack", "rack1"),
+                              mapper.varchar.encode(n.resolveCassandraVersion()),
+                              tokenCodec.encode(resolveTokens(n)),
+                              mapper.inet.encode(address),
+                              mapper.uuid.encode(schemaVersion),
+                              mapper.uuid.encode(schemaVersion));
+                      if (node.resolveDSEVersion() != null) {
+                        row.add(mapper.ascii.encode(n.resolveDSEVersion()));
+                        row.add(encodePeerInfo(n, mapper.bool::encode, "graph", false));
+                      }
+                      return row;
                     })
                 .collect(Collectors.toList()));
 
-    Rows rows = new Rows(querySystemPeersMetadata, peerRows);
+    Rows rows = new Rows(buildSystemPeersRowsMetadata(node), peerRows);
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
-  }
-
-  String resolveToken(Node node) {
-    Optional<Object> token = node.resolvePeerInfo("token");
-    if (token.isPresent()) {
-      return token.toString();
-    } else {
-      // Determine token based on node's position in ring.
-      // First identify position of datacenter in cluster.
-      DataCenter dc = node.getDataCenter();
-      int dcPos = 0;
-      int nPos = 0;
-      for (DataCenter d : node.getCluster().getDataCenters()) {
-        if (d == dc) {
-          break;
-        }
-        dcPos++;
-      }
-      // Identify node's position in dc.
-      for (Node n : node.getDataCenter().getNodes()) {
-        if (n == node) {
-          break;
-        }
-        nPos++;
-      }
-      long dcOffset = dcPos * 100;
-      long nodeOffset = nPos * ((long) Math.pow(2, 64) / node.getDataCenter().getNodes().size());
-      return "" + (nodeOffset + dcOffset);
-    }
   }
 
   private InetAddress resolveAddress(Node node) {
@@ -237,5 +194,48 @@ public class PeerMetadataHandler implements StubMapping {
       address = InetAddress.getLoopbackAddress();
     }
     return address;
+  }
+
+  private RowsMetadata buildSystemPeersRowsMetadata(Node node) {
+    ColumnSpecBuilder systemPeers = columnSpecBuilder("system", "peers");
+    List<ColumnSpec> systemPeersSpecs =
+        columnSpecs(
+            systemPeers.apply("peer", primitive(INET)),
+            systemPeers.apply("rpc_address", primitive(INET)),
+            systemPeers.apply("data_center", primitive(ASCII)),
+            systemPeers.apply("rack", primitive(ASCII)),
+            systemPeers.apply("release_version", primitive(ASCII)),
+            systemPeers.apply("tokens", new RawType.RawSet(primitive(ASCII))),
+            systemPeers.apply("listen_address", primitive(INET)),
+            systemPeers.apply("host_id", primitive(UUID)),
+            systemPeers.apply("schema_version", primitive(UUID)));
+    if (node.resolveDSEVersion() != null) {
+      systemPeersSpecs.add(systemPeers.apply("dse_version", primitive(ASCII)));
+      systemPeersSpecs.add(systemPeers.apply("graph", primitive(BOOLEAN)));
+    }
+    return new RowsMetadata(systemPeersSpecs, null, new int[] {0});
+  }
+
+  private RowsMetadata buildSystemLocalRowsMetadata(Node node) {
+    ColumnSpecBuilder systemLocal = columnSpecBuilder("system", "local");
+    List<ColumnSpec> systemLocalSpecs =
+        columnSpecs(
+            systemLocal.apply("key", primitive(ASCII)),
+            systemLocal.apply("bootstrapped", primitive(ASCII)),
+            systemLocal.apply("broadcast_address", primitive(INET)),
+            systemLocal.apply("cluster_name", primitive(ASCII)),
+            systemLocal.apply("cql_version", primitive(ASCII)),
+            systemLocal.apply("data_center", primitive(ASCII)),
+            systemLocal.apply("listen_address", primitive(INET)),
+            systemLocal.apply("partitioner", primitive(ASCII)),
+            systemLocal.apply("rack", primitive(ASCII)),
+            systemLocal.apply("release_version", primitive(ASCII)),
+            systemLocal.apply("tokens", new RawType.RawSet(primitive(ASCII))),
+            systemLocal.apply("schema_version", primitive(UUID)));
+    if (node.resolveDSEVersion() != null) {
+      systemLocalSpecs.add(systemLocal.apply("dse_version", primitive(ASCII)));
+      systemLocalSpecs.add(systemLocal.apply("graph", primitive(BOOLEAN)));
+    }
+    return new RowsMetadata(systemLocalSpecs, null, new int[] {0});
   }
 }

@@ -9,7 +9,8 @@ import java.util.Map;
  * method for deriving {@link NodeProperties} values from an existing object.
  *
  * @param <S> The concrete type of the builder.
- * @param <P> The type of the parent object (if applicable).
+ * @param
+ *     <p>The type of the parent object (if applicable).
  */
 public abstract class NodePropertiesBuilder<
     S extends NodePropertiesBuilder<S, P>, P extends NodeProperties> {
@@ -17,6 +18,7 @@ public abstract class NodePropertiesBuilder<
   P parent;
   private final S myself;
   String cassandraVersion;
+  String dseVersion;
   String name;
   Long id;
   Map<String, Object> peerInfo = new HashMap<>();
@@ -43,6 +45,7 @@ public abstract class NodePropertiesBuilder<
    */
   public S copy(NodeProperties toCopy) {
     return this.withCassandraVersion(toCopy.getCassandraVersion())
+        .withDSEVersion(toCopy.getDSEVersion())
         .withName(toCopy.getName())
         .withId(toCopy.getId())
         .withPeerInfo(toCopy.getPeerInfo());
@@ -50,6 +53,11 @@ public abstract class NodePropertiesBuilder<
 
   public S withCassandraVersion(String cassandraVersion) {
     this.cassandraVersion = cassandraVersion;
+    return myself;
+  }
+
+  public S withDSEVersion(String dseVersion) {
+    this.dseVersion = dseVersion;
     return myself;
   }
 

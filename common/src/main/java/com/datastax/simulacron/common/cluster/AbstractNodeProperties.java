@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * Implementation of {@link NodeProperties} that provides a constructor a implementations for
- * everything expcet {@link NodeProperties#getParent()}.
+ * everything except {@link NodeProperties#getParent()}.
  */
 public abstract class AbstractNodeProperties implements NodeProperties {
 
@@ -16,14 +16,22 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   @JsonProperty("cassandra_version")
   private final String cassandraVersion;
 
+  @JsonProperty("dse_version")
+  private final String dseVersion;
+
   @JsonProperty("peer_info")
   private final Map<String, Object> peerInfo;
 
   AbstractNodeProperties(
-      String name, Long id, String cassandraVersion, Map<String, Object> peerInfo) {
+      String name,
+      Long id,
+      String cassandraVersion,
+      String dseVersion,
+      Map<String, Object> peerInfo) {
     this.name = name;
     this.id = id;
     this.cassandraVersion = cassandraVersion;
+    this.dseVersion = dseVersion;
     this.peerInfo = peerInfo;
   }
 
@@ -40,6 +48,12 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   @Override
   public String getCassandraVersion() {
     return cassandraVersion;
+  }
+
+  @Override
+  @JsonProperty("dse_version")
+  public String getDSEVersion() {
+    return dseVersion;
   }
 
   @Override
@@ -61,6 +75,9 @@ public abstract class AbstractNodeProperties implements NodeProperties {
 
     if (cassandraVersion != null) {
       str.append(", cassandraVersion='" + cassandraVersion + '\'');
+    }
+    if (dseVersion != null) {
+      str.append(", dseVersion='" + dseVersion + '\'');
     }
     if (!peerInfo.isEmpty()) {
       str.append(", peerInfo=" + peerInfo);

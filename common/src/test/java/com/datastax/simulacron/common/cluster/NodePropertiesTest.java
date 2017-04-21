@@ -89,10 +89,11 @@ public class NodePropertiesTest {
             .withName("node0")
             .withPeerInfo("hello", "world")
             .withCassandraVersion("1.2.19")
+            .withDSEVersion("5.1.0")
             .build();
 
     assertThat(node.toString())
         .isEqualTo(
-            "Node{id=7, name='node0', cassandraVersion='1.2.19', peerInfo={hello=world}, address=null}");
+            "Node{id=7, name='node0', cassandraVersion='1.2.19', dseVersion='5.1.0', peerInfo={hello=world}, address=null}");
   }
 }

@@ -88,12 +88,13 @@ class BoundNode extends Node {
       String name,
       Long id,
       String cassandraVersion,
+      String dseVersion,
       Map<String, Object> peerInfo,
       DataCenter parent,
       ServerBootstrap bootstrap,
       Channel channel,
       StubStore stubStore) {
-    super(address, name, id, cassandraVersion, peerInfo, parent);
+    super(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
     this.bootstrap = bootstrap;
     this.channel = new AtomicReference<>(channel);
     this.stubStore = stubStore;

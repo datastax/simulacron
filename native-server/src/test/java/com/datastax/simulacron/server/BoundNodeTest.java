@@ -40,6 +40,7 @@ public class BoundNodeTest {
           "node0",
           0L,
           "1.2.19",
+          null,
           Collections.emptyMap(),
           dc,
           null,

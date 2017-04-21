@@ -14,12 +14,13 @@ public class ClusterMapperTest {
 
   @Test
   public void testSimpleCluster() throws Exception {
-    Cluster cluster = Cluster.builder().withName("cluster1").withNodes(1, 2).build();
+    Cluster cluster =
+        Cluster.builder().withName("cluster1").withDSEVersion("5.1.0").withNodes(1, 2).build();
 
     String json = mapper.writeValueAsString(cluster);
 
     String expectedJson =
-        "{\"name\":\"cluster1\",\"data_centers\":["
+        "{\"name\":\"cluster1\",\"dse_version\":\"5.1.0\",\"data_centers\":["
             + "{\"name\":\"dc1\",\"id\":0,\"nodes\":[{\"name\":\"node1\",\"id\":0}]},"
             + "{\"name\":\"dc2\",\"id\":1,\"nodes\":[{\"name\":\"node1\",\"id\":0},{\"name\":\"node2\",\"id\":1}"
             + "]}]}";

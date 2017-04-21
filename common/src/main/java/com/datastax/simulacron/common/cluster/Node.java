@@ -25,7 +25,7 @@ public class Node extends AbstractNodeProperties {
 
   Node() {
     // Default constructor for jackson deserialization.
-    this(null, null, null, null, Collections.emptyMap(), null);
+    this(null, null, null, null, null, Collections.emptyMap(), null);
   }
 
   public Node(
@@ -33,9 +33,10 @@ public class Node extends AbstractNodeProperties {
       String name,
       Long id,
       String cassandraVersion,
+      String dseVersion,
       Map<String, Object> peerInfo,
       DataCenter parent) {
-    super(name, id, cassandraVersion, peerInfo);
+    super(name, id, cassandraVersion, dseVersion, peerInfo);
     this.address = address;
     this.parent = parent;
     if (this.parent != null) {
@@ -107,7 +108,7 @@ public class Node extends AbstractNodeProperties {
 
     /** @return Constructs a {@link Node} from this builder. Can be called multiple times. */
     public Node build() {
-      return new Node(address, name, id, cassandraVersion, peerInfo, parent);
+      return new Node(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
     }
   }
 }

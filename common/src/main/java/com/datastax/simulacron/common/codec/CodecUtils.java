@@ -6,10 +6,7 @@ import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.Node;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
@@ -26,7 +23,7 @@ public class CodecUtils {
    * @return a List of the input column buffers.
    */
   public static List<ByteBuffer> row(ByteBuffer... columns) {
-    return Arrays.asList(columns);
+    return new ArrayList<>(Arrays.asList(columns));
   }
 
   /**
@@ -89,7 +86,7 @@ public class CodecUtils {
    * @return List of input {@link ColumnSpec}s
    */
   public static List<ColumnSpec> columnSpecs(ColumnSpec... colSpecs) {
-    return Arrays.asList(colSpecs);
+    return new ArrayList<>(Arrays.asList(colSpecs));
   }
 
   /**

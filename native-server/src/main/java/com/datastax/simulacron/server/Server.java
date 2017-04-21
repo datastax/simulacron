@@ -17,9 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -251,6 +249,11 @@ public final class Server {
   }
 
   private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent) {
+    // derive a token for this node. This is done here as the ordering of nodes under a
+    // data center is changed when it is bound.
+    String token = resolveToken(refNode);
+    Map<String, Object> newPeerInfo = new HashMap<>(refNode.getPeerInfo());
+    newPeerInfo.put("token", token);
     // Use node's address if set, otherwise generate a new one.
     SocketAddress address =
         refNode.getAddress() != null ? refNode.getAddress() : addressResolver.get();
@@ -271,7 +274,8 @@ public final class Server {
                             ? refNode.getId()
                             : 0, // assign id 0 if this is a standalone node.
                         refNode.getCassandraVersion(),
-                        refNode.getPeerInfo(),
+                        refNode.getDSEVersion(),
+                        newPeerInfo,
                         parent,
                         serverBootstrap,
                         channelFuture.channel(),
@@ -287,6 +291,37 @@ public final class Server {
             });
 
     return f;
+  }
+
+  private String resolveToken(Node node) {
+    Optional<Object> token = node.resolvePeerInfo("token");
+    if (token.isPresent()) {
+      return token.get().toString();
+    } else if (node.getCluster() == null) {
+      return "0";
+    } else {
+      // Determine token based on node's position in ring.
+      // First identify position of datacenter in cluster.
+      DataCenter dc = node.getDataCenter();
+      int dcPos = 0;
+      int nPos = 0;
+      for (DataCenter d : node.getCluster().getDataCenters()) {
+        if (d == dc) {
+          break;
+        }
+        dcPos++;
+      }
+      // Identify node's position in dc.
+      for (Node n : node.getDataCenter().getNodes()) {
+        if (n == node) {
+          break;
+        }
+        nPos++;
+      }
+      long dcOffset = dcPos * 100;
+      long nodeOffset = nPos * ((long) Math.pow(2, 64) / node.getDataCenter().getNodes().size());
+      return "" + (nodeOffset + dcOffset);
+    }
   }
 
   private CompletableFuture<Node> close(BoundNode node) {

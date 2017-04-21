@@ -21,11 +21,16 @@ public class Cluster extends AbstractNodeProperties {
 
   Cluster() {
     // Default constructor for jackson deserialization.
-    this(null, null, null, Collections.emptyMap());
+    this(null, null, null, null, Collections.emptyMap());
   }
 
-  Cluster(String name, Long id, String cassandraVersion, Map<String, Object> peerInfo) {
-    super(name, id, cassandraVersion, peerInfo);
+  Cluster(
+      String name,
+      Long id,
+      String cassandraVersion,
+      String dseVersion,
+      Map<String, Object> peerInfo) {
+    super(name, id, cassandraVersion, dseVersion, peerInfo);
   }
 
   /** @return The {@link DataCenter}s belonging to this cluster. */
@@ -103,7 +108,7 @@ public class Cluster extends AbstractNodeProperties {
 
     /** @return Constructs a {@link Cluster} from this builder. Can be called multiple times. */
     public Cluster build() {
-      Cluster cluster = new Cluster(name, id, cassandraVersion, peerInfo);
+      Cluster cluster = new Cluster(name, id, cassandraVersion, dseVersion, peerInfo);
       if (nodes != null) {
         for (int i = 1; i <= nodes.length; i++) {
           int nodeCount = nodes[i - 1];

@@ -83,6 +83,7 @@ public class DataCenterTest {
             .addDataCenter()
             .withName("dc2")
             .withCassandraVersion("1.2.19")
+            .withDSEVersion("5.1.0")
             .withPeerInfo("hello", "world")
             .build();
 

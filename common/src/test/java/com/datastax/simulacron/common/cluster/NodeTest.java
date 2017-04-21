@@ -83,6 +83,7 @@ public class NodeTest {
         dc.addNode()
             .withName("node2")
             .withCassandraVersion("1.2.19")
+            .withDSEVersion("5.1.0")
             .withPeerInfo("hello", "world")
             .withAddress(new InetSocketAddress(InetAddress.getLoopbackAddress(), 9042))
             .build();

@@ -60,6 +60,12 @@ public interface NodeProperties {
   String getCassandraVersion();
 
   /**
+   * @return The DSE version of this if set, otherwise null. THe dse version is used to determine
+   *     formatting of system and schema tables.
+   */
+  String getDSEVersion();
+
+  /**
    * @return The peer info of this, should always be nonnull. The peer info is a mapping of column
    *     names to values to be used in the system.peers and local table.
    */
@@ -77,6 +83,11 @@ public interface NodeProperties {
    */
   default String resolveCassandraVersion() {
     return resolve(NodeProperties::getCassandraVersion, "3.0.12");
+  }
+
+  /** @return the dse version for this, otherwise its parents. If it is not set, null is used. */
+  default String resolveDSEVersion() {
+    return resolve(NodeProperties::getDSEVersion, null);
   }
 
   /**

@@ -30,12 +30,17 @@ public class DataCenter extends AbstractNodeProperties {
 
   DataCenter() {
     // Default constructor for jackson deserialization.
-    this(null, null, null, Collections.emptyMap(), null);
+    this(null, null, null, null, Collections.emptyMap(), null);
   }
 
   DataCenter(
-      String name, Long id, String cassandraVersion, Map<String, Object> peerInfo, Cluster parent) {
-    super(name, id, cassandraVersion, peerInfo);
+      String name,
+      Long id,
+      String cassandraVersion,
+      String dseVersion,
+      Map<String, Object> peerInfo,
+      Cluster parent) {
+    super(name, id, cassandraVersion, dseVersion, peerInfo);
     this.parent = parent;
     if (this.parent != null) {
       parent.addDataCenter(this);
@@ -94,7 +99,7 @@ public class DataCenter extends AbstractNodeProperties {
 
     /** @return Constructs a {@link DataCenter} from this builder. Can be called multiple times. */
     public DataCenter build() {
-      return new DataCenter(name, id, cassandraVersion, peerInfo, parent);
+      return new DataCenter(name, id, cassandraVersion, dseVersion, peerInfo, parent);
     }
   }
 }
