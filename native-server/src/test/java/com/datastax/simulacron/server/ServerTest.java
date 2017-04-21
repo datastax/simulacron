@@ -1,12 +1,15 @@
 package com.datastax.simulacron.server;
 
-import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.oss.protocol.internal.request.Startup;
-import com.datastax.oss.protocol.internal.response.Ready;
+import com.datastax.oss.protocol.internal.*;
+import com.datastax.oss.protocol.internal.request.*;
+import com.datastax.oss.protocol.internal.response.*;
+import com.datastax.oss.protocol.internal.response.Error;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.utils.FrameUtils;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.local.LocalServerChannel;
 import org.junit.After;
@@ -14,6 +17,7 @@ import org.junit.Test;
 
 import java.net.ConnectException;
 import java.net.SocketAddress;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -269,10 +273,7 @@ public class ServerTest {
   @Test
   public void testShouldStopAcceptingStartupAndAcceptAgain() throws Exception {
     Node node = Node.builder().build();
-
-    // Should bind within 5 seconds and get a bound node back.
     BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
-    assertThat(boundNode).isInstanceOf(BoundNode.class);
 
     // Should be wrapped and registered in a dummy cluster.
     assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
@@ -318,10 +319,7 @@ public class ServerTest {
   @Test
   public void testShouldStopAcceptingConnectionsAndAcceptAgain() throws Exception {
     Node node = Node.builder().build();
-
-    // Should bind within 5 seconds and get a bound node back.
     BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
-    assertThat(boundNode).isInstanceOf(BoundNode.class);
 
     // Should be wrapped and registered in a dummy cluster.
     assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
@@ -365,10 +363,7 @@ public class ServerTest {
   @Test
   public void testShouldStopAcceptingConnectionsAfter5() throws Exception {
     Node node = Node.builder().build();
-
-    // Should bind within 5 seconds and get a bound node back.
     BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
-    assertThat(boundNode).isInstanceOf(BoundNode.class);
 
     // Should be wrapped and registered in a dummy cluster.
     assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
@@ -405,6 +400,77 @@ public class ServerTest {
         } catch (ConnectException ce) { // Expected
         }
       }
+    }
+  }
+
+  @Test
+  public void testShouldReturnProtocolErrorWhenUsingUnsupportedProtocolVersion() throws Exception {
+    // If connecting with a newer protocol version than simulacron supports, a protocol error should be sent back.
+    Node node = Node.builder().build();
+    BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
+
+    // Create encoders/decoders for protocol v6.
+    FrameCodec.CodecGroup v6Codecs =
+        registry -> {
+          registry
+              .addEncoder(new AuthResponse.Codec(6))
+              .addEncoder(new Batch.Codec(6))
+              .addEncoder(new Execute.Codec(6))
+              .addEncoder(new Options.Codec(6))
+              .addEncoder(new Prepare.Codec(6))
+              .addEncoder(new Query.Codec(6))
+              .addEncoder(new Register.Codec(6))
+              .addEncoder(new Startup.Codec(6));
+
+          registry
+              .addDecoder(new AuthChallenge.Codec(6))
+              .addDecoder(new Authenticate.Codec(6))
+              .addDecoder(new AuthSuccess.Codec(6))
+              .addDecoder(new com.datastax.oss.protocol.internal.response.Error.Codec(6))
+              .addDecoder(new Event.Codec(6))
+              .addDecoder(new Ready.Codec(6))
+              .addDecoder(new Result.Codec(6))
+              .addDecoder(new Supported.Codec(6));
+        };
+
+    FrameCodec<ByteBuf> frameCodec =
+        new FrameCodec<>(
+            new ByteBufCodec(),
+            Compressor.none(),
+            new ProtocolV3ClientCodecs(),
+            new ProtocolV4ClientCodecs(),
+            new ProtocolV5ClientCodecs(),
+            v6Codecs);
+
+    try (MockClient client = new MockClient(eventLoop, frameCodec)) {
+      client.connect(boundNode.getAddress());
+      // Write a startup message with protocol version 6 (which is not supported)
+      client.write(
+          new Frame(
+              6,
+              false,
+              0,
+              false,
+              null,
+              FrameUtils.emptyCustomPayload,
+              Collections.emptyList(),
+              new Startup()));
+
+      // Expect a protocol error indicating invalid protocol version.
+      Frame response = client.next();
+      assertThat(response.message).isInstanceOf(Error.class);
+      assertThat(response.protocolVersion).isEqualTo(4);
+      Error err = (Error) response.message;
+      assertThat(err.code).isEqualTo(ProtocolConstants.ErrorCode.PROTOCOL_ERROR);
+      assertThat(err.message).isEqualTo("Invalid or unsupported protocol version");
+
+      // Try again with protocol version 4, which is supported, this should work on the same connection
+      // since the previous message was simply discarded.
+      client.write(new Startup());
+
+      // Expect a Ready response.
+      response = client.next();
+      assertThat(response.message).isInstanceOf(Ready.class);
     }
   }
 }

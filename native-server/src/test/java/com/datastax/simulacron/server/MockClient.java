@@ -25,11 +25,9 @@ public class MockClient implements Closeable {
 
   BlockingQueue<Frame> responses = new LinkedBlockingQueue<>();
 
-  FrameCodec<ByteBuf> frameCodec = FrameCodec.defaultClient(new ByteBufCodec(), Compressor.none());
-
   Channel channel;
 
-  MockClient(EventLoopGroup elg) {
+  MockClient(EventLoopGroup elg, FrameCodec<ByteBuf> frameCodec) {
     // Set up so written Frames are encoded into bytes, received bytes are encoded into Frames put on queue.
     cb.group(elg)
         .channel(LocalChannel.class)
@@ -50,6 +48,10 @@ public class MockClient implements Closeable {
                         });
               }
             });
+  }
+
+  MockClient(EventLoopGroup elg) {
+    this(elg, FrameCodec.defaultClient(new ByteBufCodec(), Compressor.none()));
   }
 
   MockClient connect(SocketAddress address) throws Exception {

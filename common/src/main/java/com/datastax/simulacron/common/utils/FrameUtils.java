@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class FrameUtils {
 
-  private static final Map<String, ByteBuffer> emptyCustomPayload =
+  public static final Map<String, ByteBuffer> emptyCustomPayload =
       Collections.unmodifiableMap(new HashMap<>());
 
   public static Frame wrapResponse(Frame requestFrame, Message response) {
