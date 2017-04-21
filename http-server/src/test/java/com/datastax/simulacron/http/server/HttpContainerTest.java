@@ -88,7 +88,7 @@ public class HttpContainerTest {
       ObjectMapper om = ClusterMapper.getMapper();
       //create cluster object from json return code
       Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
-      assertEquals(responseToValidate.response.statusCode(), 200);
+      assertEquals(responseToValidate.response.statusCode(), 201);
       assertEquals(new Long(0), cluster.getId());
       assertEquals("0", cluster.getName());
       assertNotNull(cluster.getPeerInfo());
@@ -114,54 +114,55 @@ public class HttpContainerTest {
   }
 
   @Test
-  public void testClusterCreationLarge() {
-    try {
-      HttpClient client = vertx.createHttpClient();
-      CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
-      client
-          .request(
-              HttpMethod.POST,
-              portNum,
-              "127.0.0.1",
-              "/cluster/?dataCenters=3,3,3",
-              response -> {
-                response.bodyHandler(
-                    totalBuffer -> {
-                      future.complete(new HttpTestResponse(response, totalBuffer.toString()));
-                    });
-              })
-          .end();
+  public void testClusterCreationLarge() throws Exception {
+    HttpClient client = vertx.createHttpClient();
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.POST,
+            portNum,
+            "127.0.0.1",
+            "/cluster/?dataCenters=3,3,3",
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    future.complete(new HttpTestResponse(response, totalBuffer.toString()));
+                  });
+            })
+        .end();
 
-      HttpTestResponse responseToValidate = future.get();
-      validateCluster(responseToValidate);
+    HttpTestResponse responseToValidate = future.get();
+    validateCluster(responseToValidate, 201);
 
-      client = vertx.createHttpClient();
-      CompletableFuture<HttpTestResponse> future2 = new CompletableFuture<>();
-      client
-          .request(
-              HttpMethod.GET,
-              portNum,
-              "127.0.0.1",
-              "/cluster/",
-              response -> {
-                response.bodyHandler(
-                    totalBuffer -> {
-                      future2.complete(new HttpTestResponse(response, totalBuffer.toString()));
-                    });
-              })
-          .end();
-      responseToValidate = future.get();
-      validateCluster(responseToValidate);
-    } catch (Exception e) {
-      fail("Exception encountered");
-    }
-  }
-
-  private void validateCluster(HttpTestResponse responseToValidate) throws Exception {
     ObjectMapper om = ClusterMapper.getMapper();
     //create cluster object from json return code
     Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
-    assertEquals(responseToValidate.response.statusCode(), 200);
+
+    client = vertx.createHttpClient();
+    CompletableFuture<HttpTestResponse> future2 = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.GET,
+            portNum,
+            "127.0.0.1",
+            "/cluster/" + cluster.getId(),
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    future2.complete(new HttpTestResponse(response, totalBuffer.toString()));
+                  });
+            })
+        .end();
+    responseToValidate = future2.get();
+    validateCluster(responseToValidate, 200);
+  }
+
+  private void validateCluster(HttpTestResponse responseToValidate, int expectedStatusCode)
+      throws Exception {
+    ObjectMapper om = ClusterMapper.getMapper();
+    //create cluster object from json return code
+    Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
+    assertEquals(responseToValidate.response.statusCode(), expectedStatusCode);
     assertEquals(new Long(0), cluster.getId());
     assertEquals("0", cluster.getName());
     assertNotNull(cluster.getPeerInfo());

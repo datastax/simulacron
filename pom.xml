@@ -34,6 +34,7 @@
         <jackson.version>2.7.4</jackson.version>
         <caffeine.version>2.4.0</caffeine.version>
         <java-driver.version>3.2.0</java-driver.version>
+        <swagger-ui.version>3.0.5</swagger-ui.version>
         <format.validateOnly>true</format.validateOnly>
     </properties>
 

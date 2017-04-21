@@ -14,6 +14,10 @@ public class TestHttpServer {
     QueryManager qManager = new QueryManager();
     provisioner.registerWithRouter(httpServer.getRouter());
     qManager.registerWithRouter(httpServer.getRouter());
+
+    SwaggerUI swaggerUI = new SwaggerUI();
+    swaggerUI.registerWithRouter(httpServer.getRouter());
+
     httpServer.start();
     try {
       TimeUnit.MINUTES.sleep(5);

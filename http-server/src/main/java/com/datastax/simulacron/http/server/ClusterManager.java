@@ -83,7 +83,12 @@ public class ClusterManager implements HttpListener {
 
                         return null;
                       }
-                      context.request().response().end(response.toString());
+                      context
+                          .request()
+                          .response()
+                          .putHeader("content-type", "application/json")
+                          .setStatusCode(201)
+                          .end(response.toString());
                       return completedCluster;
                     });
               } catch (Exception e) {
@@ -127,7 +132,12 @@ public class ClusterManager implements HttpListener {
                       om.writerWithDefaultPrettyPrinter().writeValueAsString(clusters.values());
                   response.append(clusterStr);
                 }
-                context.request().response().end(response.toString());
+                context
+                    .request()
+                    .response()
+                    .putHeader("content-type", "application/json")
+                    .setStatusCode(200)
+                    .end(response.toString());
               } catch (Exception e) {
                 handleClusterError(e, "retrieve", context);
               }

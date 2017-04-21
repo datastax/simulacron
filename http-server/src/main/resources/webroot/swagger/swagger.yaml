@@ -1,0 +1,164 @@
+swagger: '2.0'
+info:
+  description: >
+    The simulacron REST API allows one to interact with simulacron, performing
+    operations such as provisioning
+
+    up clusters, stubbing queries and behaviors, and monitoring driver client
+    connections.
+  version: 0.0.1-SNAPSHOT
+  title: Simulacron REST API
+host: 'localhost:8187'
+basePath: /
+tags:
+  - name: cluster
+    description: Cluster Provisioning and Metadata
+    externalDocs:
+      description: GitHub Repo
+      url: 'http://github.com/riptano/testeng-devtools'
+paths:
+  /cluster:
+    post:
+      tags:
+        - cluster
+      summary: Provision a new cluster
+      description: Provisions a Cluster by setting up listening interfaces for each node.
+      operationId: provisionCluster
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: dataCenters
+          description: >
+            For convenience, use this parameter to provision a cluster by
+            providing a data center specification.
+
+            Accepts a comma separated list of DC configurations.
+
+            i.e. `"3,4,5"` sets up 3 data centers with 3, 4, and 5 nodes
+            respectively.
+
+
+            **Note**: If this is provided the request body is ignored.
+          required: false
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 65535
+          collectionFormat: csv
+        - in: body
+          name: body
+          description: >
+            If specified, the complete configuration for a Cluster and its data
+            centers and nodes.
+
+            Use this in cases where you want to override configuration such as
+            the cassandra version,
+
+            peer info, or socket addresses bound to nodes.
+
+
+            **Note**: Used only if `dataCenters` is not provided.
+          required: false
+          schema:
+            $ref: '#/definitions/Cluster'
+      responses:
+        '201':
+          description: Created
+          schema:
+            $ref: '#/definitions/Cluster'
+        '405':
+          description: Invalid input
+    get:
+      tags:
+        - cluster
+      summary: Retrieve existing clusters
+      operationId: retrieveClusters
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Cluster listing
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cluster'
+  '/cluster/{id}':
+    get:
+      tags:
+        - cluster
+      summary: Find cluster by id
+      operationId: findClusterById
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: id
+          in: path
+          description: Id of the cluster
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: Cluster state
+          schema:
+            $ref: '#/definitions/Cluster'
+definitions:
+  Node:
+    type: object
+    required:
+      - name
+    properties:
+      id:
+        type: integer
+        format: int64
+      name:
+        type: string
+        example: node0
+      cassandra_version:
+        type: string
+        example: 3.0.13
+  DataCenter:
+    type: object
+    required:
+      - name
+      - nodes
+    properties:
+      id:
+        type: integer
+        format: int64
+      name:
+        type: string
+        example: dc0
+      nodes:
+        type: array
+        items:
+          $ref: '#/definitions/Node'
+      cassandra_version:
+        type: string
+        example: 3.0.13
+  Cluster:
+    type: object
+    required:
+      - name
+      - data_centers
+    properties:
+      id:
+        type: integer
+        format: int64
+      name:
+        type: string
+        example: cluster0
+      data_centers:
+        type: array
+        items:
+          $ref: '#/definitions/DataCenter'
+      cassandra_version:
+        type: string
+        example: 3.0.13
