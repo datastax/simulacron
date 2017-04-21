@@ -65,7 +65,7 @@ public class ClusterManager implements HttpListener {
                   cluster = om.readValue(jsonBody, Cluster.class);
                 }
                 CompletableFuture<Cluster> future = server.register(cluster);
-                future.handle(
+                future.whenComplete(
                     (completedCluster, ex) -> {
                       if (ex == null) {
                         try {
@@ -80,19 +80,49 @@ public class ClusterManager implements HttpListener {
                       }
                       if (ex != null) {
                         handleClusterError(ex, "provision", context);
-
-                        return null;
+                      } else {
+                        context
+                            .request()
+                            .response()
+                            .putHeader("content-type", "application/json")
+                            .setStatusCode(201)
+                            .end(response.toString());
                       }
-                      context
-                          .request()
-                          .response()
-                          .putHeader("content-type", "application/json")
-                          .setStatusCode(201)
-                          .end(response.toString());
-                      return completedCluster;
                     });
               } catch (Exception e) {
                 handleClusterError(e, "provision", context);
+              }
+            });
+  }
+
+  public void unregisterCluster(RoutingContext context) {
+    context
+        .request()
+        .bodyHandler(
+            b -> {
+              try {
+                String idToFetch = context.request().getParam("clusterId");
+                CompletableFuture<? extends Object> future;
+                if (idToFetch != null) {
+                  future = server.unregister(Long.parseLong(idToFetch));
+                } else {
+                  future = server.unregisterAll();
+                }
+
+                future.whenComplete(
+                    (r, ex) -> {
+                      if (ex != null) {
+                        handleClusterError(ex, "unregister", context);
+                      } else {
+                        context
+                            .response()
+                            .putHeader("content-type", "application/json")
+                            .setStatusCode(202)
+                            .end();
+                      }
+                    });
+              } catch (Exception e) {
+                handleClusterError(e, "unregister", context);
               }
             });
   }
@@ -166,8 +196,9 @@ public class ClusterManager implements HttpListener {
    */
   public void registerWithRouter(Router router) {
     router.route(HttpMethod.POST, "/cluster").handler(this::provisionCluster);
-
+    router.route(HttpMethod.DELETE, "/cluster/:clusterId").handler(this::unregisterCluster);
+    router.route(HttpMethod.DELETE, "/cluster").handler(this::unregisterCluster);
     router.route(HttpMethod.GET, "/cluster/:clusterId").handler(this::getCluster);
-    router.route(HttpMethod.GET, "/cluster/").handler(this::getCluster);
+    router.route(HttpMethod.GET, "/cluster").handler(this::getCluster);
   }
 }

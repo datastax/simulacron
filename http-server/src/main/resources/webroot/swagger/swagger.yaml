@@ -83,6 +83,19 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Cluster'
+    delete:
+      tags:
+        - cluster
+      summary: Delete all clusters
+      description: Deletes all existing Clusters and unregisters all ips assigned.
+      operationId: unregisterClusters
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '202':
+          description: Clusters deleted
   '/cluster/{id}':
     get:
       tags:
@@ -104,6 +117,24 @@ paths:
           description: Cluster state
           schema:
             $ref: '#/definitions/Cluster'
+    delete:
+      tags:
+        - cluster
+      summary: Delete cluster by id
+      operationId: unregisterClusterById
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: id
+          in: path
+          description: Id of the cluster
+          required: true
+          type: integer
+      responses:
+        '202':
+          description: Cluster deleted
 definitions:
   PeerInfo:
     type: object
