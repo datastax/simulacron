@@ -43,12 +43,7 @@ paths:
 
             **Note**: If this is provided the request body is ignored.
           required: false
-          type: array
-          items:
-            type: integer
-            minimum: 1
-            maximum: 65535
-          collectionFormat: csv
+          type: string
         - in: body
           name: body
           description: >
