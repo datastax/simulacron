@@ -2,10 +2,8 @@ package com.datastax.simulacron.http.server;
 
 import com.datastax.simulacron.server.Server;
 
-import java.util.concurrent.TimeUnit;
-
 public class TestHttpServer {
-  public static void main(String[] args) {
+  public static synchronized void main(String[] args) {
     HttpContainer httpServer = new HttpContainer(8187, true);
 
     Server nativeServer = Server.builder().build();
@@ -20,7 +18,7 @@ public class TestHttpServer {
 
     httpServer.start();
     try {
-      TimeUnit.MINUTES.sleep(5);
+      TestHttpServer.class.wait();
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
