@@ -29,7 +29,7 @@ public class ClusterManager implements HttpListener {
    *
    * <p>Example Supported HTTP Requests
    *
-   * <p>POST http://iphere:porthere/cluster?dataCenters=3,4,9 this will create a cluster with 3
+   * <p>POST http://iphere:porthere/cluster?data_centers=3,4,9 this will create a cluster with 3
    * datacenters, with 3, 4 and 9 nodes.
    *
    * <p>POST POST http://iphere:porthere/cluster Containing a json body {@code { "name" : "1", "id"
@@ -46,7 +46,9 @@ public class ClusterManager implements HttpListener {
         .bodyHandler(
             totalBuffer -> {
               try {
-                String dcRawString = context.request().getParam("dataCenters");
+                String dcRawString = context.request().getParam("data_centers");
+                String dseVersion = context.request().getParam("dse_version");
+                String cassandraVersion = context.request().getParam("cassandra_version");
                 StringBuffer response = new StringBuffer();
                 ObjectMapper om = ClusterMapper.getMapper();
                 Cluster cluster = null;
@@ -56,7 +58,12 @@ public class ClusterManager implements HttpListener {
                   int[] dcs = new int[dcStrs.length];
                   for (int i = 0; i < dcStrs.length; i++) {
                     dcs[i] = Integer.parseInt(dcStrs[i]);
-                    cluster = Cluster.builder().withNodes(dcs).build();
+                    cluster =
+                        Cluster.builder()
+                            .withNodes(dcs)
+                            .withDSEVersion(dseVersion)
+                            .withCassandraVersion(cassandraVersion)
+                            .build();
                   }
                 } else {
                   //A specific cluster object was provided.

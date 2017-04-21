@@ -30,7 +30,7 @@ paths:
         - application/json
       parameters:
         - in: query
-          name: dataCenters
+          name: data_centers
           description: >
             For convenience, use this parameter to provision a cluster by
             providing a data center specification.
@@ -42,6 +42,16 @@ paths:
 
 
             **Note**: If this is provided the request body is ignored.
+          required: false
+          type: string
+        - in: query
+          name: cassandra_version
+          description: The Cassandra version of this Cluster.  This only applies if `data_centers` is specified.
+          required: false
+          type: string
+        - in: query
+          name: dse_version
+          description: The DSE version of this Cluster.  This only applies if `data_centers` is specified.
           required: false
           type: string
         - in: body

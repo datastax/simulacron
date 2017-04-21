@@ -72,7 +72,7 @@ public class HttpContainerTest {
             HttpMethod.POST,
             portNum,
             "127.0.0.1",
-            "/cluster/?dataCenters=1",
+            "/cluster/?data_centers=1",
             response -> {
               response.bodyHandler(
                   totalBuffer -> {
@@ -122,7 +122,7 @@ public class HttpContainerTest {
             HttpMethod.POST,
             portNum,
             "127.0.0.1",
-            "/cluster/?dataCenters=3,3,3",
+            "/cluster/?data_centers=3,3,3",
             response -> {
               response.bodyHandler(
                   totalBuffer -> {
