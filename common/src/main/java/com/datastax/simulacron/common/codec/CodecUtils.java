@@ -4,18 +4,23 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType;
 
 /**
  * A bunch of static convenience wrappers, mostly to make constructing values around column and row
  * data more fluent.
  */
 public class CodecUtils {
-
+  public static Logger logger = LoggerFactory.getLogger(CodecUtils.class);
   /**
    * Convenience wrapper for producing a row from a variable number of column values.
    *
@@ -77,6 +82,21 @@ public class CodecUtils {
    */
   public static RawType primitive(int code) {
     return RawType.PRIMITIVES.get(code);
+  }
+
+  public static RawType getPrimitiveFromName(String name) {
+    Field[] fields = DataType.class.getDeclaredFields();
+
+    for (Field field : fields) {
+      if (field.getName().toLowerCase().equals(name.toLowerCase())) {
+        try {
+          return primitive((int) field.get(null));
+        } catch (IllegalAccessException e) {
+          logger.error("Unable to fetch Primitive type " + name, e);
+        }
+      }
+    }
+    return null;
   }
 
   /**

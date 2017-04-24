@@ -6,6 +6,7 @@ import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -18,6 +19,16 @@ public class StubStore {
 
   public void register(StubMapping mapping) {
     stubMappings.add(mapping);
+  }
+
+  public void clearAllMatchingType(Class clazz) {
+    Iterator<StubMapping> iterator = stubMappings.iterator();
+    while (iterator.hasNext()) {
+      StubMapping mapping = iterator.next();
+      if (mapping.getClass().equals(clazz)) {
+        stubMappings.remove(mapping);
+      }
+    }
   }
 
   public void clear() {

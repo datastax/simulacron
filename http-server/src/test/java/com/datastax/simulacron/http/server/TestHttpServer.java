@@ -9,7 +9,7 @@ public class TestHttpServer {
     Server nativeServer = Server.builder().build();
     ClusterManager provisioner = new ClusterManager(nativeServer);
 
-    QueryManager qManager = new QueryManager();
+    QueryManager qManager = new QueryManager(nativeServer);
     provisioner.registerWithRouter(httpServer.getRouter());
     qManager.registerWithRouter(httpServer.getRouter());
 

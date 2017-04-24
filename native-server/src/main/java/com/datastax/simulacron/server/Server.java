@@ -6,6 +6,7 @@ import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
+import com.datastax.simulacron.common.stubbing.StubMapping;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -74,6 +75,24 @@ public final class Server {
     this.stubStore = stubStore;
   }
 
+  /**
+   * Provide a means to add a new StubMapping that can be used by the native server to provide
+   * responses to various client requets.
+   *
+   * @param stubMapping to register
+   */
+  public void registerStub(StubMapping stubMapping) {
+    this.stubStore.register(stubMapping);
+  }
+
+  /**
+   * Clears all stubmappings that match a specific classtype
+   *
+   * @param clazz all stubmapping matching this class type will be removed
+   */
+  public void clearStubsMatchingType(Class clazz) {
+    this.stubStore.clearAllMatchingType(clazz);
+  }
   /**
    * Registers a {@link Cluster} and binds it's {@link Node} instances to their respective
    * interfaces. If any members of the cluster lack an id, this will assign a random one for them.
