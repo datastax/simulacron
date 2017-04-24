@@ -221,6 +221,14 @@ public class ServerTest {
     }
 
     try (MockClient client = new MockClient(eventLoop).connect(nodes.get(0).getAddress())) {
+      // Use a client, this makes sure that the client channel is initialized and added to channel group.
+      // Usually this will be the case, but in some constrained environments there may be a window where
+      // the unregister happens before the channel is added to the channel group.
+      client.write(new Startup());
+      // Expect a Ready response.
+      Frame response = client.next();
+      assertThat(response.message).isInstanceOf(Ready.class);
+
       // Unregistering the cluster should close each nodes channel and remove cluster.
       assertThat(localServer.unregister(boundCluster.getId()).get(5, TimeUnit.SECONDS))
           .isSameAs(boundCluster);
