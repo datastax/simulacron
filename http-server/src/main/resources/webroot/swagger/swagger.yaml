@@ -75,8 +75,10 @@ paths:
           description: Created
           schema:
             $ref: '#/definitions/Cluster'
-        '405':
-          description: Invalid input
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
     get:
       tags:
         - cluster
@@ -93,6 +95,10 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Cluster'
+        '400':
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
     delete:
       tags:
         - cluster
@@ -106,6 +112,10 @@ paths:
       responses:
         '202':
           description: Clusters deleted
+        '400':
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
   '/cluster/{id}':
     get:
       tags:
@@ -127,6 +137,13 @@ paths:
           description: Cluster state
           schema:
             $ref: '#/definitions/Cluster'
+        '404':
+          examples:
+            "Not found":
+              message: No cluster registered with id 2
+              status_code: 404
+          schema:
+            $ref: '#/definitions/Error'
     delete:
       tags:
         - cluster
@@ -145,6 +162,17 @@ paths:
       responses:
         '202':
           description: Cluster deleted
+        '400':
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+        '404':
+          examples:
+            "Not found":
+              message: No cluster registered with id 2
+              status_code: 404
+          schema:
+            $ref: '#/definitions/Error'
 definitions:
   PeerInfo:
     type: object
@@ -250,3 +278,15 @@ definitions:
           nodes:
           - name: "node0"
           - name: "node1"
+  Error:
+    type: object
+    required:
+      - message
+      - status_code
+    properties:
+      message:
+        type: string
+        example: "An error has occurred"
+      status_code:
+        type: string
+        example: 400

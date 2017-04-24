@@ -15,8 +15,9 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class ClusterManager implements HttpListener {
-  Logger logger = LoggerFactory.getLogger(ClusterManager.class);
-  Server server;
+  private final Logger logger = LoggerFactory.getLogger(ClusterManager.class);
+  private final Server server;
+  private final ObjectMapper om = ClusterMapper.getMapper();
 
   public ClusterManager(Server server) {
     this.server = server;
@@ -39,8 +40,7 @@ public class ClusterManager implements HttpListener {
    *
    * @param context RoutingContext provided by vertx
    */
-  public void provisionCluster(RoutingContext context) {
-
+  private void provisionCluster(RoutingContext context) {
     context
         .request()
         .bodyHandler(
@@ -50,7 +50,6 @@ public class ClusterManager implements HttpListener {
                 String dseVersion = context.request().getParam("dse_version");
                 String cassandraVersion = context.request().getParam("cassandra_version");
                 StringBuffer response = new StringBuffer();
-                ObjectMapper om = ClusterMapper.getMapper();
                 Cluster cluster = null;
                 //General parameters were provided for us.
                 if (dcRawString != null) {
@@ -86,7 +85,7 @@ public class ClusterManager implements HttpListener {
                         }
                       }
                       if (ex != null) {
-                        handleClusterError(ex, "provision", context);
+                        handleError(new ErrorMessage(ex.getMessage(), 400), context);
                       } else {
                         context
                             .request()
@@ -97,29 +96,36 @@ public class ClusterManager implements HttpListener {
                       }
                     });
               } catch (Exception e) {
-                handleClusterError(e, "provision", context);
+                handleError(new ErrorMessage(e.getMessage(), 400), context);
               }
             });
   }
 
-  public void unregisterCluster(RoutingContext context) {
+  private void unregisterCluster(RoutingContext context) {
     context
         .request()
         .bodyHandler(
             b -> {
               try {
-                String idToFetch = context.request().getParam("clusterId");
                 CompletableFuture<? extends Object> future;
-                if (idToFetch != null) {
-                  future = server.unregister(Long.parseLong(idToFetch));
-                } else {
+                String idToFetch = context.request().getParam("clusterId");
+                if (idToFetch == null) {
                   future = server.unregisterAll();
+                } else {
+                  Long id = Long.parseLong(idToFetch);
+                  if (server.getClusterRegistry().containsKey(id)) {
+                    handleError(
+                        new ErrorMessage("No cluster registered with id " + id, 404), context);
+                    return;
+                  } else {
+                    future = server.unregister(id);
+                  }
                 }
 
                 future.whenComplete(
                     (r, ex) -> {
                       if (ex != null) {
-                        handleClusterError(ex, "unregister", context);
+                        handleError(new ErrorMessage(ex, 400), context);
                       } else {
                         context
                             .response()
@@ -129,7 +135,7 @@ public class ClusterManager implements HttpListener {
                       }
                     });
               } catch (Exception e) {
-                handleClusterError(e, "unregister", context);
+                handleError(new ErrorMessage(e, 400), context);
               }
             });
   }
@@ -147,7 +153,7 @@ public class ClusterManager implements HttpListener {
    *
    * @param context RoutingContext Provided by vertx
    */
-  public void getCluster(RoutingContext context) {
+  private void getCluster(RoutingContext context) {
     context
         .request()
         .bodyHandler(
@@ -155,10 +161,15 @@ public class ClusterManager implements HttpListener {
               try {
                 Map<Long, Cluster> clusters = this.server.getClusterRegistry();
                 ObjectMapper om = ClusterMapper.getMapper();
-                StringBuffer response = new StringBuffer();
+                StringBuilder response = new StringBuilder();
                 String idToFetch = context.request().getParam("clusterId");
                 if (idToFetch != null) {
-                  Cluster cluster = clusters.get(Long.parseLong(idToFetch));
+                  Long id = Long.parseLong(idToFetch);
+                  Cluster cluster = clusters.get(id);
+                  if (cluster == null) {
+                    handleError(
+                        new ErrorMessage("No cluster registered with id " + id, 404), context);
+                  }
                   String clusterStr =
                       om.writerWithDefaultPrettyPrinter().writeValueAsString(cluster);
                   response.append(clusterStr);
@@ -176,23 +187,31 @@ public class ClusterManager implements HttpListener {
                     .setStatusCode(200)
                     .end(response.toString());
               } catch (Exception e) {
-                handleClusterError(e, "retrieve", context);
+                handleError(new ErrorMessage(e, 404), context);
               }
             });
   }
 
-  private void handleClusterError(Throwable e, String operation, RoutingContext context) {
-    logger.error("Unable to " + operation + " cluster", e);
-    context
-        .request()
-        .response()
-        .setStatusCode(400)
-        .end(
-            "Error encountered while attempting to "
-                + operation
-                + " cluster"
-                + "\n"
-                + "Please see error logs for more details");
+  private void handleError(ErrorMessage message, RoutingContext context) {
+    if (message.getException() != null) {
+      logger.error("Error encountered while handling request.", message);
+    }
+    try {
+      String errorJson = om.writerWithDefaultPrettyPrinter().writeValueAsString(message);
+      context
+          .request()
+          .response()
+          .putHeader("content-type", "application/json")
+          .setStatusCode(message.getStatusCode())
+          .end(errorJson);
+    } catch (JsonProcessingException e) {
+      context
+          .request()
+          .response()
+          .putHeader("content-type", "application/json")
+          .setStatusCode(500)
+          .end("{\"message\": \"Internal Server Error, refer to logs\", \"status_code\": 500}");
+    }
   }
 
   /**
