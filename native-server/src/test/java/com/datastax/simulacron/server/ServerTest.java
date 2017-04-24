@@ -219,17 +219,22 @@ public class ServerTest {
       assertThat(((BoundNode) node).channel.get().isOpen()).isTrue();
     }
 
-    // Unregistering the cluster should close each nodes channel and remove cluster.
-    assertThat(localServer.unregister(boundCluster.getId()).get(5, TimeUnit.SECONDS))
-        .isSameAs(boundCluster);
+    try (MockClient client = new MockClient(eventLoop).connect(nodes.get(0).getAddress())) {
+      // Unregistering the cluster should close each nodes channel and remove cluster.
+      assertThat(localServer.unregister(boundCluster.getId()).get(5, TimeUnit.SECONDS))
+          .isSameAs(boundCluster);
 
-    // Cluster should be removed from registry.
-    assertThat(localServer.getClusterRegistry()).doesNotContainKey(boundCluster.getId());
+      // Cluster should be removed from registry.
+      assertThat(localServer.getClusterRegistry()).doesNotContainKey(boundCluster.getId());
 
-    // All node's channels should be closed.
-    for (Node node : nodes) {
-      // Each node's channel should be open.
-      assertThat(((BoundNode) node).channel.get().isOpen()).isFalse();
+      // All node's channels should be closed.
+      for (Node node : nodes) {
+        // Each node's channel should be open.
+        assertThat(((BoundNode) node).channel.get().isOpen()).isFalse();
+      }
+
+      // Existing connection should be closed.
+      assertThat(client.channel.isOpen()).isFalse();
     }
   }
 

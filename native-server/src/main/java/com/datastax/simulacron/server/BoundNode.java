@@ -100,11 +100,24 @@ class BoundNode extends Node {
     this.stubStore = stubStore;
   }
 
+  /**
+   * Closes the listening channel for this node. Note that this does not close existing client
+   * connections, this can be done using {@link #disconnectConnections()}. To stop listening and
+   * close connections, use {@link #close()}.
+   *
+   * @return future that completes when listening channel is closed.
+   */
   CompletableFuture<Node> unbind() {
     logger.debug("Unbinding listener on {}", channel);
     return completable(channel.get().close()).thenApply(v -> this);
   }
 
+  /**
+   * Reopens the listening channel for this node. If the channel was already open, has no effect and
+   * future completes immediately.
+   *
+   * @return future that completes when listening channel is reopened.
+   */
   CompletableFuture<Node> rebind() {
     if (this.channel.get().isOpen()) {
       // already accepting...
@@ -129,6 +142,30 @@ class BoundNode extends Node {
     return future;
   }
 
+  /**
+   * Closes both the listening channel and all existing client channels.
+   *
+   * @return future that completes when listening channel and client channels are all closed.
+   */
+  CompletableFuture<Node> close() {
+    return unbind().thenCombine(disconnectConnections(), (n0, n1) -> this);
+  }
+
+  /**
+   * Disconnects all client channels. Does not close listening interface (see {@link #unbind()} for
+   * that).
+   *
+   * @return future that completes when all client channels are disconnected.
+   */
+  CompletableFuture<Node> disconnectConnections() {
+    return completable(clientChannelGroup.disconnect()).thenApply(v -> this);
+  }
+
+  /**
+   * Indicates that the node should resume accepting connections.
+   *
+   * @return future that completes when node is listening again.
+   */
   CompletableFuture<Node> acceptNewConnections() {
     logger.debug("Accepting New Connections");
     rejectState.set(new RejectState());
@@ -140,6 +177,16 @@ class BoundNode extends Node {
     }
   }
 
+  /**
+   * Indicates that the node should stop accepting new connections.
+   *
+   * @param after If non-zero, after how many successful startup messages should stop accepting
+   *     connections.
+   * @param scope The scope to reject connections, either stop listening for connections, or accept
+   *     connections but don't respond to startup requests.
+   * @return future that completes when listening channel is unbound (if {@link RejectScope#UNBIND}
+   *     was used) or immediately if {@link RejectScope#REJECT_STARTUP} was used or after > 0.
+   */
   CompletableFuture<Node> rejectNewConnections(int after, RejectScope scope) {
     RejectState state;
     if (after <= 0) {
@@ -232,7 +279,7 @@ class BoundNode extends Node {
           future = completable(ctx.disconnect());
           break;
         case NODE:
-          future = completable(clientChannelGroup.disconnect());
+          future = disconnectConnections().thenApply(n -> null);
           break;
         case DATACENTER:
           List<CompletableFuture<Void>> futures =

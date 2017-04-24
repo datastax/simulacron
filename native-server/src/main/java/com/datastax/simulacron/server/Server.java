@@ -326,7 +326,7 @@ public final class Server {
 
   private CompletableFuture<Node> close(BoundNode node) {
     logger.debug("Closing {}.", node);
-    return node.unbind()
+    return node.close()
         .thenApply(
             n -> {
               logger.debug(
