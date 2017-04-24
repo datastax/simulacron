@@ -17,6 +17,7 @@ import org.junit.Test;
 
 import java.net.ConnectException;
 import java.net.SocketAddress;
+import java.nio.channels.ClosedChannelException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -233,12 +234,15 @@ public class ServerTest {
         assertThat(((BoundNode) node).channel.get().isOpen()).isFalse();
       }
 
-      // Existing connection should be closed.
-      if (client.channel.isOpen()) {
-        // may be a slight lag before client notices connection was closed, wait a second.
-        TimeUnit.SECONDS.sleep(1);
+      // Channel should be closed.  Send a write so client probes connection status (otherwise it may not get close
+      // notification right away).
+      try {
+        ChannelFuture future = client.write(new Startup());
+        future.get(5, TimeUnit.SECONDS);
+        fail("Expected ClosedChannelException");
+      } catch (ExecutionException e) {
+        assertThat(e.getCause()).isInstanceOf(ClosedChannelException.class);
       }
-      assertThat(client.channel.isOpen()).isFalse();
     }
   }
 
