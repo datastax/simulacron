@@ -234,6 +234,10 @@ public class ServerTest {
       }
 
       // Existing connection should be closed.
+      if (client.channel.isOpen()) {
+        // may be a slight lag before client notices connection was closed, wait a second.
+        TimeUnit.SECONDS.sleep(1);
+      }
       assertThat(client.channel.isOpen()).isFalse();
     }
   }
