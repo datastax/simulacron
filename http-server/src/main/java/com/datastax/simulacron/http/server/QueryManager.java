@@ -91,7 +91,7 @@ public class QueryManager implements HttpListener {
                 handleQueryError(e, "clear primed queries", context);
               }
               if (!context.response().ended()) {
-                context.request().response().setStatusCode(201).end(jsonBody);
+                context.request().response().setStatusCode(200).end(jsonBody);
               }
               ;
             });
@@ -126,6 +126,6 @@ public class QueryManager implements HttpListener {
 
   public void registerWithRouter(Router router) {
     router.route(HttpMethod.POST, "/prime*").handler(this::primerQuery);
-    router.route(HttpMethod.POST, "/clear_primed").handler(this::clearPrimedQueries);
+    router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
   }
 }

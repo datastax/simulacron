@@ -173,6 +173,49 @@ paths:
               status_code: 404
           schema:
             $ref: '#/definitions/Error'
+  '/prime-query-single':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes the cluster with a given query
+      operationId: primeQuerySingle
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: >
+            Contains a PrimedQuery that contains a then/when section this will be used to match query on recieve and from a construct a proper response.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQuery'
+
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQuery'
+        '400':
+          examples:
+            "Unable to parse provided query":
+              message: Error encountered while attempting to
+              status_code: 400
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      tags:
+        - prime-query-single
+      summary: Deletes all primed queries
+      operationId: deletePrimedQueries
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Cluster deleted
 definitions:
   PeerInfo:
     type: object
@@ -278,6 +321,50 @@ definitions:
           nodes:
           - name: "node0"
           - name: "node1"
+  When:
+    type: object
+    required:
+      - query
+    properties:
+      query:
+        type: string
+        example: "SELECT * FROM table"
+      consistency_level:
+        type: string
+        example: "LOCAL_ONE"
+    example:
+      query: "SELECT * FROM TABLE"
+  Then:
+    type: object
+    required:
+      - rows
+      - result
+      - column_types
+    properties:
+      rows:
+        type: array
+        example:
+          column1: "value1"
+          column2: "value2"
+      result:
+        type: string
+        example: :success
+      column_types:
+        type: OrderedMap
+        example:
+          column1: "bigint"
+          column2: "ascii"
+  PrimeQuery:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/Then'
+
   Error:
     type: object
     required:
