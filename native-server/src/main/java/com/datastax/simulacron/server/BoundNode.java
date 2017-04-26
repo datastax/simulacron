@@ -21,6 +21,9 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.Timeout;
+import io.netty.util.Timer;
+import io.netty.util.TimerTask;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -59,6 +63,8 @@ class BoundNode extends Node {
   // TODO: There could be a lot of concurrency issues around simultaneous calls to reject/accept, however
   // in the general case we don't expect it.   Leave this as AtomicReference in case we want to handle it better.
   private final AtomicReference<RejectState> rejectState = new AtomicReference<>(new RejectState());
+
+  private final Timer timer;
 
   private final transient StubStore stubStore;
 
@@ -92,10 +98,12 @@ class BoundNode extends Node {
       Map<String, Object> peerInfo,
       DataCenter parent,
       ServerBootstrap bootstrap,
+      Timer timer,
       Channel channel,
       StubStore stubStore) {
     super(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
     this.bootstrap = bootstrap;
+    this.timer = timer;
     this.channel = new AtomicReference<>(channel);
     this.stubStore = stubStore;
   }
@@ -261,62 +269,100 @@ class BoundNode extends Node {
       ChannelHandlerContext ctx,
       Frame frame,
       CompletableFuture<Void> doneFuture) {
+    // If there are no more actions, complete the done future and return.
     if (!nextActions.hasNext()) {
       doneFuture.complete(null);
       return;
     }
-    // TODO handle delay
-    // TODO maybe delegate this logic elsewhere
-    CompletableFuture<Void> future = null;
+
+    CompletableFuture<Void> future = new CompletableFuture<>();
     Action action = nextActions.next();
-    if (action instanceof MessageResponseAction) {
-      MessageResponseAction mAction = (MessageResponseAction) action;
-      future = completable(sendMessage(ctx, frame, mAction.getMessage()));
-    } else if (action instanceof DisconnectAction) {
-      DisconnectAction cAction = (DisconnectAction) action;
-      switch (cAction.getScope()) {
-        case CONNECTION:
-          future = completable(ctx.disconnect());
-          break;
-        case NODE:
-          future = disconnectConnections().thenApply(n -> null);
-          break;
-        case DATACENTER:
-          List<CompletableFuture<Void>> futures =
-              getDataCenter()
-                  .getNodes()
-                  .stream()
-                  .map(n -> completable(((BoundNode) n).clientChannelGroup.disconnect()))
-                  .collect(Collectors.toList());
-
-          future = CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
-          break;
-        case CLUSTER:
-          futures =
-              getCluster()
-                  .getNodes()
-                  .stream()
-                  .map(n -> completable(((BoundNode) n).clientChannelGroup.disconnect()))
-                  .collect(Collectors.toList());
-
-          future = CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
-          break;
-      }
+    ActionHandler handler = new ActionHandler(action, ctx, frame, future);
+    if (action.delayInMs() > 0) {
+      timer.newTimeout(handler, action.delayInMs(), TimeUnit.MILLISECONDS);
     } else {
-      logger.warn("Got action {} that we don't know how to handle.", action);
+      // process immediately when delay is 0.
+      handler.run(null);
     }
 
-    if (future != null) {
+    // proceed to next action when complete
+    future.whenComplete(
+        (v, ex) -> {
+          if (ex != null) {
+            doneFuture.completeExceptionally(ex);
+          } else {
+            handleActions(nextActions, ctx, frame, doneFuture);
+          }
+        });
+  }
+
+  private class ActionHandler implements TimerTask {
+
+    private final Action action;
+    private final ChannelHandlerContext ctx;
+    private final Frame frame;
+    private final CompletableFuture<Void> doneFuture;
+
+    ActionHandler(
+        Action action, ChannelHandlerContext ctx, Frame frame, CompletableFuture<Void> doneFuture) {
+      this.action = action;
+      this.ctx = ctx;
+      this.frame = frame;
+      this.doneFuture = doneFuture;
+    }
+
+    @Override
+    public void run(Timeout timeout) {
+      CompletableFuture<Void> future;
+      // TODO maybe delegate this logic elsewhere
+      if (action instanceof MessageResponseAction) {
+        MessageResponseAction mAction = (MessageResponseAction) action;
+        future = completable(sendMessage(ctx, frame, mAction.getMessage()));
+      } else if (action instanceof DisconnectAction) {
+        DisconnectAction cAction = (DisconnectAction) action;
+        switch (cAction.getScope()) {
+          case NODE:
+            future = disconnectConnections().thenApply(n -> null);
+            break;
+          case DATACENTER:
+            List<CompletableFuture<Void>> futures =
+                getDataCenter()
+                    .getNodes()
+                    .stream()
+                    .map(n -> completable(((BoundNode) n).clientChannelGroup.disconnect()))
+                    .collect(Collectors.toList());
+
+            future = CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
+            break;
+          case CLUSTER:
+            futures =
+                getCluster()
+                    .getNodes()
+                    .stream()
+                    .map(n -> completable(((BoundNode) n).clientChannelGroup.disconnect()))
+                    .collect(Collectors.toList());
+
+            future = CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
+            break;
+          case CONNECTION:
+          default:
+            future = completable(ctx.disconnect());
+            break;
+        }
+      } else {
+        logger.warn("Got action {} that we don't know how to handle.", action);
+        future = new CompletableFuture<>();
+        future.complete(null);
+      }
+
       future.whenComplete(
-          (r, ex) -> {
-            if (ex != null) {
-              doneFuture.completeExceptionally(ex);
+          (v, t) -> {
+            if (t != null) {
+              doneFuture.completeExceptionally(t);
             } else {
-              handleActions(nextActions, ctx, frame, doneFuture);
+              doneFuture.complete(v);
             }
           });
-    } else {
-      handleActions(nextActions, ctx, frame, doneFuture);
     }
   }
 

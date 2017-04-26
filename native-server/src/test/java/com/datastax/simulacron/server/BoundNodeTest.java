@@ -21,11 +21,16 @@ import com.datastax.simulacron.common.stubbing.StubMapping;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.channel.local.LocalAddress;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
+import org.junit.After;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,6 +39,7 @@ public class BoundNodeTest {
   private final Cluster cluster = Cluster.builder().build();
   private final DataCenter dc = cluster.addDataCenter().build();
   private final StubStore stubStore = new StubStore();
+  private final Timer timer = new HashedWheelTimer();
   private final BoundNode node =
       new BoundNode(
           new LocalAddress(UUID.randomUUID().toString()),
@@ -44,10 +50,16 @@ public class BoundNodeTest {
           Collections.emptyMap(),
           dc,
           null,
+          timer,
           null, // channel reference only needed for closing, not useful in context of this test.
           stubStore);
 
   private final EmbeddedChannel channel = new EmbeddedChannel(new RequestHandler(node));
+
+  @After
+  public void tearDown() {
+    timer.stop();
+  }
 
   @Test
   public void shouldHandleStartup() {
@@ -84,7 +96,7 @@ public class BoundNodeTest {
   }
 
   @Test
-  public void shouldRespondWithStubActionsWhenMatched() {
+  public void shouldRespondWithStubActionsWhenMatched() throws Exception {
     String query = "select * from foo where bar = ?";
     RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0]);
     Prepared response = new Prepared(new byte[] {1, 7, 9}, rowsMetadata, rowsMetadata);
@@ -113,5 +125,51 @@ public class BoundNodeTest {
     Frame frame = channel.readOutbound();
 
     assertThat(frame.message).isSameAs(response);
+  }
+
+  @Test
+  public void shouldRespondWithDelay() throws Exception {
+    String query = "select * from foo where bar = ?";
+    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0]);
+    Prepared response = new Prepared(new byte[] {1, 7, 9}, rowsMetadata, rowsMetadata);
+    stubStore.register(
+        new StubMapping() {
+
+          @Override
+          public boolean matches(Node node, Frame frame) {
+            Message msg = frame.message;
+            if (msg instanceof Prepare) {
+              Prepare p = (Prepare) msg;
+              if (p.cqlQuery.equals(query)) {
+                return true;
+              }
+            }
+            return false;
+          }
+
+          @Override
+          public List<Action> getActions(Node node, Frame frame) {
+            List<Action> actions = new ArrayList<>();
+            actions.add(new MessageResponseAction(response, 500));
+            actions.add(new MessageResponseAction(Options.INSTANCE));
+            return actions;
+          }
+        });
+
+    channel.writeInbound(FrameUtils.wrapRequest(new Prepare(query)));
+
+    // Should be no message immediately due to delay used.
+    Frame frame = channel.readOutbound();
+    assertThat(frame).isNull();
+
+    // Wait a second for action to be processed
+    TimeUnit.SECONDS.sleep(1);
+
+    frame = channel.readOutbound();
+    assertThat(frame.message).isSameAs(response);
+
+    // Should be another action that is processed immediately after that is an options message.
+    frame = channel.readOutbound();
+    assertThat(frame.message).isSameAs(Options.INSTANCE);
   }
 }

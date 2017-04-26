@@ -13,6 +13,8 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.AttributeKey;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -58,6 +60,9 @@ public final class Server {
   /** The store that configures how to handle requests sent from a client. */
   private final StubStore stubStore;
 
+  /** The timer to use for scheduling actions. */
+  private final Timer timer;
+
   /** Counter used to assign incrementing ids to clusters. */
   private final AtomicLong clusterCounter = new AtomicLong();
 
@@ -67,10 +72,12 @@ public final class Server {
   private Server(
       AddressResolver addressResolver,
       ServerBootstrap serverBootstrap,
+      Timer timer,
       long bindTimeoutInNanos,
       StubStore stubStore) {
     this.serverBootstrap = serverBootstrap;
     this.addressResolver = addressResolver;
+    this.timer = timer;
     this.bindTimeoutInNanos = bindTimeoutInNanos;
     this.stubStore = stubStore;
   }
@@ -297,6 +304,7 @@ public final class Server {
                         newPeerInfo,
                         parent,
                         serverBootstrap,
+                        timer,
                         channelFuture.channel(),
                         stubStore);
                 logger.info("Bound {} to {}", node, channelFuture.channel());
@@ -394,6 +402,8 @@ public final class Server {
 
     private long bindTimeoutInNanos = DEFAULT_BIND_TIMEOUT_IN_NANOS;
 
+    private Timer timer;
+
     private StubStore stubStore;
 
     Builder(ServerBootstrap initialBootstrap) {
@@ -426,6 +436,18 @@ public final class Server {
     }
 
     /**
+     * Sets the timer to use for scheduling actions. If not set, a {@link HashedWheelTimer} is
+     * created.
+     *
+     * @param timer timer to use.
+     * @return This builder.
+     */
+    public Builder withTimer(Timer timer) {
+      this.timer = timer;
+      return this;
+    }
+
+    /**
      * Sets the {@link StubStore} to be used by this server. By default creates a new one with
      * built-in stubs for handling metadata requests for system.local and peers ({@link
      * PeerMetadataHandler})
@@ -444,7 +466,10 @@ public final class Server {
         stubStore = new StubStore();
         stubStore.register(new PeerMetadataHandler());
       }
-      return new Server(addressResolver, serverBootstrap, bindTimeoutInNanos, stubStore);
+      if (timer == null) {
+        this.timer = new HashedWheelTimer();
+      }
+      return new Server(addressResolver, serverBootstrap, timer, bindTimeoutInNanos, stubStore);
     }
   }
 
