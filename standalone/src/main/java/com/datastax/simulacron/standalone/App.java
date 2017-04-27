@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger;
 import com.beust.jcommander.JCommander;
 import com.datastax.simulacron.http.server.ClusterManager;
 import com.datastax.simulacron.http.server.HttpContainer;
+import com.datastax.simulacron.http.server.QueryManager;
 import com.datastax.simulacron.http.server.SwaggerUI;
 import com.datastax.simulacron.server.AddressResolver.Inet4Resolver;
 import com.datastax.simulacron.server.Server;
@@ -54,6 +55,9 @@ public class App {
     // TODO: There should probably be a module in http-server for setting up the http server instead of doing it here.
     ClusterManager provisioner = new ClusterManager(nativeServer);
     provisioner.registerWithRouter(httpServer.getRouter());
+
+    QueryManager queryManager = new QueryManager(nativeServer);
+    queryManager.registerWithRouter(httpServer.getRouter());
 
     SwaggerUI swaggerUI = new SwaggerUI();
     swaggerUI.registerWithRouter(httpServer.getRouter());
