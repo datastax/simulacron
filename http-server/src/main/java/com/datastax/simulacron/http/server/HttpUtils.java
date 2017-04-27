@@ -15,14 +15,18 @@ public class HttpUtils {
     if (message.getException() != null) {
       logger.error("Error encountered while handling request.", message);
     }
+    handleMessage(message, context);
+  }
+
+  public static void handleMessage(Message message, RoutingContext context) {
     try {
-      String errorJson = om.writerWithDefaultPrettyPrinter().writeValueAsString(message);
+      String msgJson = om.writerWithDefaultPrettyPrinter().writeValueAsString(message);
       context
           .request()
           .response()
           .putHeader("content-type", "application/json")
           .setStatusCode(message.getStatusCode())
-          .end(errorJson);
+          .end(msgJson);
     } catch (JsonProcessingException e) {
       context
           .request()

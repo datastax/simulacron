@@ -229,11 +229,12 @@ public final class Server {
    *
    * @return future that is completed when all clusters are unregistered.
    */
-  public CompletableFuture<Void> unregisterAll() {
+  public CompletableFuture<Integer> unregisterAll() {
     List<CompletableFuture<Cluster>> futures =
         clusters.keySet().stream().map(this::unregister).collect(Collectors.toList());
 
-    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
+        .thenApply(__ -> futures.size());
   }
 
   /**

@@ -14,6 +14,9 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static com.datastax.simulacron.http.server.HttpUtils.handleError;
+import static com.datastax.simulacron.http.server.HttpUtils.handleMessage;
+
 public class ClusterManager implements HttpListener {
   private final Logger logger = LoggerFactory.getLogger(ClusterManager.class);
   private final Server server;
@@ -49,7 +52,7 @@ public class ClusterManager implements HttpListener {
                 String dcRawString = context.request().getParam("data_centers");
                 String dseVersion = context.request().getParam("dse_version");
                 String cassandraVersion = context.request().getParam("cassandra_version");
-                StringBuffer response = new StringBuffer();
+                StringBuilder response = new StringBuilder();
                 Cluster cluster = null;
                 //General parameters were provided for us.
                 if (dcRawString != null) {
@@ -85,7 +88,7 @@ public class ClusterManager implements HttpListener {
                         }
                       }
                       if (ex != null) {
-                        HttpUtils.handleError(new ErrorMessage(ex.getMessage(), 400), context);
+                        handleError(new ErrorMessage(ex.getMessage(), 400), context);
                       } else {
                         context
                             .request()
@@ -96,7 +99,7 @@ public class ClusterManager implements HttpListener {
                       }
                     });
               } catch (Exception e) {
-                HttpUtils.handleError(new ErrorMessage(e.getMessage(), 400), context);
+                handleError(new ErrorMessage(e.getMessage(), 400), context);
               }
             });
   }
@@ -107,35 +110,39 @@ public class ClusterManager implements HttpListener {
         .bodyHandler(
             b -> {
               try {
-                CompletableFuture<? extends Object> future;
+                CompletableFuture<Integer> future;
                 String idToFetch = context.request().getParam("clusterId");
                 if (idToFetch == null) {
                   future = server.unregisterAll();
                 } else {
                   Long id = Long.parseLong(idToFetch);
-                  if (server.getClusterRegistry().containsKey(id)) {
-                    HttpUtils.handleError(
-                        new ErrorMessage("No cluster registered with id " + id, 404), context);
+                  if (!server.getClusterRegistry().containsKey(id)) {
+                    handleError(
+                        new ErrorMessage("No cluster registered with id " + id + ".", 404),
+                        context);
                     return;
                   } else {
-                    future = server.unregister(id);
+                    future = server.unregister(id).thenApply(__ -> 1);
                   }
                 }
 
                 future.whenComplete(
-                    (r, ex) -> {
+                    (count, ex) -> {
                       if (ex != null) {
-                        HttpUtils.handleError(new ErrorMessage(ex, 400), context);
+                        handleError(new ErrorMessage(ex, 400), context);
                       } else {
-                        context
-                            .response()
-                            .putHeader("content-type", "application/json")
-                            .setStatusCode(202)
-                            .end();
+                        if (idToFetch == null) {
+                          handleMessage(
+                              new Message("All (" + count + ") clusters unregistered.", 202),
+                              context);
+                        } else {
+                          handleMessage(
+                              new Message("Cluster " + idToFetch + " unregistered.", 202), context);
+                        }
                       }
                     });
               } catch (Exception e) {
-                HttpUtils.handleError(new ErrorMessage(e, 400), context);
+                handleError(new ErrorMessage(e, 400), context);
               }
             });
   }
@@ -167,7 +174,7 @@ public class ClusterManager implements HttpListener {
                   Long id = Long.parseLong(idToFetch);
                   Cluster cluster = clusters.get(id);
                   if (cluster == null) {
-                    HttpUtils.handleError(
+                    handleError(
                         new ErrorMessage("No cluster registered with id " + id, 404), context);
                   }
                   String clusterStr =
@@ -187,15 +194,16 @@ public class ClusterManager implements HttpListener {
                     .setStatusCode(200)
                     .end(response.toString());
               } catch (Exception e) {
-                HttpUtils.handleError(new ErrorMessage(e, 404), context);
+                handleError(new ErrorMessage(e, 404), context);
               }
             });
   }
+
   /**
    * This method handles the registration of the various routes responsible for setting and
    * retrieving cluster information via http.
    *
-   * @param router
+   * @param router The router to register the endpoint with.
    */
   public void registerWithRouter(Router router) {
     router.route(HttpMethod.POST, "/cluster").handler(this::provisionCluster);

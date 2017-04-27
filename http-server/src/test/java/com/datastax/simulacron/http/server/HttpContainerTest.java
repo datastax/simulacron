@@ -15,10 +15,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 
 public class HttpContainerTest {
@@ -26,6 +29,7 @@ public class HttpContainerTest {
   private Vertx vertx = null;
   private int portNum = 8187;
   private Server nativeServer;
+  ObjectMapper om = ClusterMapper.getMapper();
   Logger logger = LoggerFactory.getLogger(HttpContainerTest.class);
 
   @Before
@@ -134,7 +138,6 @@ public class HttpContainerTest {
     HttpTestResponse responseToValidate = future.get();
     validateCluster(responseToValidate, 201);
 
-    ObjectMapper om = ClusterMapper.getMapper();
     //create cluster object from json return code
     Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
 
@@ -155,6 +158,133 @@ public class HttpContainerTest {
         .end();
     responseToValidate = future2.get();
     validateCluster(responseToValidate, 200);
+  }
+
+  @Test
+  public void testUnregisterClusterNotExists() throws Exception {
+    HttpClient client = vertx.createHttpClient();
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.DELETE,
+            portNum,
+            "127.0.0.1",
+            "/cluster/0",
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    future.complete(new HttpTestResponse(response, totalBuffer.toString()));
+                  });
+            })
+        .end();
+
+    HttpTestResponse response = future.get(5, TimeUnit.SECONDS);
+    assertThat(response.response.statusCode()).isEqualTo(404);
+    assertThat(response.response.getHeader("content-type")).isEqualTo("application/json");
+    ErrorMessage error = om.readValue(response.body, ErrorMessage.class);
+    assertThat(error.getMessage()).isEqualTo("No cluster registered with id 0.");
+    assertThat(error.getStatusCode()).isEqualTo(404);
+  }
+
+  @Test
+  public void testUnregisterClusterExists() throws Exception {
+    Cluster cluster =
+        nativeServer.register(Cluster.builder().withNodes(1).build()).get(1, TimeUnit.SECONDS);
+    Cluster cluster2 =
+        nativeServer.register(Cluster.builder().withNodes(1).build()).get(1, TimeUnit.SECONDS);
+
+    HttpClient client = vertx.createHttpClient();
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.DELETE,
+            portNum,
+            "127.0.0.1",
+            "/cluster/" + cluster.getId(),
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    future.complete(new HttpTestResponse(response, totalBuffer.toString()));
+                  });
+            })
+        .end();
+
+    HttpTestResponse response = future.get(5, TimeUnit.SECONDS);
+    assertThat(response.response.statusCode()).isEqualTo(202);
+    assertThat(response.response.getHeader("content-type")).isEqualTo("application/json");
+    Message msg = om.readValue(response.body, Message.class);
+    assertThat(msg.getMessage()).isEqualTo("Cluster 0 unregistered.");
+    assertThat(msg.getStatusCode()).isEqualTo(202);
+
+    // Cluster should have been unregistered
+    assertThat(nativeServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
+    // Cluster2 should not have been unregistered
+    assertThat(nativeServer.getClusterRegistry()).containsKey(cluster2.getId());
+  }
+
+  @Test
+  public void testUnregisterAllNoClusters() throws Exception {
+    HttpClient client = vertx.createHttpClient();
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.DELETE,
+            portNum,
+            "127.0.0.1",
+            "/cluster",
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    future.complete(new HttpTestResponse(response, totalBuffer.toString()));
+                  });
+            })
+        .end();
+
+    HttpTestResponse response = future.get(5, TimeUnit.SECONDS);
+    assertThat(response.response.statusCode()).isEqualTo(202);
+    assertThat(response.response.getHeader("content-type")).isEqualTo("application/json");
+    Message msg = om.readValue(response.body, Message.class);
+    assertThat(msg.getMessage()).isEqualTo("All (0) clusters unregistered.");
+    assertThat(msg.getStatusCode()).isEqualTo(202);
+  }
+
+  @Test
+  public void testUnregisterAllWithClusters() throws Exception {
+    // register 10 clusters and capture their ids.
+    List<Long> ids = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      ids.add(
+          nativeServer
+              .register(Cluster.builder().withNodes(1).build())
+              .get(5, TimeUnit.SECONDS)
+              .getId());
+    }
+
+    HttpClient client = vertx.createHttpClient();
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.DELETE,
+            portNum,
+            "127.0.0.1",
+            "/cluster",
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    future.complete(new HttpTestResponse(response, totalBuffer.toString()));
+                  });
+            })
+        .end();
+
+    HttpTestResponse response = future.get(5, TimeUnit.SECONDS);
+    assertThat(response.response.statusCode()).isEqualTo(202);
+    assertThat(response.response.getHeader("content-type")).isEqualTo("application/json");
+    Message msg = om.readValue(response.body, Message.class);
+    assertThat(msg.getMessage()).isEqualTo("All (10) clusters unregistered.");
+    assertThat(msg.getStatusCode()).isEqualTo(202);
+
+    // Should be no more registered clusters
+    assertThat(nativeServer.getClusterRegistry()).isEmpty();
   }
 
   private void validateCluster(HttpTestResponse responseToValidate, int expectedStatusCode)

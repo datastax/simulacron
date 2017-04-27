@@ -1,25 +1,21 @@
 package com.datastax.simulacron.http.server;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** POJO for Error messages that can be serialized/deserialized using jackson. */
-public class ErrorMessage {
-  @JsonProperty("message")
-  private final String message;
-
-  @JsonProperty("status_code")
-  private final int statusCode;
-
+public class ErrorMessage extends Message {
   @JsonIgnore private transient Throwable exception;
+
+  public ErrorMessage() {
+    // Unused, for Jackson only
+  }
 
   public ErrorMessage(String message, int statusCode) {
     this(message, statusCode, null);
   }
 
   public ErrorMessage(String message, int statusCode, Throwable exception) {
-    this.message = message;
-    this.statusCode = statusCode;
+    super(message, statusCode);
     this.exception = exception;
   }
 
@@ -38,16 +34,6 @@ public class ErrorMessage {
         + ", exception="
         + exception
         + '}';
-  }
-
-  /** @return The message associated with this error. */
-  public String getMessage() {
-    return message;
-  }
-
-  /** @return The HTTP status code associated with this error. */
-  public int getStatusCode() {
-    return statusCode;
   }
 
   /** @return The exception associated with this error (if provided). */
