@@ -1,9 +1,12 @@
 package com.datastax.simulacron.common.codec;
 
+import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.Node;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,14 +16,46 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType;
-
 /**
  * A bunch of static convenience wrappers, mostly to make constructing values around column and row
  * data more fluent.
  */
 public class CodecUtils {
+
   public static Logger logger = LoggerFactory.getLogger(CodecUtils.class);
+
+  public static final Map<String, RawType> nativeTypeMap = new HashMap<>();
+
+  static {
+    // preload primitive types
+    Field[] fields = ProtocolConstants.DataType.class.getDeclaredFields();
+
+    // types to skip
+    Set<String> nonPrimitiveTypes = new TreeSet<>();
+    nonPrimitiveTypes.add("custom");
+    nonPrimitiveTypes.add("list");
+    nonPrimitiveTypes.add("map");
+    nonPrimitiveTypes.add("set");
+    nonPrimitiveTypes.add("udt");
+    nonPrimitiveTypes.add("tuple");
+
+    for (Field field : fields) {
+      try {
+        String fieldName = field.getName().toLowerCase();
+        if (nonPrimitiveTypes.contains(fieldName) || field.isSynthetic()) {
+          continue;
+        }
+        RawType rawType = primitive((int) field.get(null));
+        nativeTypeMap.put(fieldName, rawType);
+      } catch (IllegalAccessException e) {
+        logger.error("Unable to cache Primitive type for {}", field, e);
+      }
+    }
+  }
+
+  private static final LoadingCache<String, RawType> typeCache =
+      Caffeine.newBuilder().build(RawTypeParser::resolveRawTypeFromName);
+
   /**
    * Convenience wrapper for producing a row from a variable number of column values.
    *
@@ -84,19 +119,18 @@ public class CodecUtils {
     return RawType.PRIMITIVES.get(code);
   }
 
-  public static RawType getPrimitiveFromName(String name) {
-    Field[] fields = DataType.class.getDeclaredFields();
-
-    for (Field field : fields) {
-      if (field.getName().toLowerCase().equals(name.toLowerCase())) {
-        try {
-          return primitive((int) field.get(null));
-        } catch (IllegalAccessException e) {
-          logger.error("Unable to fetch Primitive type " + name, e);
-        }
-      }
+  /**
+   * Resolves the {@link RawType} from the given name. If not found returns null.
+   *
+   * @param name name to look up.
+   * @return The associated {@link RawType} for this name.
+   */
+  public static RawType getTypeFromName(String name) {
+    RawType rawType = nativeTypeMap.get(name);
+    if (rawType == null) {
+      rawType = typeCache.get(name);
     }
-    return null;
+    return rawType;
   }
 
   /**
@@ -107,6 +141,14 @@ public class CodecUtils {
    */
   public static List<ColumnSpec> columnSpecs(ColumnSpec... colSpecs) {
     return new ArrayList<>(Arrays.asList(colSpecs));
+  }
+
+  /**
+   * @return A convenient version of {@link #columnSpecBuilder(String, String)} that prefills
+   *     keyspace and table information which is not considered relevant in the response metadata.
+   */
+  public static ColumnSpecBuilder columnSpecBuilder() {
+    return columnSpecBuilder("ks", "tbl");
   }
 
   /**

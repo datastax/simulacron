@@ -57,7 +57,7 @@ public class QueryHandler implements StubMapping {
     for (Map<String, Object> row : primedQuery.then.rows) {
 
       List<ByteBuffer> rowByteBuffer = new LinkedList<ByteBuffer>();
-      CodecUtils.ColumnSpecBuilder columnBuilder = columnSpecBuilder("system", "local");
+      CodecUtils.ColumnSpecBuilder columnBuilder = columnSpecBuilder();
       //Iterate over all the rows and create column meta data if needed
       for (String key : row.keySet()) {
         RawType type = getTypeForRow(key);
@@ -76,6 +76,6 @@ public class QueryHandler implements StubMapping {
 
   private RawType getTypeForRow(Object key) {
     String type = primedQuery.then.column_types.get(key);
-    return CodecUtils.getPrimitiveFromName(type);
+    return CodecUtils.getTypeFromName(type);
   }
 }

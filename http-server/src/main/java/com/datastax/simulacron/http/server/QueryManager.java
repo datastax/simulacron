@@ -52,7 +52,7 @@ public class QueryManager implements HttpListener {
 
                 for (String key : query.then.column_types.keySet()) {
                   String typeName = query.then.column_types.get(key);
-                  RawType type = CodecUtils.getPrimitiveFromName(typeName);
+                  RawType type = CodecUtils.getTypeFromName(typeName);
                   if (type == null) {
                     handleBadType(key, typeName, context);
                   }
