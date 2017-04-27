@@ -105,12 +105,9 @@ public class QueryManager implements HttpListener {
    * @param context RoutingContext to set failure upon
    */
   private void handleQueryError(Throwable e, String operation, RoutingContext context) {
-    logger.error("Unable to " + operation + e);
-    context
-        .request()
-        .response()
-        .setStatusCode(400)
-        .end("Error encountered while attempting to " + operation + ". See logs for details");
+    String errorString =
+        "Error encountered while attempting to " + operation + ". See logs for details";
+    HttpUtils.handleError(new ErrorMessage(errorString, 400), context);
   }
   /**
    * Convenience method to set failure on response when an invalid type is detected
@@ -120,8 +117,7 @@ public class QueryManager implements HttpListener {
   private void handleBadType(String key, String typeName, RoutingContext context) {
     String errorMsg =
         "Invalid type defined for column " + key + ", " + typeName + " is not a recognized type.";
-    logger.error(errorMsg);
-    context.request().response().setStatusCode(400).end(errorMsg);
+    HttpUtils.handleError(new ErrorMessage(errorMsg, 400), context);
   }
 
   public void registerWithRouter(Router router) {

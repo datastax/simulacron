@@ -85,7 +85,7 @@ public class ClusterManager implements HttpListener {
                         }
                       }
                       if (ex != null) {
-                        handleError(new ErrorMessage(ex.getMessage(), 400), context);
+                        HttpUtils.handleError(new ErrorMessage(ex.getMessage(), 400), context);
                       } else {
                         context
                             .request()
@@ -96,7 +96,7 @@ public class ClusterManager implements HttpListener {
                       }
                     });
               } catch (Exception e) {
-                handleError(new ErrorMessage(e.getMessage(), 400), context);
+                HttpUtils.handleError(new ErrorMessage(e.getMessage(), 400), context);
               }
             });
   }
@@ -114,7 +114,7 @@ public class ClusterManager implements HttpListener {
                 } else {
                   Long id = Long.parseLong(idToFetch);
                   if (server.getClusterRegistry().containsKey(id)) {
-                    handleError(
+                    HttpUtils.handleError(
                         new ErrorMessage("No cluster registered with id " + id, 404), context);
                     return;
                   } else {
@@ -125,7 +125,7 @@ public class ClusterManager implements HttpListener {
                 future.whenComplete(
                     (r, ex) -> {
                       if (ex != null) {
-                        handleError(new ErrorMessage(ex, 400), context);
+                        HttpUtils.handleError(new ErrorMessage(ex, 400), context);
                       } else {
                         context
                             .response()
@@ -135,7 +135,7 @@ public class ClusterManager implements HttpListener {
                       }
                     });
               } catch (Exception e) {
-                handleError(new ErrorMessage(e, 400), context);
+                HttpUtils.handleError(new ErrorMessage(e, 400), context);
               }
             });
   }
@@ -167,7 +167,7 @@ public class ClusterManager implements HttpListener {
                   Long id = Long.parseLong(idToFetch);
                   Cluster cluster = clusters.get(id);
                   if (cluster == null) {
-                    handleError(
+                    HttpUtils.handleError(
                         new ErrorMessage("No cluster registered with id " + id, 404), context);
                   }
                   String clusterStr =
@@ -187,33 +187,10 @@ public class ClusterManager implements HttpListener {
                     .setStatusCode(200)
                     .end(response.toString());
               } catch (Exception e) {
-                handleError(new ErrorMessage(e, 404), context);
+                HttpUtils.handleError(new ErrorMessage(e, 404), context);
               }
             });
   }
-
-  private void handleError(ErrorMessage message, RoutingContext context) {
-    if (message.getException() != null) {
-      logger.error("Error encountered while handling request.", message);
-    }
-    try {
-      String errorJson = om.writerWithDefaultPrettyPrinter().writeValueAsString(message);
-      context
-          .request()
-          .response()
-          .putHeader("content-type", "application/json")
-          .setStatusCode(message.getStatusCode())
-          .end(errorJson);
-    } catch (JsonProcessingException e) {
-      context
-          .request()
-          .response()
-          .putHeader("content-type", "application/json")
-          .setStatusCode(500)
-          .end("{\"message\": \"Internal Server Error, refer to logs\", \"status_code\": 500}");
-    }
-  }
-
   /**
    * This method handles the registration of the various routes responsible for setting and
    * retrieving cluster information via http.
