@@ -456,6 +456,21 @@ public class CqlMapperTest {
     } catch (InvalidTypeException e) {
       assertThat(e.getCause()).isInstanceOf(BufferUnderflowException.class);
     }
+
+    // Values of set should be mapped using encodeObject
+    // In this case we have a codec that calls for list<ascii> but we give it a Set<Integer>.
+    // The codec should properly convert to List<String> from List<Integer>.
+    Set<Integer> intSet = new LinkedHashSet<>();
+    intSet.add(1);
+    intSet.add(2);
+    intSet.add(-40);
+
+    List<String> stringList = new ArrayList<>();
+    stringList.add("1");
+    stringList.add("2");
+    stringList.add("-40");
+    encodeObjectAndDecode(
+        listStringCodec, intSet, "0x0000000300000001310000000132000000032d3430", stringList);
   }
 
   @Test
@@ -507,6 +522,15 @@ public class CqlMapperTest {
     } catch (InvalidTypeException e) {
       assertThat(e.getCause()).isInstanceOf(BufferUnderflowException.class);
     }
+
+    // Values of set should be mapped using encodeObject
+    // In this case we have a codec that calls for set<int> but we give it a Set<String>.
+    // The codec should properly convert to Set<Integer> from Set<String>.
+    Set<String> stringSet = new LinkedHashSet<>();
+    stringSet.add("1");
+    stringSet.add("2");
+    stringSet.add("-40");
+    encodeObjectAndDecode(setIntCodec, stringSet, setStr, s);
   }
 
   @Test
@@ -527,7 +551,7 @@ public class CqlMapperTest {
     encodeAndDecode(mapCodec, m, mapStr);
     encodeAndDecode(mapCodec, null, null, Collections.emptyMap());
 
-    encodeObjectAndDecode(mapCodec, m, mapStr, m);
+    encodeObjectAndDecode(mapCodec, m, m);
     encodeObjectAndDecode(mapCodec, null, null, Collections.emptyMap());
     encodeObjectAndDecode(mapCodec, Optional.of(12), null, Collections.emptyMap());
 
@@ -572,6 +596,18 @@ public class CqlMapperTest {
       fail("Expected InvalidTypeException");
     } catch (InvalidTypeException e) { // expected
     }
+
+    // Values of map should be mapped using encodeObject
+    // In this case we have a codec that calls for map<ascii, int> but we give it a Map<Integer, String>
+    // The codec should properly convert to Map<String, Integer> when encoding.
+    Map<Integer, String> swapMap1 = new HashMap<>();
+    swapMap1.put(0, "1");
+    swapMap1.put(1, "0");
+    Map<String, Integer> swapMap0 = new HashMap<>();
+    swapMap0.put("0", 1);
+    swapMap0.put("1", 0);
+
+    encodeObjectAndDecode(mapCodec, swapMap1, swapMap0);
   }
 
   @Test
@@ -639,6 +675,11 @@ public class CqlMapperTest {
   <T> void encodeObjectAndDecode(Codec<T> codec, Object input, String expectedByteStr, T expected) {
     ByteBuffer byteBuf = codec.encodeObject(input);
     assertThat(byteBuf).hasBytes(expectedByteStr);
+    assertThat(codec.decode(byteBuf)).isEqualTo(expected);
+  }
+
+  <T> void encodeObjectAndDecode(Codec<T> codec, Object input, T expected) {
+    ByteBuffer byteBuf = codec.encodeObject(input);
     assertThat(codec.decode(byteBuf)).isEqualTo(expected);
   }
 }

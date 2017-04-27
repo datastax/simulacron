@@ -363,7 +363,7 @@ definitions:
         example:
           key: "bigint"
           description: "ascii"
-          dates: "map<ascii,ascii>"
+          dates: "map<ascii,date>"
   PrimeQuery:
     type: object
     required:

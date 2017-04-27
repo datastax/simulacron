@@ -145,7 +145,16 @@ public class CqlMapper {
 
     abstract T decodeInternal(ByteBuffer input);
 
-    abstract T toNativeTypeInternal(Object input);
+    /**
+     * Specialized {@link #toNativeType} logic for the implementation type. By default doesn't
+     * handle anything.
+     *
+     * @param input Input to convert to native type.
+     * @return conversion of input into native type, or null if not applicable.
+     */
+    T toNativeTypeInternal(Object input) {
+      return null;
+    }
 
     @Override
     public JavaType getJavaType() {
@@ -242,6 +251,21 @@ public class CqlMapper {
       }
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public C toNativeType(Object input) {
+      if (input instanceof Collection) {
+        Collection in = (Collection) input;
+        C transformed = newInstance(in.size());
+        for (Object o : in) {
+          E e = elementCodec.toNativeType(o);
+          transformed.add(e);
+        }
+        return transformed;
+      }
+      return null;
+    }
+
     protected abstract C newInstance(int size);
   }
 
@@ -258,15 +282,6 @@ public class CqlMapper {
     protected Set<E> newInstance(int size) {
       return new LinkedHashSet<>(size);
     }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    Set<E> toNativeTypeInternal(Object input) {
-      if (input instanceof Collection) {
-        return new LinkedHashSet<>((Collection<E>) input);
-      }
-      return null;
-    }
   }
 
   class ListCodec<E> extends CollectionCodec<E, List<E>> {
@@ -281,15 +296,6 @@ public class CqlMapper {
     @Override
     protected List<E> newInstance(int size) {
       return new ArrayList<>(size);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    List<E> toNativeTypeInternal(Object input) {
-      if (input instanceof Collection) {
-        return new ArrayList<>((Collection<E>) input);
-      }
-      return null;
     }
   }
 
@@ -368,7 +374,17 @@ public class CqlMapper {
 
     @Override
     @SuppressWarnings("unchecked")
-    Map<K, V> toNativeTypeInternal(Object input) {
+    public Map<K, V> toNativeType(Object input) {
+      if (input instanceof Map) {
+        Map<K, V> map = new HashMap<>();
+        Map inMap = (Map) input;
+        for (Map.Entry entry : (Set<Map.Entry>) inMap.entrySet()) {
+          K k = keyCodec.toNativeType(entry.getKey());
+          V v = valueCodec.toNativeType(entry.getValue());
+          map.put(k, v);
+        }
+        return map;
+      }
       return null;
     }
   }
