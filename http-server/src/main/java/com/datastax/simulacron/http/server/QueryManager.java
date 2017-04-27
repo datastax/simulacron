@@ -107,7 +107,7 @@ public class QueryManager implements HttpListener {
   private void handleQueryError(Throwable e, String operation, RoutingContext context) {
     String errorString =
         "Error encountered while attempting to " + operation + ". See logs for details";
-    HttpUtils.handleError(new ErrorMessage(errorString, 400), context);
+    HttpUtils.handleError(new ErrorMessage(errorString, 400, e), context);
   }
   /**
    * Convenience method to set failure on response when an invalid type is detected

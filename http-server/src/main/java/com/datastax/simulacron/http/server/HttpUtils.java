@@ -13,7 +13,7 @@ public class HttpUtils {
 
   public static void handleError(ErrorMessage message, RoutingContext context) {
     if (message.getException() != null) {
-      logger.error("Error encountered while handling request.", message);
+      logger.error(message.getMessage(), message.getException());
     }
     handleMessage(message, context);
   }

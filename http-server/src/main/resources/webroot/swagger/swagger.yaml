@@ -344,16 +344,26 @@ definitions:
       rows:
         type: array
         example:
-          column1: "value1"
-          column2: "value2"
+          - key: 0
+            description: "Important dates"
+            dates:
+              independence day: "1776-07-04"
+              washington's birthday: "1732-02-22"
+          - key: 1
+            description: "Other fun dates"
+            dates:
+              new years day: "2017-01-01"
+              leap day: "2020-02-29"
+              end of mayan calandar: "2012-12-21"
       result:
         type: string
         example: :success
       column_types:
         type: OrderedMap
         example:
-          column1: "bigint"
-          column2: "ascii"
+          key: "bigint"
+          description: "ascii"
+          dates: "map<ascii,ascii>"
   PrimeQuery:
     type: object
     required:
