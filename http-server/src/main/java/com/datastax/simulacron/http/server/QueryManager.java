@@ -3,6 +3,7 @@ package com.datastax.simulacron.http.server;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.simulacron.common.cluster.QueryPrime;
 import com.datastax.simulacron.common.codec.CodecUtils;
+import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,11 +51,14 @@ public class QueryManager implements HttpListener {
                 om.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
                 QueryPrime query = om.readValue(jsonBody, QueryPrime.class);
 
-                for (String key : query.then.column_types.keySet()) {
-                  String typeName = query.then.column_types.get(key);
-                  RawType type = CodecUtils.getTypeFromName(typeName);
-                  if (type == null) {
-                    handleBadType(key, typeName, context);
+                if (query.then instanceof SuccessResult) {
+                  SuccessResult success = (SuccessResult) query.then;
+                  for (String key : success.columnTypes.keySet()) {
+                    String typeName = success.columnTypes.get(key);
+                    RawType type = CodecUtils.getTypeFromName(typeName);
+                    if (type == null) {
+                      handleBadType(key, typeName, context);
+                    }
                   }
                 }
 

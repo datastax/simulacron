@@ -357,7 +357,7 @@ definitions:
               end of mayan calendar: "2012-12-21"
       result:
         type: string
-        example: :success
+        example: success
       column_types:
         type: OrderedMap
         example:

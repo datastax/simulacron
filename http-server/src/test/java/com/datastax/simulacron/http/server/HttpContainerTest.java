@@ -1,8 +1,10 @@
 package com.datastax.simulacron.http.server;
 
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
 import com.datastax.simulacron.common.cluster.*;
-import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
@@ -295,7 +297,7 @@ public class HttpContainerTest {
       QueryPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
       HttpTestResponse response = this.primeSimpleQuery(client, prime);
       assertNotNull(response);
-      QueryPrime responseQuery = (QueryPrime) om.readValue(response.body, QueryPrime.class);
+      QueryPrime responseQuery = om.readValue(response.body, QueryPrime.class);
       assertEquals(responseQuery, prime);
 
       String contactPoint = getContactPointString(clusterCreated);
@@ -331,17 +333,15 @@ public class HttpContainerTest {
   private QueryPrime createSimplePrimedQuery(String query) {
     QueryPrime.When when = new QueryPrime.When(query, null);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-    HashMap row1 = new HashMap<String, String>();
+    Map<String, Object> row1 = new HashMap<>();
     row1.put("column1", "column1");
     row1.put("column2", "2");
     rows.add(row1);
-    String result = "success";
     Map<String, String> column_types = new HashMap<String, String>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
-    QueryPrime.Then then = new QueryPrime.Then(rows, result, column_types);
-    QueryPrime queryPrime = new QueryPrime(when, then);
-    return queryPrime;
+    SuccessResult then = new SuccessResult(rows, column_types);
+    return new QueryPrime(when, then);
   }
 
   private HttpTestResponse primeSimpleQuery(HttpClient client, QueryPrime query) {
