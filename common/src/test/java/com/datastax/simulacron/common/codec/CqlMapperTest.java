@@ -3,6 +3,7 @@ package com.datastax.simulacron.common.codec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
+import com.datastax.oss.protocol.internal.response.result.RawType.RawTuple;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import org.junit.Test;
 
@@ -608,6 +609,52 @@ public class CqlMapperTest {
     swapMap0.put("1", 0);
 
     encodeObjectAndDecode(mapCodec, swapMap1, swapMap0);
+  }
+
+  @Test
+  public void shouldHandleTuple() {
+    List<RawType> rawTypes = new ArrayList<>();
+    rawTypes.add(primitive(ASCII));
+    rawTypes.add(primitive(INT));
+    rawTypes.add(primitive(DOUBLE));
+    RawTuple tupleType = new RawTuple(rawTypes);
+    Tuple t = new Tuple(tupleType, "hello", -42, 3.1417);
+    Codec<Tuple> tupleCodec = mapper.codecFor(tupleType);
+
+    // ensure caching works.
+    assertThat(mapper.codecFor(tupleType)).isSameAs(tupleCodec);
+
+    String expectedByteStr = "0x0000000568656c6c6f00000004ffffffd600000008400922339c0ebee0";
+    encodeAndDecode(tupleCodec, t, expectedByteStr);
+    encodeAndDecode(tupleCodec, null, null, null);
+
+    Tuple tWithNull = new Tuple(tupleType, null, -42, 3.1417);
+    encodeAndDecode(tupleCodec, tWithNull, "0xffffffff00000004ffffffd600000008400922339c0ebee0");
+
+    encodeObjectAndDecode(tupleCodec, t, expectedByteStr, t);
+
+    // should work for list and coerce.
+    List<Object> l = new ArrayList<>();
+    l.add("hello");
+    l.add("-42");
+    l.add(3.1417);
+    encodeObjectAndDecode(tupleCodec, l, expectedByteStr, t);
+    encodeObjectAndDecode(tupleCodec, 1, null, null); // non-matching type
+    encodeObjectAndDecode(tupleCodec, Collections.singleton("HI"), null, null); // mismatch size
+
+    RawTuple tupleTypeSingle = new RawTuple(Collections.singletonList(primitive(ASCII)));
+    Tuple tSingle = new Tuple(tupleTypeSingle, "HI");
+    encodeObjectAndDecode(tupleCodec, tSingle, null, null); // mismatch tuple
+
+    // Underflow while decoding
+    try {
+      ByteBuffer buf = tupleCodec.encode(t);
+      // half limit so buffer is truncated.
+      buf.limit(buf.limit() / 2);
+      tupleCodec.decode(buf);
+      fail("Expected InvalidTypeException");
+    } catch (InvalidTypeException e) { // expected
+    }
   }
 
   @Test

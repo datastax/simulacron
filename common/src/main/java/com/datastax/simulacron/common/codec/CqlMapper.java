@@ -4,6 +4,7 @@ import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawMap;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
+import com.datastax.oss.protocol.internal.response.result.RawType.RawTuple;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -23,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
 import static com.datastax.simulacron.common.codec.CodecUtils.primitive;
@@ -74,8 +76,16 @@ public class CqlMapper {
       Codec<?> keyCodec = cqlTypeCache.get(m.keyType);
       Codec<?> valueCodec = cqlTypeCache.get(m.valueType);
       return new MapCodec(keyCodec, valueCodec);
+    } else if (key instanceof RawTuple) {
+      RawTuple t = (RawTuple) key;
+      List<Codec<Object>> codecs =
+          t.fieldTypes
+              .stream()
+              .map(f -> (Codec<Object>) cqlTypeCache.get(f))
+              .collect(Collectors.toList());
+      return new TupleCodec(t, codecs);
     } else {
-      // TODO support other collection(ish) codecs, Tuple, Map, UDT.
+      // TODO Support UDT
       logger.warn("Could not resolve codec for {}, returning null instead.", key);
       return null;
     }
@@ -296,6 +306,93 @@ public class CqlMapper {
     @Override
     protected List<E> newInstance(int size) {
       return new ArrayList<>(size);
+    }
+  }
+
+  class TupleCodec extends AbstractCodec<Tuple> {
+
+    private final List<Codec<Object>> elementCodecs;
+    private final RawTuple tupleType;
+
+    TupleCodec(RawTuple tuple, List<Codec<Object>> elementCodecs) {
+      super(Tuple.class, tuple);
+      this.tupleType = tuple;
+      this.elementCodecs = elementCodecs;
+    }
+
+    @Override
+    ByteBuffer encodeInternal(Tuple input) {
+      int size = 0;
+      int length = input.getTupleType().fieldTypes.size();
+      ByteBuffer[] elements = new ByteBuffer[length];
+      for (int i = 0; i < length; i++) {
+        elements[i] = elementCodecs.get(i).encode(input.getValues().get(i));
+        size += 4 + (elements[i] == null ? 0 : elements[i].remaining());
+      }
+      ByteBuffer result = ByteBuffer.allocate(size);
+      for (ByteBuffer bb : elements) {
+        if (bb == null) {
+          result.putInt(-1);
+        } else {
+          result.putInt(bb.remaining());
+          result.put(bb.duplicate());
+        }
+      }
+      return (ByteBuffer) result.flip();
+    }
+
+    @Override
+    Tuple decodeInternal(ByteBuffer input) {
+      if (input == null) {
+        return null;
+      }
+      ByteBuffer bytes = input.duplicate();
+      int numberOfValues = tupleType.fieldTypes.size();
+      List<Object> values = new ArrayList<>(tupleType.fieldTypes.size());
+      try {
+        for (int i = 0; bytes.hasRemaining() && i < numberOfValues; i++) {
+          int n = bytes.getInt();
+          ByteBuffer element = n < 0 ? null : readBytes(bytes, n);
+          values.add(elementCodecs.get(i).decode(element));
+        }
+      } catch (BufferUnderflowException | IllegalArgumentException e) {
+        throw new InvalidTypeException("Not enough bytes top deserialize a tuple", e);
+      }
+      return new Tuple(tupleType, values);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Tuple toNativeType(Object input) {
+      Collection toTransform = null;
+      if (input instanceof Tuple) {
+        Tuple inTuple = ((Tuple) input);
+        if (inTuple.getTupleType().equals(tupleType)) {
+          toTransform = ((Tuple) input).getValues();
+        } else {
+          logger.warn("Attempted to encode mismatching Tuple {} to {}.", inTuple, tupleType);
+          return null;
+        }
+      } else if (input instanceof Collection) {
+        toTransform = (Collection) input;
+        if (toTransform.size() != tupleType.fieldTypes.size()) {
+          logger.warn(
+              "Attempted to encode mismatching number of elements from {} to {}",
+              toTransform,
+              tupleType);
+          return null;
+        }
+      }
+      if (toTransform != null) {
+        List<Object> values = new ArrayList<>(tupleType.fieldTypes.size());
+        Iterator<Object> inputIt = toTransform.iterator();
+        for (int i = 0; i < tupleType.fieldTypes.size(); i++) {
+          Object next = inputIt.next();
+          values.add(elementCodecs.get(i).toNativeType(next));
+        }
+        return new Tuple(tupleType, values);
+      }
+      return null;
     }
   }
 
