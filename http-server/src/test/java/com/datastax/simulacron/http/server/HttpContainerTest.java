@@ -1,9 +1,8 @@
 package com.datastax.simulacron.http.server;
 
+import com.datastax.driver.core.*;
+import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.ClusterMapper;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
@@ -15,9 +14,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -39,6 +36,8 @@ public class HttpContainerTest {
     nativeServer = Server.builder().build();
     ClusterManager provisioner = new ClusterManager(nativeServer);
     provisioner.registerWithRouter(httpContainer.getRouter());
+    QueryManager qManager = new QueryManager(nativeServer);
+    qManager.registerWithRouter(httpContainer.getRouter());
     httpContainer.start();
   }
 
@@ -285,6 +284,128 @@ public class HttpContainerTest {
 
     // Should be no more registered clusters
     assertThat(nativeServer.getClusterRegistry()).isEmpty();
+  }
+
+  @Test
+  public void testQueryPrimeSimple() {
+    try {
+      HttpClient client = vertx.createHttpClient();
+      Cluster clusterCreated = this.createSingleNodeCluster(client);
+
+      QueryPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
+      HttpTestResponse response = this.primeSimpleQuery(client, prime);
+      assertNotNull(response);
+      QueryPrime responseQuery = (QueryPrime) om.readValue(response.body, QueryPrime.class);
+      assertEquals(responseQuery, prime);
+
+      String contactPoint = getContactPointString(clusterCreated);
+      ResultSet set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
+      List<Row> results = set.all();
+      assertEquals(1, results.size());
+      Row row1 = results.get(0);
+      String column1 = row1.getString("column1");
+      assertEquals(column1, "column1");
+      Long column2 = row1.getLong("column2");
+      assertEquals(column2, new Long(2));
+    } catch (Exception e) {
+      fail("error encountered");
+    }
+  }
+
+  private String getContactPointString(Cluster cluster) {
+    String rawaddress = cluster.getNodes().get(0).getAddress().toString();
+    return rawaddress.substring(1, rawaddress.length() - 5);
+  }
+
+  private ResultSet makeNativeQuery(String query, String contactPoint) {
+
+    com.datastax.driver.core.Cluster cluster =
+        com.datastax.driver.core.Cluster.builder().addContactPoint(contactPoint).build();
+
+    Session session = cluster.connect();
+    ResultSet set = session.execute(query);
+    cluster.close();
+    return set;
+  }
+
+  private QueryPrime createSimplePrimedQuery(String query) {
+    QueryPrime.When when = new QueryPrime.When(query, null);
+    List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
+    HashMap row1 = new HashMap<String, String>();
+    row1.put("column1", "column1");
+    row1.put("column2", "2");
+    rows.add(row1);
+    String result = "success";
+    Map<String, String> column_types = new HashMap<String, String>();
+    column_types.put("column1", "ascii");
+    column_types.put("column2", "bigint");
+    QueryPrime.Then then = new QueryPrime.Then(rows, result, column_types);
+    QueryPrime queryPrime = new QueryPrime(when, then);
+    return queryPrime;
+  }
+
+  private HttpTestResponse primeSimpleQuery(HttpClient client, QueryPrime query) {
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    try {
+      String jsonPrime = om.writerWithDefaultPrettyPrinter().writeValueAsString(query);
+
+      client
+          .request(
+              HttpMethod.POST,
+              portNum,
+              "127.0.0.1",
+              "/prime-query-single",
+              response -> {
+                response.bodyHandler(
+                    totalBuffer -> {
+                      String body = totalBuffer.toString();
+                      HttpTestResponse testResponse = new HttpTestResponse(response, body);
+                      future.complete(testResponse);
+                    });
+              })
+          .putHeader("content-length", Integer.toString(jsonPrime.length()))
+          .write(jsonPrime)
+          .end();
+
+      HttpTestResponse responseToValidate = future.get();
+      assertEquals(responseToValidate.response.statusCode(), 201);
+      return responseToValidate;
+    } catch (Exception e) {
+      logger.error("Exception", e);
+      fail("Exception encountered");
+    }
+    return null;
+  }
+
+  private Cluster createSingleNodeCluster(HttpClient client) {
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.POST,
+            portNum,
+            "127.0.0.1",
+            "/cluster/?data_centers=1",
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    String body = totalBuffer.toString();
+                    HttpTestResponse testResponse = new HttpTestResponse(response, body);
+                    future.complete(testResponse);
+                  });
+            })
+        .end();
+
+    try {
+      HttpTestResponse responseToValidate = future.get();
+      ObjectMapper om = ClusterMapper.getMapper();
+      //create cluster object from json return code
+      assertEquals(responseToValidate.response.statusCode(), 201);
+      Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
+      return cluster;
+    } catch (Exception e) {
+      fail("Exception encountered");
+      return null;
+    }
   }
 
   private void validateCluster(HttpTestResponse responseToValidate, int expectedStatusCode)
