@@ -27,13 +27,12 @@ import static com.datastax.simulacron.common.codec.CodecUtils.*;
 public class PeerMetadataHandler implements StubMapping {
 
   private static final List<String> queries = new ArrayList<>();
+  private static final List<Pattern> queryPatterns = new ArrayList();
 
   static final UUID schemaVersion = java.util.UUID.randomUUID();
 
-  private static final String queryPeers = "SELECT * FROM system.peers";
   private static final String queryClusterName = "select cluster_name from system.local";
   private static final RowsMetadata queryClusterNameMetadata;
-  private static final String queryLocal = "SELECT * FROM system.local WHERE key='local'";
 
   static {
     ColumnSpecBuilder systemLocal = columnSpecBuilder("system", "local");
@@ -42,13 +41,20 @@ public class PeerMetadataHandler implements StubMapping {
     queryClusterNameMetadata = new RowsMetadata(queryClusterNameSpecs, null, new int[] {});
   }
 
+  private static final Pattern queryPeers = Pattern.compile("SELECT (.*) FROM system\\.peers");
+  private static final Pattern queryLocal =
+      Pattern.compile("SELECT (.*) FROM system\\.local WHERE key='local'");
   private static final Pattern queryPeersWithAddr =
       Pattern.compile("SELECT \\* FROM system\\.peers WHERE peer='(.*)'");
 
   static {
-    queries.add(queryPeers);
     queries.add(queryClusterName);
-    queries.add(queryLocal);
+  }
+
+  static {
+    queryPatterns.add(queryPeers);
+    queryPatterns.add(queryLocal);
+    queryPatterns.add(queryPeersWithAddr);
   }
 
   public PeerMetadataHandler() {}
@@ -58,7 +64,7 @@ public class PeerMetadataHandler implements StubMapping {
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
       String queryStr = query.query;
-      return queries.contains(queryStr) || queryPeersWithAddr.matcher(queryStr).matches();
+      return queries.contains(queryStr) || queryPatternMatches(queryStr);
     }
     return false;
   }
@@ -69,34 +75,46 @@ public class PeerMetadataHandler implements StubMapping {
       CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
       Query query = (Query) frame.message;
 
-      switch (query.query) {
-        case queryLocal:
+      if (query.query.equals(queryClusterName)) {
+        return handleClusterNameQuery(node, mapper);
+      } else {
+        // if querying for particular peer, return information for only that peer.
+        final Matcher peerAddrMatcher = queryPeersWithAddr.matcher(query.query);
+        if (peerAddrMatcher.matches()) {
+          return handlePeersQuery(
+              node,
+              mapper,
+              n -> {
+                InetAddress address;
+                if (n.getAddress() instanceof InetSocketAddress) {
+                  address = ((InetSocketAddress) n.getAddress()).getAddress();
+                  String addrIp = address.getHostAddress();
+                  return addrIp.equals(peerAddrMatcher.group(1));
+                } else {
+                  return false;
+                }
+              });
+        }
+        Matcher matcher = queryLocal.matcher(query.query);
+        if (matcher.matches()) {
           return handleSystemLocalQuery(node, mapper);
-        case queryClusterName:
-          return handleClusterNameQuery(node, mapper);
-        case queryPeers:
+        }
+        matcher = queryPeers.matcher(query.query);
+        if (matcher.matches()) {
           return handlePeersQuery(node, mapper, n -> n != node);
-        default:
-          // if querying for particular peer, return information for only that peer.
-          Matcher matcher = queryPeersWithAddr.matcher(query.query);
-          if (matcher.matches()) {
-            return handlePeersQuery(
-                node,
-                mapper,
-                n -> {
-                  InetAddress address;
-                  if (n.getAddress() instanceof InetSocketAddress) {
-                    address = ((InetSocketAddress) n.getAddress()).getAddress();
-                    String addrIp = address.getHostAddress();
-                    return addrIp.equals(matcher.group(1));
-                  } else {
-                    return false;
-                  }
-                });
-          }
+        }
       }
     }
     return Collections.emptyList();
+  }
+
+  private boolean queryPatternMatches(String query) {
+    for (Pattern pattern : queryPatterns) {
+      if (pattern.matcher(query).matches()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private Set<String> resolveTokens(Node node) {
