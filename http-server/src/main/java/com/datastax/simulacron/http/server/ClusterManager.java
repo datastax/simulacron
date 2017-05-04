@@ -1,7 +1,7 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.ClusterMapper;
+import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +20,7 @@ import static com.datastax.simulacron.http.server.HttpUtils.handleMessage;
 public class ClusterManager implements HttpListener {
   private final Logger logger = LoggerFactory.getLogger(ClusterManager.class);
   private final Server server;
-  private final ObjectMapper om = ClusterMapper.getMapper();
+  private final ObjectMapper om = ObjectMapperHolder.getMapper();
 
   public ClusterManager(Server server) {
     this.server = server;
@@ -167,7 +167,7 @@ public class ClusterManager implements HttpListener {
             totalBuffer -> {
               try {
                 Map<Long, Cluster> clusters = this.server.getClusterRegistry();
-                ObjectMapper om = ClusterMapper.getMapper();
+                ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
                 String idToFetch = context.request().getParam("clusterId");
                 if (idToFetch != null) {

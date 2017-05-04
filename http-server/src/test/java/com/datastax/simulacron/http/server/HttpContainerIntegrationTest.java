@@ -1,42 +1,44 @@
 package com.datastax.simulacron.http.server;
 
-import com.datastax.driver.core.*;
-import com.datastax.oss.protocol.internal.ProtocolConstants;
-import com.datastax.oss.protocol.internal.request.Query;
-import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.oss.protocol.internal.request.query.QueryOptions;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
 import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
+import com.datastax.simulacron.common.cluster.QueryLog;
+import com.datastax.simulacron.common.cluster.QueryPrime;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
-import com.datastax.simulacron.common.utils.FrameUtils;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpMethod;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ConsistencyLevel.QUORUM;
-import static com.datastax.simulacron.common.utils.FrameUtils.wrapRequest;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 public class HttpContainerIntegrationTest {
   private HttpContainer httpContainer;
   private Vertx vertx = null;
   private int portNum = 8187;
   private Server nativeServer;
-  ObjectMapper om = ClusterMapper.getMapper();
+  ObjectMapper om = ObjectMapperHolder.getMapper();
   Logger logger = LoggerFactory.getLogger(HttpContainerIntegrationTest.class);
 
   @Before
@@ -98,7 +100,7 @@ public class HttpContainerIntegrationTest {
 
     try {
       HttpTestResponse responseToValidate = future.get();
-      ObjectMapper om = ClusterMapper.getMapper();
+      ObjectMapper om = ObjectMapperHolder.getMapper();
       //create cluster object from json return code
       Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
@@ -459,7 +461,7 @@ public class HttpContainerIntegrationTest {
 
     try {
       HttpTestResponse responseToValidate = future.get();
-      ObjectMapper om = ClusterMapper.getMapper();
+      ObjectMapper om = ObjectMapperHolder.getMapper();
       //create cluster object from json return code
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
       Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
@@ -490,7 +492,7 @@ public class HttpContainerIntegrationTest {
 
     try {
       HttpTestResponse responseToValidate = future.get();
-      ObjectMapper om = ClusterMapper.getMapper();
+      ObjectMapper om = ObjectMapperHolder.getMapper();
       //create cluster object from json return code
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
       Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
@@ -530,7 +532,7 @@ public class HttpContainerIntegrationTest {
 
   private void validateCluster(HttpTestResponse responseToValidate, int expectedStatusCode)
       throws Exception {
-    ObjectMapper om = ClusterMapper.getMapper();
+    ObjectMapper om = ObjectMapperHolder.getMapper();
     //create cluster object from json return code
     Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
     assertThat(responseToValidate.response.statusCode()).isEqualTo(expectedStatusCode);

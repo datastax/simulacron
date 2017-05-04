@@ -1,13 +1,13 @@
 package com.datastax.simulacron.common.cluster;
 
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.result.Result;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
 
 public final class QueryPrime {
   public final When when;
@@ -29,7 +29,7 @@ public final class QueryPrime {
         @JsonProperty("query") String query, @JsonProperty("consistency") String[] consistency) {
       this.query = query;
       this.consistency = consistency;
-      this.consistencyEnum = createEnumFromConsitency(consistency);
+      this.consistencyEnum = createEnumFromConsistency(consistency);
     }
 
     @Override
@@ -56,7 +56,7 @@ public final class QueryPrime {
     }
   }
 
-  private static List<ConsistencyLevel> createEnumFromConsitency(String[] consistencies) {
+  private static List<ConsistencyLevel> createEnumFromConsistency(String[] consistencies) {
     if (consistencies == null) {
       return new LinkedList<ConsistencyLevel>();
     }

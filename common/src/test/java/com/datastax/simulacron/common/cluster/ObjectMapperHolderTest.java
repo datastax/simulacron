@@ -8,9 +8,9 @@ import java.net.InetSocketAddress;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ClusterMapperTest {
+public class ObjectMapperHolderTest {
 
-  ObjectMapper mapper = ClusterMapper.getMapper();
+  ObjectMapper mapper = ObjectMapperHolder.getMapper();
 
   @Test
   public void testSimpleCluster() throws Exception {

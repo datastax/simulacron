@@ -13,7 +13,7 @@ public enum ConsistencyLevel {
   LOCAL_SERIAL(9),
   LOCAL_ONE(10);
 
-  final int code;
+  private final int code;
 
   private ConsistencyLevel(int code) {
     this.code = code;
@@ -35,5 +35,9 @@ public enum ConsistencyLevel {
       }
     }
     return null;
+  }
+
+  public int getCode() {
+    return code;
   }
 }

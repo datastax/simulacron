@@ -1,15 +1,16 @@
 package com.datastax.simulacron.common.result;
 
+import java.util.Collections;
+import java.util.List;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
+import com.datastax.oss.protocol.internal.response.Error;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.Collections;
-import java.util.List;
 
 public abstract class ErrorResult extends Result {
 
@@ -36,7 +37,9 @@ public abstract class ErrorResult extends Result {
     return Collections.singletonList(new MessageResponseAction(toMessage(), getDelayInMs()));
   }
 
-  public abstract Message toMessage();
+  public Message toMessage() {
+    return new Error(getErrorCode(), getErrorMessage());
+  }
 
   @Override
   public boolean equals(Object o) {

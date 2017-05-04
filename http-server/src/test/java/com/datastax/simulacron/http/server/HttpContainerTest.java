@@ -28,7 +28,7 @@ public class HttpContainerTest {
   private Vertx vertx = null;
   private int portNum = 8187;
   private Server nativeServer;
-  ObjectMapper om = ClusterMapper.getMapper();
+  ObjectMapper om = ObjectMapperHolder.getMapper();
   Logger logger = LoggerFactory.getLogger(HttpContainerTest.class);
 
   @Before
@@ -90,7 +90,7 @@ public class HttpContainerTest {
 
     try {
       HttpTestResponse responseToValidate = future.get();
-      ObjectMapper om = ClusterMapper.getMapper();
+      ObjectMapper om = ObjectMapperHolder.getMapper();
       //create cluster object from json return code
       Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
       assertEquals(responseToValidate.response.statusCode(), 201);
@@ -397,7 +397,7 @@ public class HttpContainerTest {
 
     try {
       HttpTestResponse responseToValidate = future.get();
-      ObjectMapper om = ClusterMapper.getMapper();
+      ObjectMapper om = ObjectMapperHolder.getMapper();
       //create cluster object from json return code
       assertEquals(responseToValidate.response.statusCode(), 201);
       Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
@@ -410,7 +410,7 @@ public class HttpContainerTest {
 
   private void validateCluster(HttpTestResponse responseToValidate, int expectedStatusCode)
       throws Exception {
-    ObjectMapper om = ClusterMapper.getMapper();
+    ObjectMapper om = ObjectMapperHolder.getMapper();
     //create cluster object from json return code
     Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
     assertEquals(responseToValidate.response.statusCode(), expectedStatusCode);

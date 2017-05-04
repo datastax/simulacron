@@ -1,19 +1,33 @@
 package com.datastax.simulacron.common.result;
 
+import java.util.List;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.fasterxml.jackson.annotation.*;
 
-import java.util.List;
-
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "result")
 @JsonSubTypes({
+  @JsonSubTypes.Type(value = SuccessResult.class, name = "success"),
   @JsonSubTypes.Type(value = ServerErrorResult.class, name = "server_error"),
   @JsonSubTypes.Type(value = ProtocolErrorResult.class, name = "protocol_error"),
   @JsonSubTypes.Type(value = AuthenticationErrorResult.class, name = "authentication_error"),
+  @JsonSubTypes.Type(value = UnavailableResult.class, name = "unavailable"),
   @JsonSubTypes.Type(value = AlreadyExistsResult.class, name = "already_exists"),
-  @JsonSubTypes.Type(value = SuccessResult.class, name = "success")
+  @JsonSubTypes.Type(value = ConfigurationErrorResult.class, name = "config_error"),
+  @JsonSubTypes.Type(value = FunctionFailureResult.class, name = "function_failure"),
+  @JsonSubTypes.Type(value = InvalidResult.class, name = "invalid"),
+  @JsonSubTypes.Type(value = IsBoostrappingResult.class, name = "is_bootstrapping"),
+  @JsonSubTypes.Type(value = OverloadedResult.class, name = "overloaded"),
+  @JsonSubTypes.Type(value = ReadFailureResult.class, name = "read_failure"),
+  @JsonSubTypes.Type(value = ReadTimeoutResult.class, name = "read_timeout"),
+  @JsonSubTypes.Type(value = SyntaxErrorResult.class, name = "syntax_error"),
+  @JsonSubTypes.Type(value = TruncateResult.class, name = "truncate_error"),
+  @JsonSubTypes.Type(value = UnauthorizedResult.class, name = "unauthorized"),
+  @JsonSubTypes.Type(value = UnpreparedResult.class, name = "unprepared"),
+  @JsonSubTypes.Type(value = WriteFailureResult.class, name = "write_failure"),
+  @JsonSubTypes.Type(value = WriteTimeoutResult.class, name = "write_timeout")
 })
 public abstract class Result {
 

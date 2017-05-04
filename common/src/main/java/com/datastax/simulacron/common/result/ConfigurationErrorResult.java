@@ -3,18 +3,18 @@ package com.datastax.simulacron.common.result;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.SERVER_ERROR;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.CONFIG_ERROR;
 
-public class ServerErrorResult extends ErrorResult {
+public class ConfigurationErrorResult extends ErrorResult {
 
-  ServerErrorResult(String errorMessage) {
+  ConfigurationErrorResult(String errorMessage) {
     this(errorMessage, 0);
   }
 
   @JsonCreator
-  ServerErrorResult(
+  ConfigurationErrorResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
       @JsonProperty("delay_in_ms") long delayInMs) {
-    super(SERVER_ERROR, errorMessage, delayInMs);
+    super(CONFIG_ERROR, errorMessage, delayInMs);
   }
 }

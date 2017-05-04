@@ -1,24 +1,23 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.oss.protocol.internal.response.result.RawType;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
+import com.datastax.simulacron.common.cluster.QueryLog;
+import com.datastax.simulacron.common.cluster.QueryPrime;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-
-import static com.datastax.simulacron.http.server.HttpUtils.handleError;
-
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.datastax.simulacron.http.server.HttpUtils.handleError;
 
 public class QueryManager implements HttpListener {
   Logger logger = LoggerFactory.getLogger(QueryManager.class);
@@ -54,8 +53,7 @@ public class QueryManager implements HttpListener {
               try {
                 System.out.println("Full body received, length = " + totalBuffer.length());
                 jsonBody = totalBuffer.toString();
-                ObjectMapper om = new ObjectMapper();
-                om.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
+                ObjectMapper om = ObjectMapperHolder.getMapper();
                 QueryPrime query = om.readValue(jsonBody, QueryPrime.class);
 
                 if (query.then instanceof SuccessResult) {
@@ -133,7 +131,7 @@ public class QueryManager implements HttpListener {
             totalBuffer -> {
               try {
                 Map<Long, Cluster> clusters = this.server.getClusterRegistry();
-                ObjectMapper om = ClusterMapper.getMapper();
+                ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
                 String idToFetch = context.request().getParam("clusterId");
                 String dcIdToFetch = context.request().getParam("datacenterId");
