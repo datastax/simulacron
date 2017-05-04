@@ -216,6 +216,46 @@ paths:
       responses:
         '200':
           description: Cluster deleted
+  '/log/{clusterId}/{datacenterId}/{nodeId}':
+    get:
+      tags:
+        - log
+      summary: Return all queries executed by clients on a cluster. If datacenter and/or node are specified if will filter the results with the queries executed by clients on datacenter/node.
+      operationId: getLogByCluster
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id of the cluster
+          required: true
+          type: integer
+        - name: datacenterId
+          in: path
+          description: Id of the datacenter
+          required: false
+          type: integer
+        - name: nodeId
+          in: path
+          description: Id of the node
+          required: false
+          type: integer
+      responses:
+        '200':
+          description: Queries executed
+          schema:
+            type : array
+            items :
+              $ref : '#/definitions/QueryLog'
+        '404':
+          examples:
+            "Not found":
+              message: No cluster registered with id 2
+              status_code: 404
+          schema:
+            $ref: '#/definitions/Error'
 definitions:
   PeerInfo:
     type: object
@@ -374,6 +414,28 @@ definitions:
         $ref: '#/definitions/When'
       then:
         $ref: '#/definitions/Then'
+  QueryLog:
+    type: object
+    properties:
+      datacenter_id:
+        type: integer
+        format: int64
+        example: 1
+      node_id:
+        type: integer
+        format: int64
+        example: 1
+      query:
+        type: string
+        example: "select * from table"
+      consistency_level:
+        type: integer
+        example: 10 (LOCAL_QUORUM)
+    example:
+      datacenter_id: 1
+      node_id: 0
+      query: "select * from table"
+      consistency_level: 10
 
   Error:
     type: object
