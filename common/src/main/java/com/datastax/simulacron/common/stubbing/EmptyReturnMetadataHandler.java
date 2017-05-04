@@ -40,10 +40,13 @@ public class EmptyReturnMetadataHandler implements StubMapping {
     MessageResponseAction action = new MessageResponseAction(INSTANCE);
     return Collections.singletonList(action);
     */
-    Queue<List<ByteBuffer>> peerRows = new ArrayDeque<>();
-    Rows rows = new Rows(buildEmptyRowsMetadata(node), peerRows);
-    MessageResponseAction action = new MessageResponseAction(rows);
-    return Collections.singletonList(action);
+    if (frame.message instanceof Query) {
+      Queue<List<ByteBuffer>> peerRows = new ArrayDeque<>();
+      Rows rows = new Rows(buildEmptyRowsMetadata(node), peerRows);
+      MessageResponseAction action = new MessageResponseAction(rows);
+      return Collections.singletonList(action);
+    }
+    return Collections.emptyList();
   }
 
   private RowsMetadata buildEmptyRowsMetadata(Node node) {
