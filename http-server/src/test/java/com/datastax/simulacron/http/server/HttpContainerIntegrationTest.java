@@ -362,7 +362,7 @@ public class HttpContainerIntegrationTest {
       assertThat(queryLogResponse.body).isNotEmpty();
       QueryLog[] queryLogs = om.readValue(queryLogResponse.body, QueryLog[].class);
       assertThat(queryLogs).isNotNull();
-      assertThat(queryLogs.length).isEqualTo(2);
+      assertThat(queryLogs.length).isGreaterThanOrEqualTo(2);
 
       queryLogResponse = getQueryLog(client, clusterCreated.getId() + "/1");
       assertThat(queryLogResponse.body).isNotEmpty();
