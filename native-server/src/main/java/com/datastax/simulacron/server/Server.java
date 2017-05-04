@@ -5,6 +5,7 @@ import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.stubbing.EmptyReturnMetadataHandler;
 import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 import io.netty.bootstrap.ServerBootstrap;
@@ -466,6 +467,18 @@ public final class Server {
       if (stubStore == null) {
         stubStore = new StubStore();
         stubStore.register(new PeerMetadataHandler());
+
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.keyspaces"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.views"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.tables"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.columns"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.indexes"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.triggers"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.types"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.functions"));
+        stubStore.register(
+            new EmptyReturnMetadataHandler("SELECT * FROM system_schema.aggregates"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.views"));
       }
       if (timer == null) {
         this.timer = new HashedWheelTimer();
