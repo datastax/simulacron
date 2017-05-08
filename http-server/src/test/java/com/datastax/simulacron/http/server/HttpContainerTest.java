@@ -331,7 +331,7 @@ public class HttpContainerTest {
   }
 
   private QueryPrime createSimplePrimedQuery(String query) {
-    QueryPrime.When when = new QueryPrime.When(query, null);
+    QueryPrime.When when = new QueryPrime.When(query, null, null, null);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
     Map<String, Object> row1 = new HashMap<>();
     row1.put("column1", "column1");

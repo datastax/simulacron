@@ -3,12 +3,7 @@ package com.datastax.simulacron.http.server;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
-import com.datastax.simulacron.common.cluster.QueryLog;
-import com.datastax.simulacron.common.cluster.QueryPrime;
+import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
@@ -16,18 +11,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpMethod;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
@@ -393,7 +385,7 @@ public class HttpContainerIntegrationTest {
   }
 
   private QueryPrime createSimplePrimedQuery(String query) {
-    QueryPrime.When when = new QueryPrime.When(query, null);
+    QueryPrime.When when = new QueryPrime.When(query, null, null, null);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
     HashMap row1 = new HashMap<String, String>();
     row1.put("column1", "column1");

@@ -8,6 +8,7 @@ import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.result.Result;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Map;
 
 public final class QueryPrime {
   public final When when;
@@ -23,13 +24,20 @@ public final class QueryPrime {
     public final String query;
     public final String[] consistency;
     public final List<ConsistencyLevel> consistencyEnum;
+    public final Map<String, String> paramTypes;
+    public final Map<String, Object> params;
 
     @JsonCreator
     public When(
-        @JsonProperty("query") String query, @JsonProperty("consistency") String[] consistency) {
+        @JsonProperty("query") String query,
+        @JsonProperty("consistency") String[] consistency,
+        @JsonProperty("params") Map<String, Object> params,
+        @JsonProperty("paramTypes") Map<String, String> paramTypes) {
       this.query = query;
       this.consistency = consistency;
       this.consistencyEnum = createEnumFromConsistency(consistency);
+      this.paramTypes = paramTypes;
+      this.params = params;
     }
 
     @Override
