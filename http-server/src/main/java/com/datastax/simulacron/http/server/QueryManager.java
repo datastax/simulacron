@@ -12,10 +12,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import java.util.List;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
 
@@ -100,7 +101,7 @@ public class QueryManager implements HttpListener {
                 handleQueryError(e, "clear primed queries", context);
               }
               if (!context.response().ended()) {
-                context.request().response().setStatusCode(200).end(jsonBody);
+                context.request().response().setStatusCode(202).end(jsonBody);
               }
               ;
             });
