@@ -52,6 +52,7 @@ public class ClusterManager implements HttpListener {
                 String dcRawString = context.request().getParam("data_centers");
                 String dseVersion = context.request().getParam("dse_version");
                 String cassandraVersion = context.request().getParam("cassandra_version");
+                String name = context.request().getParam("name");
                 StringBuilder response = new StringBuilder();
                 Cluster cluster = null;
                 //General parameters were provided for us.
@@ -65,6 +66,7 @@ public class ClusterManager implements HttpListener {
                             .withNodes(dcs)
                             .withDSEVersion(dseVersion)
                             .withCassandraVersion(cassandraVersion)
+                            .withName(name)
                             .build();
                   }
                 } else {

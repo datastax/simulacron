@@ -54,6 +54,11 @@ paths:
           description: The DSE version of this Cluster.  This only applies if `data_centers` is specified.
           required: false
           type: string
+        - in: query
+          name: name
+          description: The name to give this Cluster.  This only applies if `data_centers` is specified.
+          required: false
+          type: string
         - in: body
           name: body
           description: >
