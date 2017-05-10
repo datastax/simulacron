@@ -3,11 +3,13 @@ package com.datastax.simulacron.http.server;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
 import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpMethod;
@@ -316,7 +318,82 @@ public class HttpContainerIntegrationTest {
   }
 
   @Test
-  public void testVerifyQueriesiFromCluster() {
+  public void testQueryPrimeNamedParamSimple() {
+    try {
+      HttpClient client = vertx.createHttpClient();
+      Cluster clusterCreated = this.createSingleNodeCluster(client);
+      HashMap<String, String> paramTypes = new HashMap<>();
+      paramTypes.put("id", "bigint");
+      paramTypes.put("id2", "bigint");
+      HashMap<String, Object> params = new HashMap<>();
+      params.put("id", new Long(1));
+      params.put("id2", new Long(2));
+      QueryPrime prime =
+          createSimpleParamatizedQuery(
+              "SELECT * FROM users WHERE id = :id and id2 = :id2", params, paramTypes);
+      HttpTestResponse response = this.primeSimpleQuery(client, prime);
+      assertNotNull(response);
+      QueryPrime responseQuery = (QueryPrime) om.readValue(response.body, QueryPrime.class);
+      assertThat(responseQuery).isEqualTo(prime);
+      Map<String, Object> values =
+          ImmutableMap.<String, Object>of("id", new Long(1), "id2", new Long(2));
+      String contactPoint = getContactPointString(clusterCreated);
+      ResultSet set =
+          makeNativeQueryWithNameParams(
+              "SELECT * FROM users WHERE id = :id and id2 = :id2", contactPoint, values);
+      List<Row> results = set.all();
+      assertThat(1).isEqualTo(results.size());
+      Row row1 = results.get(0);
+      String column1 = row1.getString("column1");
+      assertThat(column1).isEqualTo("column1");
+      Long column2 = row1.getLong("column2");
+      assertThat(column2).isEqualTo(new Long(2));
+      values = ImmutableMap.<String, Object>of("id", new Long(2), "id2", new Long(2));
+      set =
+          makeNativeQueryWithNameParams(
+              "SELECT * FROM users WHERE id = :id and id2 = :id2", contactPoint, values);
+      assertThat(set.all().size()).isEqualTo(0);
+    } catch (Exception e) {
+      fail("error encountered");
+    }
+  }
+
+  @Test
+  public void testQueryPositionalParamSimple() {
+    try {
+      HttpClient client = vertx.createHttpClient();
+      Cluster clusterCreated = this.createSingleNodeCluster(client);
+      HashMap<String, String> paramTypes = new HashMap<>();
+      paramTypes.put("c1", "ascii");
+      HashMap<String, Object> params = new HashMap<>();
+      params.put("c1", "c1");
+      QueryPrime prime =
+          createSimpleParamatizedQuery("SELECT table FROM foo WHERE c1=?", params, paramTypes);
+      HttpTestResponse response = this.primeSimpleQuery(client, prime);
+      assertNotNull(response);
+      QueryPrime responseQuery = (QueryPrime) om.readValue(response.body, QueryPrime.class);
+      assertThat(responseQuery).isEqualTo(prime);
+      String contactPoint = getContactPointString(clusterCreated);
+      ResultSet set =
+          makeNativeQueryWithPositionalParam(
+              "SELECT table FROM foo WHERE c1=?", contactPoint, "c1");
+      List<Row> results = set.all();
+      assertThat(1).isEqualTo(results.size());
+      Row row1 = results.get(0);
+      String column1 = row1.getString("column1");
+      assertThat(column1).isEqualTo("column1");
+      Long column2 = row1.getLong("column2");
+      set =
+          makeNativeQueryWithPositionalParam(
+              "SELECT table FROM foo WHERE c1=?", contactPoint, "d1");
+      assertThat(set.all().size()).isEqualTo(0);
+    } catch (Exception e) {
+      fail("error encountered");
+    }
+  }
+
+  @Test
+  public void testVerifyQueriesFromCluster() {
     try {
       HttpClient client = vertx.createHttpClient();
       Cluster clusterCreated = this.createSingleNodeCluster(client);
@@ -384,8 +461,38 @@ public class HttpContainerIntegrationTest {
     return set;
   }
 
+  private ResultSet makeNativeQueryWithNameParams(
+      String query, String contactPoint, Map<String, Object> values) {
+
+    com.datastax.driver.core.Cluster cluster =
+        com.datastax.driver.core.Cluster.builder().addContactPoint(contactPoint).build();
+
+    Session session = cluster.connect();
+    SimpleStatement statement = new SimpleStatement(query, values);
+    ResultSet set = session.execute(statement);
+    cluster.close();
+    return set;
+  }
+
+  private ResultSet makeNativeQueryWithPositionalParam(
+      String query, String contactPoint, Object param) {
+
+    com.datastax.driver.core.Cluster cluster =
+        com.datastax.driver.core.Cluster.builder().addContactPoint(contactPoint).build();
+
+    Session session = cluster.connect();
+    ResultSet set = session.execute(query, param);
+    cluster.close();
+    return set;
+  }
+
   private QueryPrime createSimplePrimedQuery(String query) {
-    QueryPrime.When when = new QueryPrime.When(query, null, null, null);
+    return createSimpleParamatizedQuery(query, null, null);
+  }
+
+  private QueryPrime createSimpleParamatizedQuery(
+      String query, HashMap<String, Object> params, HashMap<String, String> paramTypes) {
+    QueryPrime.When when = new QueryPrime.When(query, null, params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
     HashMap row1 = new HashMap<String, String>();
     row1.put("column1", "column1");
