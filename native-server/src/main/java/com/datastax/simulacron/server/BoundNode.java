@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -107,6 +106,20 @@ class BoundNode extends Node {
     this.timer = timer;
     this.channel = new AtomicReference<>(channel);
     this.stubStore = stubStore;
+  }
+
+  // NOTE: Overriding BoundNode to handle driver connections only
+  @Override
+  public Long incrementActiveConnections() {
+    getDataCenter().incrementActiveConnections();
+    return super.incrementActiveConnections();
+  }
+
+  // NOTE: Overriding BoundNode to handle driver connections only
+  @Override
+  public Long decrementActiveConnections() throws Exception {
+    getDataCenter().decrementActiveConnections();
+    return super.decrementActiveConnections();
   }
 
   /**

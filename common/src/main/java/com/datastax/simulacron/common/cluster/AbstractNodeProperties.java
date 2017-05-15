@@ -3,6 +3,7 @@ package com.datastax.simulacron.common.cluster;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of {@link NodeProperties} that provides a constructor a implementations for
@@ -21,6 +22,9 @@ public abstract class AbstractNodeProperties implements NodeProperties {
 
   @JsonProperty("peer_info")
   private final Map<String, Object> peerInfo;
+
+  @JsonProperty("active_connections")
+  private final transient AtomicLong activeConnections = new AtomicLong(0);
 
   AbstractNodeProperties(
       String name,
@@ -59,6 +63,26 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   @Override
   public Map<String, Object> getPeerInfo() {
     return peerInfo;
+  }
+
+  @Override
+  public Long getActiveConnections() {
+    return activeConnections.get();
+  }
+
+  @Override
+  public Long incrementActiveConnections() {
+    return activeConnections.incrementAndGet();
+  }
+
+  @Override
+  public Long decrementActiveConnections() throws Exception {
+    Long newValue = activeConnections.decrementAndGet();
+    if (newValue >= 0) {
+      return newValue;
+    } else {
+      throw new Exception("Active connections dropped below zero");
+    }
   }
 
   String toStringWith(String extras) {

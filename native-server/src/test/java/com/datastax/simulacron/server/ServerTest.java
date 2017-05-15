@@ -18,6 +18,7 @@ import org.junit.Test;
 import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -492,6 +493,109 @@ public class ServerTest {
       // Expect a Ready response.
       response = client.next();
       assertThat(response.message).isInstanceOf(Ready.class);
+    }
+  }
+
+  @Test
+  public void testClusterActiveConnections() throws Exception {
+    Cluster cluster = Cluster.builder().withNodes(5).build();
+    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
+    List<Node> nodes = boundCluster.getNodes();
+
+    // Create clients and ensure active connections on each node, data center, and cluster
+    List<MockClient> clients = new ArrayList<>();
+    for (int i = 0; i < nodes.size(); ++i) {
+      Node node = nodes.get(i);
+      DataCenter dc = node.getDataCenter();
+      assertThat(node.getActiveConnections()).isEqualTo(0L);
+      assertThat(dc.getActiveConnections()).isEqualTo(i);
+      assertThat(boundCluster.getActiveConnections()).isEqualTo(i);
+
+      // Connect to the node
+      MockClient client = new MockClient(eventLoop);
+      clients.add(client);
+      client.connect(node.getAddress());
+      Thread.sleep(50); // Ensure events are complete
+
+      // Ensure the active connections
+      assertThat(node.getActiveConnections()).isEqualTo(1L);
+      assertThat(dc.getActiveConnections()).isEqualTo(i + 1);
+      assertThat(boundCluster.getActiveConnections()).isEqualTo(i + 1);
+    }
+
+    // Close the client connections and ensure the active connections
+    for (int i = 0; i < clients.size(); ++i) {
+      MockClient client = clients.get(i);
+      Node node = nodes.get(i);
+      DataCenter dc = node.getDataCenter();
+
+      // Ensure the active connections after disconnect
+      client.close();
+      Thread.sleep(50); // Ensure events are complete
+      assertThat(node.getActiveConnections()).isEqualTo(0L);
+      assertThat(dc.getActiveConnections()).isEqualTo(clients.size() - (i + 1));
+      assertThat(boundCluster.getActiveConnections()).isEqualTo(clients.size() - (i + 1));
+    }
+  }
+
+  @Test
+  public void testClusterActiveConnectionsMultipleDataCenters() throws Exception {
+    Cluster cluster = Cluster.builder().withNodes(1, 3, 5).build();
+    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
+    List<Node> nodes = boundCluster.getNodes();
+
+    // Create clients and ensure active connections on each node, data center, and cluster
+    List<MockClient> clients = new ArrayList<>();
+    for (int i = 0; i < nodes.size(); ++i) {
+      Node node = nodes.get(i);
+      DataCenter dc = node.getDataCenter();
+
+      // Offset mechanism for determining active connections in data center
+      Long activeConnectionsOffset = 0L;
+      if (dc.getId() == 1) {
+        activeConnectionsOffset = 1L;
+      } else if (dc.getId() == 2) {
+        activeConnectionsOffset = 4L;
+      }
+
+      // Ensure default assertions for node, data center, and cluster
+      assertThat(node.getActiveConnections()).isEqualTo(0L);
+      assertThat(dc.getActiveConnections()).isEqualTo(i - activeConnectionsOffset);
+      assertThat(boundCluster.getActiveConnections()).isEqualTo(i);
+
+      // Connect to the node
+      MockClient client = new MockClient(eventLoop);
+      clients.add(client);
+      client.connect(node.getAddress());
+      Thread.sleep(50); // Ensure events are complete
+
+      // Ensure the active connections
+      assertThat(node.getActiveConnections()).isEqualTo(1L);
+      assertThat(dc.getActiveConnections()).isEqualTo((i - activeConnectionsOffset) + 1);
+      assertThat(boundCluster.getActiveConnections()).isEqualTo(i + 1);
+    }
+
+    // Close the client connections and ensure the active connections
+    for (int i = 0; i < clients.size(); ++i) {
+      MockClient client = clients.get(i);
+      Node node = nodes.get(i);
+      DataCenter dc = node.getDataCenter();
+
+      // Offset mechanism for determining active connections in data center
+      Long activeConnectionsOffset = 9L;
+      if (dc.getId() == 1) {
+        activeConnectionsOffset = 6L;
+      } else if (dc.getId() == 2) {
+        activeConnectionsOffset = 1L;
+      }
+
+      // Ensure the active connections after disconnect
+      client.close();
+      Thread.sleep(50); // Ensure events are complete
+      assertThat(node.getActiveConnections()).isEqualTo(0L);
+      assertThat(dc.getActiveConnections())
+          .isEqualTo(clients.size() - (activeConnectionsOffset + i));
+      assertThat(boundCluster.getActiveConnections()).isEqualTo(clients.size() - (i + 1));
     }
   }
 }
