@@ -243,6 +243,8 @@ class BoundNode extends Node {
       CompletableFuture<Void> future = new CompletableFuture<>();
       handleActions(actions.iterator(), ctx, frame, future);
     } else {
+      // Future that if set defers sending the message until the future completes.
+      CompletableFuture<?> deferFuture = null;
       Message response = null;
       if (frame.message instanceof Startup || frame.message instanceof Register) {
         RejectState state = rejectState.get();
@@ -256,7 +258,7 @@ class BoundNode extends Node {
             // If reject after is now 0, indicate that it's time to stop listening (but allow this one)
             state.rejectAfter = -1;
             state.listeningForNewConnections = false;
-            rejectNewConnections(-1, state.scope);
+            deferFuture = rejectNewConnections(-1, state.scope);
           }
         }
         response = new Ready();
@@ -278,7 +280,12 @@ class BoundNode extends Node {
         }
       }
       if (response != null) {
-        sendMessage(ctx, frame, response);
+        if (deferFuture != null) {
+          final Message fResponse = response;
+          deferFuture.thenRun(() -> sendMessage(ctx, frame, fResponse));
+        } else {
+          sendMessage(ctx, frame, response);
+        }
       }
     }
   }
