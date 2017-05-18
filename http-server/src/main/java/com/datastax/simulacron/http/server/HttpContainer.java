@@ -71,6 +71,14 @@ public class HttpContainer {
     }
   }
 
+  public String getHost() {
+    return host;
+  }
+
+  public int getPort() {
+    return port;
+  }
+
   public void addRoute(Handler<RoutingContext> handler, String path, HttpMethod method) {
     router.route(method, path).handler(handler);
   }

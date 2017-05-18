@@ -10,17 +10,21 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.REA
 
 public class ReadTimeoutResult extends RequestTimeoutResult {
 
-  @JsonProperty("dataPresent")
+  @JsonProperty("data_present")
   private final boolean dataPresent;
+
+  public ReadTimeoutResult(ConsistencyLevel cl, int received, int blockFor, boolean dataPresent) {
+    this(cl, received, blockFor, dataPresent, 0);
+  }
 
   @JsonCreator
   public ReadTimeoutResult(
-      @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty(value = "cl", required = true) ConsistencyLevel cl,
+      @JsonProperty(value = "consistency", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "received", required = true) int received,
-      @JsonProperty(value = "blockFor", required = true) int blockFor,
-      @JsonProperty(value = "dataPresent", required = true) boolean dataPresent) {
-    super(READ_TIMEOUT, delayInMs, cl, received, blockFor);
+      @JsonProperty(value = "block_for", required = true) int blockFor,
+      @JsonProperty(value = "data_present", required = true) boolean dataPresent,
+      @JsonProperty("delay_in_ms") long delayInMs) {
+    super(READ_TIMEOUT, cl, received, blockFor, delayInMs);
     this.dataPresent = dataPresent;
   }
 

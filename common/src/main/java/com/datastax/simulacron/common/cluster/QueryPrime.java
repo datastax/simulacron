@@ -1,18 +1,22 @@
 package com.datastax.simulacron.common.cluster;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.result.Result;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 public final class QueryPrime {
   public final When when;
   public final Result then;
+
+  public QueryPrime(String query, Result then) {
+    this(new When(query, null, null, null), then);
+  }
 
   @JsonCreator
   public QueryPrime(@JsonProperty("when") When when, @JsonProperty("then") Result then) {

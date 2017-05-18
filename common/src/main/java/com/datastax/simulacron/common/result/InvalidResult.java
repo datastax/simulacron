@@ -7,12 +7,12 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.INV
 
 public class InvalidResult extends ErrorResult {
 
-  InvalidResult(String errorMessage) {
+  public InvalidResult(String errorMessage) {
     this(errorMessage, 0);
   }
 
   @JsonCreator
-  InvalidResult(
+  public InvalidResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
       @JsonProperty("delay_in_ms") long delayInMs) {
     super(INVALID, errorMessage, delayInMs);

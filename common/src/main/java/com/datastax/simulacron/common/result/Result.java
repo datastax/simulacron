@@ -1,11 +1,11 @@
 package com.datastax.simulacron.common.result;
 
-import java.util.List;
-
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.fasterxml.jackson.annotation.*;
+
+import java.util.List;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "result")
 @JsonSubTypes({
@@ -23,7 +23,7 @@ import com.fasterxml.jackson.annotation.*;
   @JsonSubTypes.Type(value = ReadFailureResult.class, name = "read_failure"),
   @JsonSubTypes.Type(value = ReadTimeoutResult.class, name = "read_timeout"),
   @JsonSubTypes.Type(value = SyntaxErrorResult.class, name = "syntax_error"),
-  @JsonSubTypes.Type(value = TruncateResult.class, name = "truncate_error"),
+  @JsonSubTypes.Type(value = TruncateErrorResult.class, name = "truncate_error"),
   @JsonSubTypes.Type(value = UnauthorizedResult.class, name = "unauthorized"),
   @JsonSubTypes.Type(value = UnpreparedResult.class, name = "unprepared"),
   @JsonSubTypes.Type(value = WriteFailureResult.class, name = "write_failure"),

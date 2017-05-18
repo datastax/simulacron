@@ -13,7 +13,7 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.datastax.simulacron.server.IntegrationUtils.defaultBuilder;
+import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PeerMetadataIntegrationTest {

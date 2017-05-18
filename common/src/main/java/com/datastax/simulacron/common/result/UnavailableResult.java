@@ -11,7 +11,7 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.UNA
 public class UnavailableResult extends ErrorResult {
 
   /** The consistency level of the query that triggered the exception. */
-  @JsonProperty("cl")
+  @JsonProperty("consistency")
   private final ConsistencyLevel cl;
 
   /** The number of nodes that should be alive to respect <cl>. */
@@ -25,21 +25,21 @@ public class UnavailableResult extends ErrorResult {
   @JsonProperty("alive")
   private final int alive;
 
-  UnavailableResult(long delayInMs, ConsistencyLevel cl, int required, int alive) {
-    this("Cannot achieve consistency level " + cl, delayInMs, cl, required, alive);
+  public UnavailableResult(ConsistencyLevel cl, int required, int alive) {
+    this("Cannot achieve consistency level " + cl, cl, required, alive, 0);
   }
 
-  UnavailableResult(long delayInMs, ConsistencyLevel cl, String dc, int required, int alive) {
-    this("Cannot achieve consistency level " + cl + " in DC " + dc, delayInMs, cl, required, alive);
+  public UnavailableResult(ConsistencyLevel cl, String dc, int required, int alive) {
+    this("Cannot achieve consistency level " + cl + " in DC " + dc, cl, required, alive, 0);
   }
 
   @JsonCreator
   UnavailableResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
-      @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty(value = "cl", required = true) ConsistencyLevel cl,
+      @JsonProperty(value = "consistency", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "required", required = true) int required,
-      @JsonProperty(value = "alive", required = true) int alive) {
+      @JsonProperty(value = "alive", required = true) int alive,
+      @JsonProperty("delay_in_ms") long delayInMs) {
     super(UNAVAILABLE, errorMessage, delayInMs);
     this.cl = cl;
     this.required = required;

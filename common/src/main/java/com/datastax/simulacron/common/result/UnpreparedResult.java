@@ -7,12 +7,12 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.UNP
 
 public class UnpreparedResult extends ErrorResult {
 
-  UnpreparedResult(String errorMessage) {
+  public UnpreparedResult(String errorMessage) {
     this(errorMessage, 0);
   }
 
   @JsonCreator
-  UnpreparedResult(
+  public UnpreparedResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
       @JsonProperty("delay_in_ms") long delayInMs) {
     super(UNPREPARED, errorMessage, delayInMs);

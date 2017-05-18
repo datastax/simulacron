@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -451,39 +452,30 @@ public class HttpContainerIntegrationTest {
   }
 
   private ResultSet makeNativeQuery(String query, String contactPoint) {
-
-    com.datastax.driver.core.Cluster cluster =
-        com.datastax.driver.core.Cluster.builder().addContactPoint(contactPoint).build();
-
-    Session session = cluster.connect();
-    ResultSet set = session.execute(query);
-    cluster.close();
-    return set;
+    try (com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build()) {
+      Session session = cluster.connect();
+      return session.execute(query);
+    }
   }
 
   private ResultSet makeNativeQueryWithNameParams(
       String query, String contactPoint, Map<String, Object> values) {
-
-    com.datastax.driver.core.Cluster cluster =
-        com.datastax.driver.core.Cluster.builder().addContactPoint(contactPoint).build();
-
-    Session session = cluster.connect();
-    SimpleStatement statement = new SimpleStatement(query, values);
-    ResultSet set = session.execute(statement);
-    cluster.close();
-    return set;
+    try (com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build()) {
+      Session session = cluster.connect();
+      SimpleStatement statement = new SimpleStatement(query, values);
+      return session.execute(statement);
+    }
   }
 
   private ResultSet makeNativeQueryWithPositionalParam(
       String query, String contactPoint, Object param) {
-
-    com.datastax.driver.core.Cluster cluster =
-        com.datastax.driver.core.Cluster.builder().addContactPoint(contactPoint).build();
-
-    Session session = cluster.connect();
-    ResultSet set = session.execute(query, param);
-    cluster.close();
-    return set;
+    try (com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build()) {
+      Session session = cluster.connect();
+      return session.execute(query, param);
+    }
   }
 
   private QueryPrime createSimplePrimedQuery(String query) {

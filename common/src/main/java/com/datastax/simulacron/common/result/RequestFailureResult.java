@@ -1,33 +1,34 @@
 package com.datastax.simulacron.common.result;
 
-import java.net.InetAddress;
-import java.util.Map;
-
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.net.InetAddress;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 public abstract class RequestFailureResult extends ErrorResult {
 
-  @JsonProperty("cl")
+  @JsonProperty("consistency")
   protected final ConsistencyLevel cl;
 
   @JsonProperty("received")
   protected final int received;
 
-  @JsonProperty("blockFor")
+  @JsonProperty("block_for")
   protected final int blockFor;
 
-  @JsonProperty("failureReasonByEndpoint")
+  @JsonProperty("failure_reasons")
   protected final Map<InetAddress, RequestFailureReason> failureReasonByEndpoint;
 
   protected RequestFailureResult(
       int errorCode,
-      long delayInMs,
       ConsistencyLevel cl,
       int received,
       int blockFor,
-      Map<InetAddress, RequestFailureReason> failureReasonByEndpoint) {
+      Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
+      long delayInMs) {
     super(
         errorCode,
         String.format(
@@ -38,5 +39,13 @@ public abstract class RequestFailureResult extends ErrorResult {
     this.received = received;
     this.blockFor = blockFor;
     this.failureReasonByEndpoint = failureReasonByEndpoint;
+  }
+
+  static Map<InetAddress, Integer> toIntMap(
+      Map<InetAddress, RequestFailureReason> failureReasonByEndpoint) {
+    return failureReasonByEndpoint
+        .entrySet()
+        .stream()
+        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getCode()));
   }
 }

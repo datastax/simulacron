@@ -23,36 +23,37 @@ import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.net.InetAddress;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.READ_FAILURE;
 
 public class ReadFailureResult extends RequestFailureResult {
 
-  @JsonProperty("dataPresent")
+  @JsonProperty("data_present")
   private final boolean dataPresent;
+
+  public ReadFailureResult(
+      ConsistencyLevel cl,
+      int received,
+      int blockFor,
+      Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
+      boolean dataPresent) {
+    this(cl, received, blockFor, failureReasonByEndpoint, dataPresent, 0);
+  }
 
   @JsonCreator
   public ReadFailureResult(
-      @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty(value = "cl", required = true) ConsistencyLevel cl,
+      @JsonProperty(value = "consistency", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "received", required = true) int received,
-      @JsonProperty(value = "blockFor", required = true) int blockFor,
-      @JsonProperty(value = "failureReasonByEndpoint", required = true)
+      @JsonProperty(value = "block_for", required = true) int blockFor,
+      @JsonProperty(value = "failure_reasons", required = true)
           Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
-      @JsonProperty(value = "dataPresent", required = true) boolean dataPresent) {
-    super(READ_FAILURE, delayInMs, cl, received, blockFor, failureReasonByEndpoint);
+      @JsonProperty(value = "data_present", required = true) boolean dataPresent,
+      @JsonProperty("delay_in_ms") long delayInMs) {
+    super(READ_FAILURE, cl, received, blockFor, failureReasonByEndpoint, delayInMs);
     this.dataPresent = dataPresent;
-  }
-
-  static Map<InetAddress, Integer> toIntMap(
-      Map<InetAddress, RequestFailureReason> failureReasonByEndpoint) {
-    return failureReasonByEndpoint
-        .entrySet()
-        .stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getCode()));
   }
 
   @Override

@@ -24,27 +24,36 @@ import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.datastax.simulacron.common.codec.WriteType;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.net.InetAddress;
 import java.util.Map;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.WRITE_FAILURE;
-import static com.datastax.simulacron.common.result.ReadFailureResult.toIntMap;
 
 public class WriteFailureResult extends RequestFailureResult {
 
-  @JsonProperty("writeType")
+  @JsonProperty("write_type")
   private final WriteType writeType;
+
+  public WriteFailureResult(
+      ConsistencyLevel cl,
+      int received,
+      int blockFor,
+      Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
+      WriteType writeType) {
+    this(cl, received, blockFor, failureReasonByEndpoint, writeType, 0);
+  }
 
   @JsonCreator
   public WriteFailureResult(
-      @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty(value = "cl", required = true) ConsistencyLevel cl,
+      @JsonProperty(value = "consistency", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "received", required = true) int received,
-      @JsonProperty(value = "blockFor", required = true) int blockFor,
-      @JsonProperty(value = "failureReasonByEndpoint", required = true)
+      @JsonProperty(value = "block_for", required = true) int blockFor,
+      @JsonProperty(value = "failure_reasons", required = true)
           Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
-      @JsonProperty(value = "writeType", required = true) WriteType writeType) {
-    super(WRITE_FAILURE, delayInMs, cl, received, blockFor, failureReasonByEndpoint);
+      @JsonProperty(value = "write_type", required = true) WriteType writeType,
+      @JsonProperty("delay_in_ms") long delayInMs) {
+    super(WRITE_FAILURE, cl, received, blockFor, failureReasonByEndpoint, delayInMs);
     this.writeType = writeType;
   }
 

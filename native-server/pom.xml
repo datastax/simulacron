@@ -15,7 +15,7 @@
     <dependencies>
         <dependency>
             <groupId>com.datastax.simulacron</groupId>
-            <artifactId>simulacron-common</artifactId>
+            <artifactId>common</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
@@ -29,9 +29,10 @@
             <version>${netty.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.datastax.cassandra</groupId>
-            <artifactId>cassandra-driver-core</artifactId>
-            <version>${java-driver.version}</version>
+            <groupId>com.datastax.simulacron</groupId>
+            <artifactId>test-utils</artifactId>
+            <version>${project.parent.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

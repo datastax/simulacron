@@ -7,12 +7,12 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.CON
 
 public class ConfigurationErrorResult extends ErrorResult {
 
-  ConfigurationErrorResult(String errorMessage) {
+  public ConfigurationErrorResult(String errorMessage) {
     this(errorMessage, 0);
   }
 
   @JsonCreator
-  ConfigurationErrorResult(
+  public ConfigurationErrorResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
       @JsonProperty("delay_in_ms") long delayInMs) {
     super(CONFIG_ERROR, errorMessage, delayInMs);

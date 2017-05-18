@@ -7,7 +7,7 @@
         <version>0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>simulacron-common</artifactId>
+    <artifactId>common</artifactId>
     <packaging>jar</packaging>
 
     <name>simulacron common</name>

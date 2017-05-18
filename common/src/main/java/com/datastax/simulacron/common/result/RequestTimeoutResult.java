@@ -5,17 +5,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public abstract class RequestTimeoutResult extends ErrorResult {
 
-  @JsonProperty("cl")
+  @JsonProperty("consistency")
   protected final ConsistencyLevel cl;
 
   @JsonProperty("received")
   protected final int received;
 
-  @JsonProperty("blockFor")
+  @JsonProperty("block_for")
   protected final int blockFor;
 
   protected RequestTimeoutResult(
-      int errorCode, long delayInMs, ConsistencyLevel cl, int received, int blockFor) {
+      int errorCode, ConsistencyLevel cl, int received, int blockFor, long delayInMs) {
     super(
         errorCode,
         String.format("Operation timed out - received only %d responses.", received),

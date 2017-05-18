@@ -20,6 +20,7 @@
         <module>common</module>
         <module>native-server</module>
         <module>http-server</module>
+        <module>test-utils</module>
         <module>standalone</module>
     </modules>
 

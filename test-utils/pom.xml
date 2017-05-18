@@ -7,32 +7,26 @@
         <version>0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>http-server</artifactId>
+    <artifactId>test-utils</artifactId>
     <packaging>jar</packaging>
 
-    <name>simulacron http server</name>
+    <name>simulacron test utilities</name>
 
     <dependencies>
         <dependency>
-            <groupId>com.datastax.simulacron</groupId>
-            <artifactId>native-server</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-web</artifactId>
-            <version>${vertx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars</groupId>
-            <artifactId>swagger-ui</artifactId>
-            <version>${swagger-ui.version}</version>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
         </dependency>
         <dependency>
             <groupId>com.datastax.simulacron</groupId>
-            <artifactId>test-utils</artifactId>
+            <artifactId>common</artifactId>
             <version>${project.parent.version}</version>
-            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.datastax.cassandra</groupId>
+            <artifactId>cassandra-driver-core</artifactId>
+            <version>${java-driver.version}</version>
         </dependency>
     </dependencies>
 

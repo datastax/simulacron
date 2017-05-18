@@ -6,11 +6,11 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.PRO
 
 public class ProtocolErrorResult extends ErrorResult {
 
-  ProtocolErrorResult(String errorMessage) {
+  public ProtocolErrorResult(String errorMessage) {
     this(errorMessage, 0);
   }
 
-  ProtocolErrorResult(
+  public ProtocolErrorResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
       @JsonProperty("delay_in_ms") long delayInMs) {
     super(PROTOCOL_ERROR, errorMessage, delayInMs);
