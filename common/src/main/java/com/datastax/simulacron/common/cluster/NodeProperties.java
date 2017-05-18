@@ -74,15 +74,6 @@ public interface NodeProperties {
   /** @return The number of active connections on a node */
   Long getActiveConnections();
 
-  /** @return The incremented value of active connections */
-  Long incrementActiveConnections();
-
-  /**
-   * @return The decremented value of active connections
-   * @throws Exception if active connections drops below zero
-   */
-  Long decrementActiveConnections() throws Exception;
-
   /**
    * @return The parent instance of this. For example, it is expected that a node has a parent data
    *     center, a data center has a parent cluster.

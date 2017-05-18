@@ -3,7 +3,6 @@ package com.datastax.simulacron.common.cluster;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -80,18 +79,6 @@ public class DataCenter extends AbstractNodeProperties {
   }
 
   @Override
-  public Long incrementActiveConnections() {
-    parent.incrementActiveConnections();
-    return super.incrementActiveConnections();
-  }
-
-  @Override
-  public Long decrementActiveConnections() throws Exception {
-    parent.decrementActiveConnections();
-    return super.decrementActiveConnections();
-  }
-
-  @Override
   public String toString() {
     return toStringWith(
         ", nodes="
@@ -101,6 +88,11 @@ public class DataCenter extends AbstractNodeProperties {
   @Override
   public Optional<NodeProperties> getParent() {
     return Optional.ofNullable(parent);
+  }
+
+  @Override
+  public Long getActiveConnections() {
+    return nodes.stream().mapToLong(NodeProperties::getActiveConnections).sum();
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, Cluster> {

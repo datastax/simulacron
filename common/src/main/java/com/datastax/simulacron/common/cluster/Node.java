@@ -86,6 +86,13 @@ public class Node extends AbstractNodeProperties {
     return Optional.ofNullable(parent);
   }
 
+  @Override
+  public Long getActiveConnections() {
+    // In the case of a concrete 'Node' instance, active connections will always be 0 since there is no actual
+    // connection state here.  We expect specialized implementations of Node to override this.
+    return 0L;
+  }
+
   public static class Builder extends NodePropertiesBuilder<Builder, DataCenter> {
 
     private SocketAddress address = null;

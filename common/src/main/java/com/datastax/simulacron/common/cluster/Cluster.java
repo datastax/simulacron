@@ -35,6 +35,11 @@ public class Cluster extends AbstractNodeProperties {
     super(name, id, cassandraVersion, dseVersion, peerInfo);
   }
 
+  @Override
+  public Long getActiveConnections() {
+    return dataCenters.stream().mapToLong(NodeProperties::getActiveConnections).sum();
+  }
+
   /** @return The {@link DataCenter}s belonging to this cluster. */
   public Collection<DataCenter> getDataCenters() {
     return dataCenters;

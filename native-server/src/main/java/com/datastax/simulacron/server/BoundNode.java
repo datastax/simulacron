@@ -108,18 +108,10 @@ class BoundNode extends Node {
     this.stubStore = stubStore;
   }
 
-  // NOTE: Overriding BoundNode to handle driver connections only
   @Override
-  public Long incrementActiveConnections() {
-    getDataCenter().incrementActiveConnections();
-    return super.incrementActiveConnections();
-  }
-
-  // NOTE: Overriding BoundNode to handle driver connections only
-  @Override
-  public Long decrementActiveConnections() throws Exception {
-    getDataCenter().decrementActiveConnections();
-    return super.decrementActiveConnections();
+  public Long getActiveConnections() {
+    // Filter only active channels as some may be in process of closing.
+    return clientChannelGroup.stream().filter(Channel::isActive).count();
   }
 
   /**

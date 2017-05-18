@@ -14,18 +14,6 @@ class RequestHandler extends ChannelInboundHandlerAdapter {
   }
 
   @Override
-  public void channelActive(ChannelHandlerContext ctx) throws Exception {
-    node.incrementActiveConnections();
-    super.channelActive(ctx);
-  }
-
-  @Override
-  public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-    node.decrementActiveConnections();
-    super.channelInactive(ctx);
-  }
-
-  @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     MDC.put("node", node.getId().toString());
 

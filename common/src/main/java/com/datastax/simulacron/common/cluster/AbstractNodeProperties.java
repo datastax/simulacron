@@ -1,14 +1,19 @@
 package com.datastax.simulacron.common.cluster;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of {@link NodeProperties} that provides a constructor a implementations for
  * everything except {@link NodeProperties#getParent()}.
  */
+// Mark active_connections ignorable as they are not used on serialization.
+@JsonIgnoreProperties(
+  value = {"active_connections"},
+  allowGetters = true
+)
 public abstract class AbstractNodeProperties implements NodeProperties {
 
   private final String name;
@@ -22,9 +27,6 @@ public abstract class AbstractNodeProperties implements NodeProperties {
 
   @JsonProperty("peer_info")
   private final Map<String, Object> peerInfo;
-
-  @JsonProperty("active_connections")
-  private final transient AtomicLong activeConnections = new AtomicLong(0);
 
   AbstractNodeProperties(
       String name,
@@ -66,24 +68,8 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   }
 
   @Override
-  public Long getActiveConnections() {
-    return activeConnections.get();
-  }
-
-  @Override
-  public Long incrementActiveConnections() {
-    return activeConnections.incrementAndGet();
-  }
-
-  @Override
-  public Long decrementActiveConnections() throws Exception {
-    Long newValue = activeConnections.decrementAndGet();
-    if (newValue >= 0) {
-      return newValue;
-    } else {
-      throw new Exception("Active connections dropped below zero");
-    }
-  }
+  @JsonProperty("active_connections")
+  public abstract Long getActiveConnections();
 
   String toStringWith(String extras) {
     StringBuilder str = new StringBuilder(this.getClass().getSimpleName());

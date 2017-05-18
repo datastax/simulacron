@@ -515,7 +515,8 @@ public class ServerTest {
       MockClient client = new MockClient(eventLoop);
       clients.add(client);
       client.connect(node.getAddress());
-      Thread.sleep(50); // Ensure events are complete
+      client.write(new Startup());
+      assertThat(client.next().message).isInstanceOf(Ready.class);
 
       // Ensure the active connections
       assertThat(node.getActiveConnections()).isEqualTo(1L);
@@ -531,7 +532,8 @@ public class ServerTest {
 
       // Ensure the active connections after disconnect
       client.close();
-      Thread.sleep(50); // Ensure events are complete
+      // sleep a little bit as disconnected channels may not be unregistered immediately.
+      Thread.sleep(50);
       assertThat(node.getActiveConnections()).isEqualTo(0L);
       assertThat(dc.getActiveConnections()).isEqualTo(clients.size() - (i + 1));
       assertThat(boundCluster.getActiveConnections()).isEqualTo(clients.size() - (i + 1));
@@ -567,7 +569,8 @@ public class ServerTest {
       MockClient client = new MockClient(eventLoop);
       clients.add(client);
       client.connect(node.getAddress());
-      Thread.sleep(50); // Ensure events are complete
+      client.write(new Startup());
+      assertThat(client.next().message).isInstanceOf(Ready.class);
 
       // Ensure the active connections
       assertThat(node.getActiveConnections()).isEqualTo(1L);
@@ -591,7 +594,8 @@ public class ServerTest {
 
       // Ensure the active connections after disconnect
       client.close();
-      Thread.sleep(50); // Ensure events are complete
+      // sleep a little bit as disconnected channels may not be unregistered immediately.
+      Thread.sleep(50);
       assertThat(node.getActiveConnections()).isEqualTo(0L);
       assertThat(dc.getActiveConnections())
           .isEqualTo(clients.size() - (activeConnectionsOffset + i));
