@@ -4,8 +4,11 @@
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{12} \(%X{node}\) - %msg%n</pattern>
         </encoder>
     </appender>
-    <root level="DEBUG">
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="STDOUT"/>
+    </appender>
+    <root level="DEBUG">
+        <appender-ref ref="ASYNC"/>
     </root>
     <logger name="com.datastax" level="DEBUG"/>
 </configuration>

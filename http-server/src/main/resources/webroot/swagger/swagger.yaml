@@ -8,7 +8,6 @@ info:
     connections.
   version: 0.0.1-SNAPSHOT
   title: Simulacron REST API
-host: 'localhost:8187'
 basePath: /
 tags:
   - name: cluster
@@ -44,6 +43,7 @@ paths:
             **Note**: If this is provided the request body is ignored.
           required: false
           type: string
+          example: 10
         - in: query
           name: cassandra_version
           description: The Cassandra version of this Cluster.  This only applies if `data_centers` is specified.
@@ -54,6 +54,7 @@ paths:
           description: The DSE version of this Cluster.  This only applies if `data_centers` is specified.
           required: false
           type: string
+          example: 5.0.8
         - in: query
           name: name
           description: The name to give this Cluster.  This only applies if `data_centers` is specified.
@@ -143,12 +144,7 @@ paths:
           schema:
             $ref: '#/definitions/Cluster'
         '404':
-          examples:
-            "Not found":
-              message: No cluster registered with id 2
-              status_code: 404
-          schema:
-            $ref: '#/definitions/Error'
+          description: Not found
     delete:
       tags:
         - cluster
@@ -169,20 +165,13 @@ paths:
           description: Cluster deleted
         '400':
           description: Unexpected error
-          schema:
-            $ref: '#/definitions/Error'
         '404':
-          examples:
-            "Not found":
-              message: No cluster registered with id 2
-              status_code: 404
-          schema:
-            $ref: '#/definitions/Error'
+          description: Not found
   '/prime-query-single':
     post:
       tags:
         - prime-query-single
-      summary: Primes the cluster with a given query
+      summary: Primes a 'rows' response for a given query
       operationId: primeQuerySingle
       consumes:
         - application/json
@@ -192,23 +181,18 @@ paths:
         - name: body
           in: body
           description: >
-            Contains a PrimedQuery that contains a then/when section this will be used to match query on recieve and from a construct a proper response.
+            Contains a when section that defines the matching query text and a then section that defines the result
+            metadata and accompanying rows.
           required: true
           schema:
-            $ref: '#/definitions/PrimeQuery'
-
+            $ref: '#/definitions/PrimeQuerySuccess'
       responses:
         '201':
           description: PrimedQuery
           schema:
-            $ref: '#/definitions/PrimeQuery'
+            $ref: '#/definitions/PrimeQuerySuccess'
         '400':
-          examples:
-            "Unable to parse provided query":
-              message: Error encountered while attempting to
-              status_code: 400
-          schema:
-            $ref: '#/definitions/Error'
+          description: Unable to parse provided query
     delete:
       tags:
         - prime-query-single
@@ -221,12 +205,469 @@ paths:
       responses:
         '200':
           description: Cluster deleted
-  '/log/{clusterId}/{datacenterId}/{nodeId}':
+  '/prime-query-single (already_exists)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes an already exists error response
+      operationId: primeQuerySingleAlreadyExists
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines an already exists error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryAlreadyExists'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryAlreadyExists'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (authentication_error)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes an authentication error response
+      operationId: primeQuerySingleAuthenticationError
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines an authentication error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryAuthenticationError'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryAuthenticationError'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (config_error)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a config error response
+      operationId: primeQuerySingleConfigError
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a config error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryConfigError'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryConfigError'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (function_failure)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a function failure response
+      operationId: primeQuerySimpleFunctionFailure
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a function failure to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryFunctionFailure'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryFunctionFailure'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (invalid)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a invalid error response
+      operationId: primeQuerySingleInvalid
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a invalid error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryInvalid'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryInvalid'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (is_bootstrapping)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes an is bootstraping response
+      operationId: primeQuerySingleIsBootstrapping
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines an is bootstrapping error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryIsBootstrapping'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryIsBootstrapping'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (overloaded)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes an overloaded response
+      operationId: primeQuerySingleOverloaded
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines an overloaded error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryOverloaded'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryOverloaded'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (protocol_error)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a protocol error response
+      operationId: primeQuerySingleProtocolError
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a protocl error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryProtocolError'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryProtocolError'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (read_failure)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a read failure response
+      operationId: primeQuerySingleReadFailure
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a read failure to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryReadFailure'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryReadFailure'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (read_timeout)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a read timeout response
+      operationId: primeQuerySingleReadTimeout
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a read timeout to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryReadTimeout'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryReadTimeout'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (server_error)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a server error response
+      operationId: primeQuerySingleServerError
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a server error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryServerError'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryServerError'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (syntax_error)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a syntax error response
+      operationId: primeQuerySingleSyntaxError
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a syntax error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQuerySyntaxError'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQuerySyntaxError'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (truncate_error)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a syntax error response
+      operationId: primeQuerySingleTruncateError
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a truncate error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryTruncateError'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryTruncateError'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (unauthorized)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes an unauthorized response
+      operationId: primeQuerySingleUnauthorized
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines an unauthorized error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryUnauthorized'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryUnauthorized'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (unavailable)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes an unavailable response
+      operationId: primeQuerySingleUnavailable
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines an unavailable error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryUnavailable'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryUnavailable'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (unprepared)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes an unprepared response
+      operationId: primeQuerySingleUnprepared
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines an unprepared error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryUnprepared'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryUnprepared'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (write_failure)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a write failure response
+      operationId: primeQuerySingleWriteFailure
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a write failure to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryWriteFailure'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryWriteFailure'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single (write_timeout)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a write timeout response
+      operationId: primeQuerySingleWriteTimeout
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines a write timeout to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryWriteFailure'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryWriteFailure'
+        '400':
+          description: Unable to parse provided query
+  '/log/{clusterId}':
     get:
       tags:
         - log
-      summary: Return all queries executed by clients on a cluster. If datacenter and/or node are specified if will filter the results with the queries executed by clients on datacenter/node.
+      summary: Return all queries executed by clients on a cluster.
       operationId: getLogByCluster
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id of the cluster
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: Queries executed
+          schema:
+            type : array
+            items :
+              $ref : '#/definitions/QueryLog'
+        '404':
+          description: Not found
+  '/log/{clusterId}/{datacenterId}':
+    get:
+      tags:
+        - log
+      summary: Return all queries executed by clients on a datacenter.
+      operationId: getLogByDataCenter
       consumes:
         - application/json
       produces:
@@ -240,12 +681,7 @@ paths:
         - name: datacenterId
           in: path
           description: Id of the datacenter
-          required: false
-          type: integer
-        - name: nodeId
-          in: path
-          description: Id of the node
-          required: false
+          required: true
           type: integer
       responses:
         '200':
@@ -255,13 +691,77 @@ paths:
             items :
               $ref : '#/definitions/QueryLog'
         '404':
-          examples:
-            "Not found":
-              message: No cluster registered with id 2
-              status_code: 404
+          description: Not found
+  '/log/{clusterId}/{datacenterId}/{nodeId}':
+    get:
+      tags:
+        - log
+      summary: Return all queries executed by clients on a node.
+      operationId: getLogByNode
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id of the cluster
+          required: true
+          type: integer
+        - name: datacenterId
+          in: path
+          description: Id of the datacenter
+          required: true
+          type: integer
+        - name: nodeId
+          in: path
+          description: Id of the node
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: Queries executed
           schema:
-            $ref: '#/definitions/Error'
+            type : array
+            items :
+              $ref : '#/definitions/QueryLog'
+        '404':
+          description: Not found
 definitions:
+  Consistency:
+    type: string
+    description: The consistency to apply to data operations
+    example: LOCAL_QUORUM
+    enum:
+      - ANY
+      - ONE
+      - TWO
+      - THREE
+      - QUORUM
+      - ALL
+      - LOCAL_QUORUM
+      - EACH_QUORUM
+      - SERIAL
+      - LOCAL_SERIAL
+      - LOCAL_ONE
+  RequestFailureReason:
+    type: string
+    description: Represents rationale for why a request failed
+    enum:
+      - UNKNOWN
+      - READ_TOO_MANY_TOMBSTONES
+  WriteType:
+    type: string
+    description: The kind of write operation
+    enum:
+      - SIMPLE
+      - BATCH
+      - UNLOGGED_BATCH
+      - COUNTER
+      - BATCH_LOG
+      - CAS
+      - VIEW
+      - CDC
   PeerInfo:
     type: object
     properties:
@@ -373,42 +873,342 @@ definitions:
     properties:
       query:
         type: string
-        example: "SELECT * FROM table"
+        example: "SELECT * FROM tbl"
       consistency_level:
-        type: string
-        example: "LOCAL_ONE"
+        $ref: '#/definitions/Consistency'
     example:
-      query: "SELECT * FROM TABLE"
+      query: "SELECT * FROM TBL"
   Then:
     type: object
+    discriminator: result
     required:
-      - rows
       - result
-      - column_types
+      - delay_in_ms
     properties:
-      rows:
-        type: array
-        example:
-          - key: 0
-            description: "Important dates"
-            dates:
-              independence day: "1776-07-04"
-              washington's birthday: "1732-02-22"
-          - key: 1
-            description: "Other fun dates"
-            dates:
-              new years day: "2017-01-01"
-              leap day: "2020-02-29"
-              end of mayan calendar: "2012-12-21"
       result:
         type: string
         example: success
-      column_types:
-        type: OrderedMap
-        example:
-          key: "bigint"
-          description: "ascii"
-          dates: "map<ascii,date>"
+      delay_in_ms:
+        type: integer
+        example: 0
+  SuccessResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - rows
+          - column_types
+        properties:
+          rows:
+            type: array
+            example:
+              - key: 0
+                description: "Important dates"
+                dates:
+                  independence day: "1776-07-04"
+                  washington's birthday: "1732-02-22"
+              - key: 1
+                description: "Other fun dates"
+                dates:
+                  new years day: "2017-01-01"
+                  leap day: "2020-02-29"
+                  end of mayan calendar: "2012-12-21"
+          column_types:
+            type: array
+            example:
+              key: "bigint"
+              description: "ascii"
+              dates: "map<ascii,date>"
+  AlreadyExistsResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+          - keyspace
+          - table
+        properties:
+          result:
+            example: already_exists
+          message:
+            type: string
+            example: The table already exists
+          keyspace:
+            type: string
+            example: ks
+          table:
+            type: string
+            example: tbl
+  AuthenticationErrorResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: authentication_error
+          message:
+            type: string
+            example: Invalid username or password!
+  ConfigErrorResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: config_error
+          message:
+            type: string
+            example: Invalid Configuration!
+  FunctionFailureResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - function
+          - arg_types
+          - detail
+        properties:
+          result:
+            example: function_failure
+          function:
+            type: string
+            example: fib
+          arg_types:
+            type: array
+            example: [int, varchar]
+          detail:
+            type: string
+            example: Could not execute function!
+  InvalidResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: invalid
+          message:
+            type: string
+            example: Invalid Query!
+  IsBootstrappingResult:
+      allOf:
+        - $ref: '#/definitions/Then'
+        - type: object
+          properties:
+            result:
+              example: is_bootstrapping
+  OverloadedResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: overloaded
+          message:
+            type: string
+            example: Server is overloaded!
+  ProtocolErrorResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: protocol_error
+          message:
+            type: string
+            example: Invalid protocol version 98
+  ReadFailureResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - consistency_level
+          - received
+          - block_for
+          - failure_reasons
+          - data_present
+        properties:
+          result:
+            example: read_failure
+          consistency_level:
+            $ref: '#/definitions/Consistency'
+          received:
+            type: integer
+            example: 1
+          block_for:
+            type: integer
+            example: 2
+          failure_reasons:
+            type: object
+            additionalProperties:
+              $ref: '#/definitions/RequestFailureReason'
+            example:
+              - 127.0.0.1: READ_TOO_MANY_TOMBSTONES
+          data_present:
+            type: boolean
+            example: true
+  ReadTimeoutResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - consistency_level
+          - received
+          - block_for
+          - data_present
+        properties:
+          result:
+            example: read_timeout
+          consistency_level:
+            $ref: '#/definitions/Consistency'
+          received:
+            type: integer
+            example: 1
+          block_for:
+            type: integer
+            example: 2
+          data_present:
+            type: boolean
+            example: true
+  ServerErrorResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: server_error
+          message:
+            type: string
+            example: This is a server error
+  SyntaxErrorResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: syntax_error
+          message:
+            type: string
+            example: Invalid syntax, expected ')'
+  TruncateErrorResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: truncate_error
+          message:
+            type: string
+            example: Could not truncate table
+  UnauthorizedResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: unauthorized
+          message:
+            type: string
+            example: User lacks permissions to update table 'x'
+  UnavailableResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - consistency_level
+          - alive
+          - required
+        properties:
+          result:
+            example: unavailable
+          consistency_level:
+            $ref: '#/definitions/Consistency'
+          alive:
+            type: integer
+            example: 1
+          required:
+            type: integer
+            example: 2
+  UnpreparedResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - message
+        properties:
+          result:
+            example: unprepared
+          message:
+            type: string
+            example: Prepared query with ID 8657309 not found
+  WriteFailureResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - consistency_level
+          - received
+          - block_for
+          - failure_reasons
+          - write_type
+        properties:
+          result:
+            example: write_failure
+          consistency_level:
+            $ref: '#/definitions/Consistency'
+          received:
+            type: integer
+            example: 1
+          block_for:
+            type: integer
+            example: 2
+          failure_reasons:
+            type: object
+            additionalProperties:
+              $ref: '#/definitions/RequestFailureReason'
+            example:
+              - 127.0.0.1: UNKNOWN
+          write_type:
+            $ref: '#/definitions/WriteType'
+  WriteTimeoutResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - consistency_level
+          - received
+          - block_for
+          - write_type
+        properties:
+          result:
+            example: write_timeout
+          consistency_level:
+            $ref: '#/definitions/Consistency'
+          received:
+            type: integer
+            example: 1
+          block_for:
+            type: integer
+            example: 2
+          write_type:
+            $ref: '#/definitions/WriteType'
   PrimeQuery:
     type: object
     required:
@@ -419,6 +1219,196 @@ definitions:
         $ref: '#/definitions/When'
       then:
         $ref: '#/definitions/Then'
+  PrimeQuerySuccess:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/SuccessResult'
+  PrimeQueryAlreadyExists:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/AlreadyExistsResult'
+  PrimeQueryAuthenticationError:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/AuthenticationErrorResult'
+  PrimeQueryConfigError:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/ConfigErrorResult'
+  PrimeQueryFunctionFailure:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/FunctionFailureResult'
+  PrimeQueryInvalid:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/InvalidResult'
+  PrimeQueryIsBootstrapping:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/IsBootstrappingResult'
+  PrimeQueryOverloaded:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/OverloadedResult'
+  PrimeQueryProtocolError:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/ProtocolErrorResult'
+  PrimeQueryReadFailure:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/ReadFailureResult'
+  PrimeQueryReadTimeout:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/ReadTimeoutResult'
+  PrimeQueryServerError:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/ServerErrorResult'
+  PrimeQuerySyntaxError:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/SyntaxErrorResult'
+  PrimeQueryTruncateError:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/TruncateErrorResult'
+  PrimeQueryUnauthorized:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/UnauthorizedResult'
+  PrimeQueryUnavailable:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/UnavailableResult'
+  PrimeQueryUnprepared:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/UnpreparedResult'
+  PrimeQueryWriteFailure:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/WriteFailureResult'
+  PrimeQueryWriteTimeout:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/WriteTimeoutResult'
   QueryLog:
     type: object
     properties:
@@ -432,14 +1422,14 @@ definitions:
         example: 1
       query:
         type: string
-        example: "select * from table"
+        example: "select * from tbl"
       consistency_level:
         type: integer
         example: 10 (LOCAL_QUORUM)
     example:
       datacenter_id: 1
       node_id: 0
-      query: "select * from table"
+      query: "select * from tbl"
       consistency_level: 10
 
   Error:

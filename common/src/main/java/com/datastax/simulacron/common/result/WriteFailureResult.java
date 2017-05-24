@@ -46,7 +46,7 @@ public class WriteFailureResult extends RequestFailureResult {
 
   @JsonCreator
   public WriteFailureResult(
-      @JsonProperty(value = "consistency", required = true) ConsistencyLevel cl,
+      @JsonProperty(value = "consistency_level", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "received", required = true) int received,
       @JsonProperty(value = "block_for", required = true) int blockFor,
       @JsonProperty(value = "failure_reasons", required = true)

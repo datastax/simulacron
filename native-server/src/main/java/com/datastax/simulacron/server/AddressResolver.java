@@ -63,7 +63,7 @@ public interface AddressResolver extends Supplier<SocketAddress> {
 
           for (int i = ipAddr.length - 1; i > 0; i--) {
             // roll over ipAddress if we max out the current octet (255)
-            if (ipAddr[i] == (byte) 0xFF) {
+            if (ipAddr[i] == (byte) 0xFE) {
               ipAddr[i] = 0;
             } else {
               ++ipAddr[i];

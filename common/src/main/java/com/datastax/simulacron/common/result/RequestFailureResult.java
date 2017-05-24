@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public abstract class RequestFailureResult extends ErrorResult {
 
-  @JsonProperty("consistency")
+  @JsonProperty("consistency_level")
   protected final ConsistencyLevel cl;
 
   @JsonProperty("received")

@@ -37,7 +37,7 @@ public class WriteTimeoutResult extends RequestTimeoutResult {
 
   @JsonCreator
   public WriteTimeoutResult(
-      @JsonProperty(value = "consistency", required = true) ConsistencyLevel cl,
+      @JsonProperty(value = "consistency_level", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "received", required = true) int received,
       @JsonProperty(value = "block_for", required = true) int blockFor,
       @JsonProperty(value = "write_type", required = true) WriteType writeType,

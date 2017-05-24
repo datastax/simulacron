@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public abstract class RequestTimeoutResult extends ErrorResult {
 
-  @JsonProperty("consistency")
+  @JsonProperty("consistency_level")
   protected final ConsistencyLevel cl;
 
   @JsonProperty("received")

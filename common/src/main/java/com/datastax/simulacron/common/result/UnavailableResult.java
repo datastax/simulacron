@@ -11,7 +11,7 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.UNA
 public class UnavailableResult extends ErrorResult {
 
   /** The consistency level of the query that triggered the exception. */
-  @JsonProperty("consistency")
+  @JsonProperty("consistency_level")
   private final ConsistencyLevel cl;
 
   /** The number of nodes that should be alive to respect <cl>. */
@@ -36,7 +36,7 @@ public class UnavailableResult extends ErrorResult {
   @JsonCreator
   UnavailableResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
-      @JsonProperty(value = "consistency", required = true) ConsistencyLevel cl,
+      @JsonProperty(value = "consistency_level", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "required", required = true) int required,
       @JsonProperty(value = "alive", required = true) int alive,
       @JsonProperty("delay_in_ms") long delayInMs) {

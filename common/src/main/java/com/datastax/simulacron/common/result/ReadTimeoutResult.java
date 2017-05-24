@@ -19,7 +19,7 @@ public class ReadTimeoutResult extends RequestTimeoutResult {
 
   @JsonCreator
   public ReadTimeoutResult(
-      @JsonProperty(value = "consistency", required = true) ConsistencyLevel cl,
+      @JsonProperty(value = "consistency_level", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "received", required = true) int received,
       @JsonProperty(value = "block_for", required = true) int blockFor,
       @JsonProperty(value = "data_present", required = true) boolean dataPresent,

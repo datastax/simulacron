@@ -29,10 +29,13 @@ public class App {
 
     // Adjust the root logger level based on configuration.
     Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+    Logger datastaxLogger = (Logger) LoggerFactory.getLogger("com.datastax");
     if (cli.verbose) {
       root.setLevel(Level.DEBUG);
+      datastaxLogger.setLevel(Level.DEBUG);
     } else {
       root.setLevel(cli.logLevel);
+      datastaxLogger.setLevel(cli.logLevel);
     }
 
     HttpContainer httpServer = new HttpContainer(cli.httpInterface, cli.httpPort, cli.verbose);
