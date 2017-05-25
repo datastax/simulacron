@@ -33,6 +33,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -255,7 +257,14 @@ class BoundNode extends Node {
         }
         response = new Ready();
       } else if (frame.message instanceof Options) {
-        response = new Supported(new HashMap<>());
+        // Maybe eventually we can set these depending on the version but so far it looks
+        // like this.cassandraVersion and this.dseVersion are both null
+        HashMap<String, List<String>> options = new HashMap<>();
+        options.put("PROTOCOL_VERSIONS", Arrays.asList("3/v3", "4/v4", "5/v5-beta"));
+        options.put("CQL_VERSION", Collections.singletonList("3.4.4"));
+        options.put("COMPRESSION", Arrays.asList("snappy", "lz4"));
+
+        response = new Supported(options);
       } else if (frame.message instanceof Query) {
         Query query = (Query) frame.message;
         String queryStr = query.query;
