@@ -10,30 +10,26 @@ import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.codec.CqlMapper;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 
 import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecBuilder;
 
 public class SuccessResult extends Result {
-  @JsonProperty("rows")
   public final List<Map<String, Object>> rows;
-
-  @JsonProperty("column_types")
   public final Map<String, String> columnTypes;
 
   public SuccessResult(List<Map<String, Object>> rows, Map<String, String> columnTypes) {
     this(rows, columnTypes, 0);
   }
 
-  @JsonCreator
   public SuccessResult(
-      @JsonProperty(value = "rows", required = true) List<Map<String, Object>> rows,
-      @JsonProperty(value = "column_types", required = true) Map<String, String> columnTypes,
-      @JsonProperty("delay_in_ms") long delayInMs) {
+      List<Map<String, Object>> rows, Map<String, String> columnTypes, long delayInMs) {
     super(delayInMs);
     this.rows = rows;
     this.columnTypes = columnTypes;

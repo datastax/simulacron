@@ -1,10 +1,18 @@
 package com.datastax.simulacron.common.cluster;
 
+import com.datastax.simulacron.common.result.NoResult;
+import com.datastax.simulacron.common.result.Result;
+import com.datastax.simulacron.common.result.SuccessResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -59,5 +67,74 @@ public class ObjectMapperHolderTest {
     // Ensure the addresses get created on deserialization
     assertThat(cluster2.getNodes().get(0).getAddress()).isEqualTo(addr1);
     assertThat(cluster2.getNodes().get(1).getAddress()).isEqualTo(addr2);
+  }
+
+  @Test
+  public void testPrimeQuery() throws Exception {
+    QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
+    List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
+    HashMap row1 = new HashMap<String, String>();
+    row1.put("column1", "column1");
+    row1.put("column2", "2");
+    rows.add(row1);
+    String result = "success";
+    Map<String, String> column_types = new HashMap<String, String>();
+    column_types.put("column1", "ascii");
+    column_types.put("column2", "bigint");
+    Result then = new SuccessResult(rows, column_types);
+    QueryPrime queryPrime = new QueryPrime(when, then);
+
+    String json = mapper.writeValueAsString(queryPrime);
+
+    String expectedJson =
+        "{\"when\":{\"query\":\"SELECT * table_name\"},\"then\":{\"result\":\"success\",\"rows\":[{\"column1\":\"column1\",\"column2\":\"2\"}],\"columnTypes\":{\"column1\":\"ascii\",\"column2\":\"bigint\"},\"delay_in_ms\":0}}";
+
+    assertThat(json).isEqualTo(expectedJson);
+
+    QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
+    assertThat(readQueryPrime.when).isEqualTo(when);
+    assertThat(readQueryPrime.then).isEqualTo(then);
+  }
+
+  @Test(expected = JsonMappingException.class)
+  public void testPrimeQueryWithRowNull() throws Exception {
+    QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
+    String result = "success";
+
+    Map<String, String> column_types = new HashMap<String, String>();
+    column_types.put("column1", "ascii");
+    column_types.put("column2", "bigint");
+
+    Result then = new SuccessResult(null, column_types);
+    QueryPrime queryPrime = new QueryPrime(when, then);
+    String json = mapper.writeValueAsString(queryPrime);
+    QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
+  }
+
+  @Test
+  public void testPrimeQueryWithNulls() throws Exception {
+    QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
+    String result = "success";
+    Result then = new SuccessResult(null, null);
+
+    QueryPrime queryPrime = new QueryPrime(when, then);
+    String json = mapper.writeValueAsString(queryPrime);
+    QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
+    assertThat(readQueryPrime.when).isEqualTo(when);
+    assertThat(readQueryPrime.then)
+        .isEqualTo(
+            new SuccessResult(new ArrayList<Map<String, Object>>(), new HashMap<String, String>()));
+  }
+
+  @Test
+  public void testPrimeQueryWithNoThen() throws Exception {
+    QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
+
+    QueryPrime queryPrime = new QueryPrime(when, null);
+    String json = mapper.writeValueAsString(queryPrime);
+    QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
+
+    assertThat(readQueryPrime.when).isEqualTo(when);
+    assertThat(readQueryPrime.then).isEqualTo(new NoResult());
   }
 }

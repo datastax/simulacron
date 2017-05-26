@@ -1,8 +1,10 @@
 package com.datastax.simulacron.common.cluster;
 
+import com.datastax.simulacron.common.result.SuccessResult;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -11,6 +13,10 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ObjectMapperHolder {
 
@@ -23,6 +29,7 @@ public class ObjectMapperHolder {
     mod.addDeserializer(SocketAddress.class, new SocketAddressDeserializer());
     mod.addKeySerializer(InetAddress.class, new InetAddressSerializer());
     mod.addKeyDeserializer(InetAddress.class, new InetAddressDeserializer());
+    mod.addDeserializer(SuccessResult.class, new SuccessResultDeserializer());
     om.registerModule(mod);
     // Exclude null / emptys.
     om.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
@@ -91,6 +98,45 @@ public class ObjectMapperHolder {
         }
       }
       gen.writeFieldName(str);
+    }
+  }
+
+  public static class SuccessResultDeserializer extends StdDeserializer<SuccessResult> {
+
+    SuccessResultDeserializer() {
+      super(SocketAddress.class);
+    }
+
+    @Override
+    public SuccessResult deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+      ObjectMapper mapper = (ObjectMapper) p.getCodec();
+      JsonNode tree = mapper.readTree(p);
+
+      JsonNode rowsNode = tree.get("rows");
+      JsonNode columnTypesNode = tree.get("columnTypes");
+      JsonNode delayInMsNode = tree.get("delayInMs");
+
+      Long delayInMs = delayInMsNode == null ? 0 : delayInMsNode.asLong();
+
+      if ((rowsNode != null) ^ (columnTypesNode != null)) {
+        throw ctxt.mappingException(
+            "Both \"rows\" and \"columnTypes\" are required or none of them");
+      } else if (rowsNode == null) {
+        return new SuccessResult(
+            new ArrayList<Map<String, Object>>(), new HashMap<String, String>(), delayInMs);
+
+      } else {
+
+        TypeReference<Map<String, String>> columnTypesType =
+            new TypeReference<Map<String, String>>() {};
+        Map<String, String> columnTypes = mapper.convertValue(columnTypesNode, columnTypesType);
+
+        TypeReference<List<Map<String, Object>>> rowsType =
+            new TypeReference<List<Map<String, Object>>>() {};
+        List<Map<String, Object>> rows = mapper.convertValue(rowsNode, rowsType);
+
+        return new SuccessResult(rows, columnTypes, delayInMs);
+      }
     }
   }
 }

@@ -10,6 +10,10 @@ import java.util.List;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "result")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = SuccessResult.class, name = "success"),
+  // This is probably going to make the serialization wrong
+  // But I don't think we are required to serialize these
+  // Also we can't write an integration test
+  @JsonSubTypes.Type(value = NoResult.class, name = "noresult"),
   @JsonSubTypes.Type(value = ServerErrorResult.class, name = "server_error"),
   @JsonSubTypes.Type(value = ProtocolErrorResult.class, name = "protocol_error"),
   @JsonSubTypes.Type(value = AuthenticationErrorResult.class, name = "authentication_error"),

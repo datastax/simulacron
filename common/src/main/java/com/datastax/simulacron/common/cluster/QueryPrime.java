@@ -1,6 +1,7 @@
 package com.datastax.simulacron.common.cluster;
 
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
+import com.datastax.simulacron.common.result.NoResult;
 import com.datastax.simulacron.common.result.Result;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,7 +22,11 @@ public final class QueryPrime {
   @JsonCreator
   public QueryPrime(@JsonProperty("when") When when, @JsonProperty("then") Result then) {
     this.when = when;
-    this.then = then;
+    if (then == null) {
+      this.then = new NoResult();
+    } else {
+      this.then = then;
+    }
   }
 
   public static final class When {

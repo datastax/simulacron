@@ -14,6 +14,7 @@ import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
+import com.datastax.simulacron.common.stubbing.NoResponseAction;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -376,6 +377,9 @@ class BoundNode extends Node {
             future = completable(ctx.disconnect());
             break;
         }
+      } else if (action instanceof NoResponseAction) {
+        future = new CompletableFuture<>();
+        future.complete(null);
       } else {
         logger.warn("Got action {} that we don't know how to handle.", action);
         future = new CompletableFuture<>();
