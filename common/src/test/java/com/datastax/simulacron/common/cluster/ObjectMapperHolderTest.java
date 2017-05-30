@@ -87,7 +87,7 @@ public class ObjectMapperHolderTest {
     String json = mapper.writeValueAsString(queryPrime);
 
     String expectedJson =
-        "{\"when\":{\"query\":\"SELECT * table_name\"},\"then\":{\"result\":\"success\",\"rows\":[{\"column1\":\"column1\",\"column2\":\"2\"}],\"columnTypes\":{\"column1\":\"ascii\",\"column2\":\"bigint\"},\"delay_in_ms\":0}}";
+        "{\"when\":{\"query\":\"SELECT * table_name\"},\"then\":{\"result\":\"success\",\"rows\":[{\"column1\":\"column1\",\"column2\":\"2\"}],\"column_types\":{\"column1\":\"ascii\",\"column2\":\"bigint\"},\"delay_in_ms\":0}}";
 
     assertThat(json).isEqualTo(expectedJson);
 
@@ -96,7 +96,7 @@ public class ObjectMapperHolderTest {
     assertThat(readQueryPrime.then).isEqualTo(then);
   }
 
-  @Test(expected = JsonMappingException.class)
+  @Test(expected = Exception.class)
   public void testPrimeQueryWithRowNull() throws Exception {
     QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
     String result = "success";

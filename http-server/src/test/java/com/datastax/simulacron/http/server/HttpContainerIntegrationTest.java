@@ -494,7 +494,12 @@ public class HttpContainerIntegrationTest {
     Map<String, String> column_types = new HashMap<String, String>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
-    Result then = new SuccessResult(rows, column_types);
+    Result then = null;
+    try {
+      then = new SuccessResult(rows, column_types);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     QueryPrime queryPrime = new QueryPrime(when, then);
     return queryPrime;
   }

@@ -10,29 +10,42 @@ import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.codec.CqlMapper;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 
 import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecBuilder;
 
 public class SuccessResult extends Result {
+  @JsonProperty("rows")
   public final List<Map<String, Object>> rows;
+
+  @JsonProperty("column_types")
   public final Map<String, String> columnTypes;
 
-  public SuccessResult(List<Map<String, Object>> rows, Map<String, String> columnTypes) {
+  public SuccessResult(List<Map<String, Object>> rows, Map<String, String> columnTypes)
+      throws Exception {
     this(rows, columnTypes, 0);
   }
 
+  @JsonCreator
   public SuccessResult(
-      List<Map<String, Object>> rows, Map<String, String> columnTypes, long delayInMs) {
+      @JsonProperty("rows") List<Map<String, Object>> rows,
+      @JsonProperty("column_types") Map<String, String> columnTypes,
+      @JsonProperty("delay_in_ms") long delayInMs)
+      throws Exception {
     super(delayInMs);
-    this.rows = rows;
-    this.columnTypes = columnTypes;
+    if ((rows != null) ^ (columnTypes != null)) {
+      throw new Exception("Both \"rows\" and \"columnTypes\" are required or none of them");
+    } else if (rows == null) {
+      this.rows = new ArrayList<>();
+      this.columnTypes = new HashMap<>();
+    } else {
+      this.rows = rows;
+      this.columnTypes = columnTypes;
+    }
   }
 
   @Override
