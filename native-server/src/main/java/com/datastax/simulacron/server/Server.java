@@ -126,12 +126,28 @@ public final class Server {
 
     List<CompletableFuture<Node>> bindFutures = new ArrayList<>();
 
+    int dcPos = 0;
+    int nPos = 0;
     for (DataCenter dataCenter : cluster.getDataCenters()) {
+      long dcOffset = dcPos * 100;
+      long nodeBase = ((long) Math.pow(2, 64) / dataCenter.getNodes().size());
       DataCenter dc = c.addDataCenter().copy(dataCenter).build();
 
       for (Node node : dataCenter.getNodes()) {
-        bindFutures.add(bindInternal(node, dc));
+        Optional<Object> token = node.resolvePeerInfo("token");
+        String tokenStr;
+        if (token.isPresent()) {
+          tokenStr = token.get().toString();
+        } else if (node.getCluster() == null) {
+          tokenStr = "0";
+        } else {
+          long nodeOffset = nPos * nodeBase;
+          tokenStr = "" + (nodeOffset + dcOffset);
+        }
+        bindFutures.add(bindInternal(node, dc, tokenStr));
+        nPos++;
       }
+      dcPos++;
     }
 
     clusters.put(clusterId, c);
@@ -269,7 +285,8 @@ public final class Server {
 
     clusters.put(clusterId, dummyCluster);
 
-    return bindInternal(node, dummyDataCenter);
+    return bindInternal(
+        node, dummyDataCenter, node.resolvePeerInfo("token").orElse("0").toString());
   }
 
   /** @return a map of registered {@link Cluster} instances keyed by their identifier. */
@@ -282,10 +299,9 @@ public final class Server {
     return this.stubStore;
   }
 
-  private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent) {
+  private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent, String token) {
     // derive a token for this node. This is done here as the ordering of nodes under a
     // data center is changed when it is bound.
-    String token = resolveToken(refNode);
     Map<String, Object> newPeerInfo = new HashMap<>(refNode.getPeerInfo());
     newPeerInfo.put("token", token);
     // Use node's address if set, otherwise generate a new one.
@@ -326,37 +342,6 @@ public final class Server {
             });
 
     return f;
-  }
-
-  private String resolveToken(Node node) {
-    Optional<Object> token = node.resolvePeerInfo("token");
-    if (token.isPresent()) {
-      return token.get().toString();
-    } else if (node.getCluster() == null) {
-      return "0";
-    } else {
-      // Determine token based on node's position in ring.
-      // First identify position of datacenter in cluster.
-      DataCenter dc = node.getDataCenter();
-      int dcPos = 0;
-      int nPos = 0;
-      for (DataCenter d : node.getCluster().getDataCenters()) {
-        if (d == dc) {
-          break;
-        }
-        dcPos++;
-      }
-      // Identify node's position in dc.
-      for (Node n : node.getDataCenter().getNodes()) {
-        if (n == node) {
-          break;
-        }
-        nPos++;
-      }
-      long dcOffset = dcPos * 100;
-      long nodeOffset = nPos * ((long) Math.pow(2, 64) / node.getDataCenter().getNodes().size());
-      return "" + (nodeOffset + dcOffset);
-    }
   }
 
   private CompletableFuture<Node> close(BoundNode node) {
