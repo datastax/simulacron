@@ -1,5 +1,7 @@
 package com.datastax.simulacron.http.server;
 
+import com.datastax.driver.core.SimpleStatement;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.*;
 import com.datastax.driver.core.policies.FallthroughRetryPolicy;
 import com.datastax.simulacron.common.cluster.Cluster;
@@ -268,13 +270,25 @@ public class ErrorResultIntegrationTest {
     query();
   }
 
+  @Test
+  public void testShouldReturnClientTimeout() throws Exception {
+    server.prime(new QueryPrime(query, new NoResult()));
+
+    thrown.expect(OperationTimedOutException.class);
+    query(new SimpleStatement(query).setReadTimeoutMillis(1000));
+  }
+
   private void query() throws Exception {
+    query(new SimpleStatement(query));
+  }
+
+  private void query(Statement statement) throws Exception {
     try (com.datastax.driver.core.Cluster driverCluster =
         defaultBuilder(server.getCluster())
             .allowBetaProtocolVersion()
             .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
             .build()) {
-      driverCluster.connect().execute(query);
+      driverCluster.connect().execute(statement);
     }
   }
 
