@@ -29,6 +29,19 @@
             <version>${netty.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-epoll</artifactId>
+            <version>${netty.version}</version>
+            <!-- hard code classifier for 64 bit platforms as this will usually be the case -->
+            <classifier>linux-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-kqueue</artifactId>
+            <version>${netty.version}</version>
+            <classifier>osx-x86_64</classifier>
+        </dependency>
+        <dependency>
             <groupId>com.datastax.simulacron</groupId>
             <artifactId>test-utils</artifactId>
             <version>${project.parent.version}</version>

@@ -11,6 +11,12 @@ import com.datastax.simulacron.common.stubbing.StubMapping;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.kqueue.KQueue;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.kqueue.KQueueServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.AttributeKey;
@@ -373,7 +379,17 @@ public final class Server {
    *     NioServerSocketChannel}.
    */
   public static Builder builder() {
-    return builder(new NioEventLoopGroup(), NioServerSocketChannel.class);
+    // Use Epoll or KQueue if available.
+    if (Epoll.isAvailable()) {
+      logger.debug("Detected epoll support, using EpollEventLoopGroup");
+      return builder(new EpollEventLoopGroup(), EpollServerSocketChannel.class);
+    } else if (KQueue.isAvailable()) {
+      logger.debug("Detected kqueue support, using KQueueEventLoopGroup");
+      return builder(new KQueueEventLoopGroup(), KQueueServerSocketChannel.class);
+    } else {
+      logger.debug("Could not locate native transport (epoll, kqueue), using NioEventLoopGroup");
+      return builder(new NioEventLoopGroup(), NioServerSocketChannel.class);
+    }
   }
 
   /**
