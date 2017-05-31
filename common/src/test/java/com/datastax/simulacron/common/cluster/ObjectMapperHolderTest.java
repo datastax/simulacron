@@ -4,7 +4,6 @@ import com.datastax.simulacron.common.result.NoResult;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -18,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ObjectMapperHolderTest {
 
-  ObjectMapper mapper = ObjectMapperHolder.getMapper();
+  private ObjectMapper mapper = ObjectMapperHolder.getMapper();
 
   @Test
   public void testSimpleCluster() throws Exception {
@@ -72,13 +71,12 @@ public class ObjectMapperHolderTest {
   @Test
   public void testPrimeQuery() throws Exception {
     QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
-    List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-    HashMap row1 = new HashMap<String, String>();
+    List<Map<String, Object>> rows = new ArrayList<>();
+    HashMap<String, Object> row1 = new HashMap<>();
     row1.put("column1", "column1");
     row1.put("column2", "2");
     rows.add(row1);
-    String result = "success";
-    Map<String, String> column_types = new HashMap<String, String>();
+    Map<String, String> column_types = new HashMap<>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
     Result then = new SuccessResult(rows, column_types);
@@ -96,25 +94,23 @@ public class ObjectMapperHolderTest {
     assertThat(readQueryPrime.then).isEqualTo(then);
   }
 
-  @Test(expected = Exception.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testPrimeQueryWithRowNull() throws Exception {
     QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
-    String result = "success";
 
-    Map<String, String> column_types = new HashMap<String, String>();
+    Map<String, String> column_types = new HashMap<>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
 
     Result then = new SuccessResult(null, column_types);
     QueryPrime queryPrime = new QueryPrime(when, then);
     String json = mapper.writeValueAsString(queryPrime);
-    QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
+    mapper.readValue(json, QueryPrime.class);
   }
 
   @Test
   public void testPrimeQueryWithNulls() throws Exception {
     QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
-    String result = "success";
     Result then = new SuccessResult(null, null);
 
     QueryPrime queryPrime = new QueryPrime(when, then);
@@ -122,8 +118,7 @@ public class ObjectMapperHolderTest {
     QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
     assertThat(readQueryPrime.when).isEqualTo(when);
     assertThat(readQueryPrime.then)
-        .isEqualTo(
-            new SuccessResult(new ArrayList<Map<String, Object>>(), new HashMap<String, String>()));
+        .isEqualTo(new SuccessResult(new ArrayList<>(), new HashMap<>()));
   }
 
   @Test

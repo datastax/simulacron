@@ -25,8 +25,7 @@ public class SuccessResult extends Result {
   @JsonProperty("column_types")
   public final Map<String, String> columnTypes;
 
-  public SuccessResult(List<Map<String, Object>> rows, Map<String, String> columnTypes)
-      throws Exception {
+  public SuccessResult(List<Map<String, Object>> rows, Map<String, String> columnTypes) {
     this(rows, columnTypes, 0);
   }
 
@@ -34,11 +33,11 @@ public class SuccessResult extends Result {
   public SuccessResult(
       @JsonProperty("rows") List<Map<String, Object>> rows,
       @JsonProperty("column_types") Map<String, String> columnTypes,
-      @JsonProperty("delay_in_ms") long delayInMs)
-      throws Exception {
+      @JsonProperty("delay_in_ms") long delayInMs) {
     super(delayInMs);
     if ((rows != null) ^ (columnTypes != null)) {
-      throw new Exception("Both \"rows\" and \"columnTypes\" are required or none of them");
+      throw new IllegalArgumentException(
+          "Both \"rows\" and \"columnTypes\" are required or none of them");
     } else if (rows == null) {
       this.rows = new ArrayList<>();
       this.columnTypes = new HashMap<>();

@@ -330,7 +330,7 @@ public class HttpContainerIntegrationTest {
       params.put("id", new Long(1));
       params.put("id2", new Long(2));
       QueryPrime prime =
-          createSimpleParamatizedQuery(
+          createSimpleParameterizedQuery(
               "SELECT * FROM users WHERE id = :id and id2 = :id2", params, paramTypes);
       HttpTestResponse response = this.primeSimpleQuery(client, prime);
       assertNotNull(response);
@@ -369,10 +369,10 @@ public class HttpContainerIntegrationTest {
       HashMap<String, Object> params = new HashMap<>();
       params.put("c1", "c1");
       QueryPrime prime =
-          createSimpleParamatizedQuery("SELECT table FROM foo WHERE c1=?", params, paramTypes);
+          createSimpleParameterizedQuery("SELECT table FROM foo WHERE c1=?", params, paramTypes);
       HttpTestResponse response = this.primeSimpleQuery(client, prime);
       assertNotNull(response);
-      QueryPrime responseQuery = (QueryPrime) om.readValue(response.body, QueryPrime.class);
+      QueryPrime responseQuery = om.readValue(response.body, QueryPrime.class);
       assertThat(responseQuery).isEqualTo(prime);
       String contactPoint = getContactPointString(clusterCreated);
       ResultSet set =
@@ -479,10 +479,10 @@ public class HttpContainerIntegrationTest {
   }
 
   private QueryPrime createSimplePrimedQuery(String query) {
-    return createSimpleParamatizedQuery(query, null, null);
+    return createSimpleParameterizedQuery(query, null, null);
   }
 
-  private QueryPrime createSimpleParamatizedQuery(
+  private QueryPrime createSimpleParameterizedQuery(
       String query, HashMap<String, Object> params, HashMap<String, String> paramTypes) {
     QueryPrime.When when = new QueryPrime.When(query, null, params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
@@ -490,16 +490,10 @@ public class HttpContainerIntegrationTest {
     row1.put("column1", "column1");
     row1.put("column2", "2");
     rows.add(row1);
-    String result = "success";
     Map<String, String> column_types = new HashMap<String, String>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
-    Result then = null;
-    try {
-      then = new SuccessResult(rows, column_types);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+    Result then = new SuccessResult(rows, column_types);
     QueryPrime queryPrime = new QueryPrime(when, then);
     return queryPrime;
   }
