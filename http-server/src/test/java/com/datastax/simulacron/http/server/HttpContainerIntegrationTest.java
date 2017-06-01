@@ -2,16 +2,12 @@ package com.datastax.simulacron.http.server;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SimpleStatement;
 import com.datastax.simulacron.common.cluster.*;
-import com.datastax.simulacron.common.request.Options;
 import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpMethod;
@@ -26,9 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 public class HttpContainerIntegrationTest {
@@ -303,107 +297,6 @@ public class HttpContainerIntegrationTest {
   }
 
   @Test
-  public void testQueryPrimeSimple() {
-    try {
-      HttpClient client = vertx.createHttpClient();
-      Cluster clusterCreated = this.createSingleNodeCluster(client);
-
-      RequestPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
-      HttpTestResponse response = this.primeSimpleRequest(client, prime);
-      assertNotNull(response);
-      RequestPrime responseQuery = (RequestPrime) om.readValue(response.body, RequestPrime.class);
-      assertThat(responseQuery).isEqualTo(prime);
-
-      String contactPoint = getContactPointString(clusterCreated);
-      ResultSet set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
-      List<Row> results = set.all();
-      assertThat(1).isEqualTo(results.size());
-      Row row1 = results.get(0);
-      String column1 = row1.getString("column1");
-      assertThat(column1).isEqualTo("column1");
-      Long column2 = row1.getLong("column2");
-      assertThat(column2).isEqualTo(new Long(2));
-    } catch (Exception e) {
-      fail("error encountered");
-    }
-  }
-
-  @Test
-  public void testQueryPrimeNamedParamSimple() {
-    try {
-      HttpClient client = vertx.createHttpClient();
-      Cluster clusterCreated = this.createSingleNodeCluster(client);
-      HashMap<String, String> paramTypes = new HashMap<>();
-      paramTypes.put("id", "bigint");
-      paramTypes.put("id2", "bigint");
-      HashMap<String, Object> params = new HashMap<>();
-      params.put("id", new Long(1));
-      params.put("id2", new Long(2));
-      RequestPrime prime =
-          createSimpleParameterizedQuery(
-              "SELECT * FROM users WHERE id = :id and id2 = :id2", params, paramTypes);
-      HttpTestResponse response = this.primeSimpleRequest(client, prime);
-      assertNotNull(response);
-      RequestPrime responseQuery = (RequestPrime) om.readValue(response.body, RequestPrime.class);
-      assertThat(responseQuery).isEqualTo(prime);
-      Map<String, Object> values =
-          ImmutableMap.<String, Object>of("id", new Long(1), "id2", new Long(2));
-      String contactPoint = getContactPointString(clusterCreated);
-      ResultSet set =
-          makeNativeQueryWithNameParams(
-              "SELECT * FROM users WHERE id = :id and id2 = :id2", contactPoint, values);
-      List<Row> results = set.all();
-      assertThat(1).isEqualTo(results.size());
-      Row row1 = results.get(0);
-      String column1 = row1.getString("column1");
-      assertThat(column1).isEqualTo("column1");
-      Long column2 = row1.getLong("column2");
-      assertThat(column2).isEqualTo(new Long(2));
-      values = ImmutableMap.<String, Object>of("id", new Long(2), "id2", new Long(2));
-      set =
-          makeNativeQueryWithNameParams(
-              "SELECT * FROM users WHERE id = :id and id2 = :id2", contactPoint, values);
-      assertThat(set.all().size()).isEqualTo(0);
-    } catch (Exception e) {
-      fail("error encountered");
-    }
-  }
-
-  @Test
-  public void testQueryPositionalParamSimple() {
-    try {
-      HttpClient client = vertx.createHttpClient();
-      Cluster clusterCreated = this.createSingleNodeCluster(client);
-      HashMap<String, String> paramTypes = new HashMap<>();
-      paramTypes.put("c1", "ascii");
-      HashMap<String, Object> params = new HashMap<>();
-      params.put("c1", "c1");
-      RequestPrime prime =
-          createSimpleParameterizedQuery("SELECT table FROM foo WHERE c1=?", params, paramTypes);
-      HttpTestResponse response = this.primeSimpleRequest(client, prime);
-      assertNotNull(response);
-      RequestPrime responseQuery = om.readValue(response.body, RequestPrime.class);
-      assertThat(responseQuery).isEqualTo(prime);
-      String contactPoint = getContactPointString(clusterCreated);
-      ResultSet set =
-          makeNativeQueryWithPositionalParam(
-              "SELECT table FROM foo WHERE c1=?", contactPoint, "c1");
-      List<Row> results = set.all();
-      assertThat(1).isEqualTo(results.size());
-      Row row1 = results.get(0);
-      String column1 = row1.getString("column1");
-      assertThat(column1).isEqualTo("column1");
-      Long column2 = row1.getLong("column2");
-      set =
-          makeNativeQueryWithPositionalParam(
-              "SELECT table FROM foo WHERE c1=?", contactPoint, "d1");
-      assertThat(set.all().size()).isEqualTo(0);
-    } catch (Exception e) {
-      fail("error encountered");
-    }
-  }
-
-  @Test
   public void testClusterCreationByNameAndId() {
     testVerifyQueryParticularCluster(Cluster::getName);
     testVerifyQueryParticularCluster(p -> p.getId().toString());
@@ -422,12 +315,12 @@ public class HttpContainerIntegrationTest {
 
       RequestPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
       this.primeSimpleRequest(client, prime);
-      String contactPoint = getContactPointString(clusterCreated);
-      ResultSet set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
+      String contactPoint = HttpTestUtil.getContactPointString(clusterCreated);
+      ResultSet set = HttpTestUtil.makeNativeQuery("Select * FROM TABLE2", contactPoint);
       assertThat(1).isEqualTo(set.all().size());
 
       this.clearQueries(client);
-      set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
+      set = HttpTestUtil.makeNativeQuery("Select * FROM TABLE2", contactPoint);
       assertThat(0).isEqualTo(set.all().size());
 
     } catch (Exception e) {
@@ -453,8 +346,8 @@ public class HttpContainerIntegrationTest {
     while (nodeIteratorQueried.hasNext()) {
       Node node = nodeIteratorQueried.next();
 
-      String contactPoint = getContactPointStringByNodeID(node);
-      ResultSet set = makeNativeQuery(query, contactPoint);
+      String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
+      ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
       if (node.getDataCenter().equals(datacenter)) {
         assertThat(1).isEqualTo(set.all().size());
       } else {
@@ -465,8 +358,8 @@ public class HttpContainerIntegrationTest {
     while (nodeIteratorQueried.hasNext()) {
       Node node = nodeIteratorQueried.next();
 
-      String contactPoint = getContactPointStringByNodeID(node);
-      ResultSet set = makeNativeQuery(query, contactPoint);
+      String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
+      ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
       assertThat(0).isEqualTo(set.all().size());
     }
   }
@@ -489,15 +382,16 @@ public class HttpContainerIntegrationTest {
     while (nodeIteratorQueried.hasNext()) {
       Node node = nodeIteratorQueried.next();
 
-      String contactPoint = getContactPointStringByNodeID(node);
-      ResultSet set = makeNativeQuery(query, contactPoint);
+      String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
+      ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
       List<Row> results = set.all();
       assertThat(1).isEqualTo(results.size());
     }
 
     while (nodeIteratorUnused.hasNext()) {
-      String contactPointUnused = getContactPointStringByNodeID(nodeIteratorUnused.next());
-      ResultSet setUnused = makeNativeQuery(query, contactPointUnused);
+      String contactPointUnused =
+          HttpTestUtil.getContactPointStringByNodeID(nodeIteratorUnused.next());
+      ResultSet setUnused = HttpTestUtil.makeNativeQuery(query, contactPointUnused);
       List<Row> resultsUnused = setUnused.all();
       assertThat(0).isEqualTo(resultsUnused.size());
     }
@@ -523,8 +417,8 @@ public class HttpContainerIntegrationTest {
     while (nodeIteratorQueried.hasNext()) {
       Node node = nodeIteratorQueried.next();
 
-      String contactPoint = getContactPointStringByNodeID(node);
-      ResultSet set = makeNativeQuery(query, contactPoint);
+      String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
+      ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
       List<Row> results = set.all();
       if (node.getDataCenter().equals(datacenterQueried)) {
         assertThat(1).isEqualTo(results.size());
@@ -534,8 +428,9 @@ public class HttpContainerIntegrationTest {
     }
 
     while (nodeIteratorUnused.hasNext()) {
-      String contactPointUnused = getContactPointStringByNodeID(nodeIteratorUnused.next());
-      ResultSet setUnused = makeNativeQuery(query, contactPointUnused);
+      String contactPointUnused =
+          HttpTestUtil.getContactPointStringByNodeID(nodeIteratorUnused.next());
+      ResultSet setUnused = HttpTestUtil.makeNativeQuery(query, contactPointUnused);
       List<Row> resultsUnused = setUnused.all();
       assertThat(0).isEqualTo(resultsUnused.size());
     }
@@ -570,8 +465,8 @@ public class HttpContainerIntegrationTest {
     while (nodeIteratorQueried.hasNext()) {
       Node node = nodeIteratorQueried.next();
 
-      String contactPoint = getContactPointStringByNodeID(node);
-      ResultSet set = makeNativeQuery(query, contactPoint);
+      String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
+      ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
       List<Row> results = set.all();
       if (node.equals(nodeQueried)) {
         assertThat(1).isEqualTo(results.size());
@@ -582,51 +477,11 @@ public class HttpContainerIntegrationTest {
     }
 
     while (nodeIteratorUnused.hasNext()) {
-      String contactPointUnused = getContactPointStringByNodeID(nodeIteratorUnused.next());
-      ResultSet setUnused = makeNativeQuery(query, contactPointUnused);
+      String contactPointUnused =
+          HttpTestUtil.getContactPointStringByNodeID(nodeIteratorUnused.next());
+      ResultSet setUnused = HttpTestUtil.makeNativeQuery(query, contactPointUnused);
       List<Row> resultsUnused = setUnused.all();
       assertThat(0).isEqualTo(resultsUnused.size());
-    }
-  }
-
-  private String getContactPointStringByNodeID(Node node) {
-    String rawaddress = node.getAddress().toString();
-    return rawaddress.substring(1, rawaddress.length() - 5);
-  }
-
-  private String getContactPointString(Cluster cluster, int node) {
-    String rawaddress = cluster.getNodes().get(node).getAddress().toString();
-    return rawaddress.substring(1, rawaddress.length() - 5);
-  }
-
-  private String getContactPointString(Cluster cluster) {
-    return this.getContactPointString(cluster, 0);
-  }
-
-  private ResultSet makeNativeQuery(String query, String contactPoint) {
-    try (com.datastax.driver.core.Cluster cluster =
-        defaultBuilder().addContactPoint(contactPoint).build()) {
-      Session session = cluster.connect();
-      return session.execute(query);
-    }
-  }
-
-  private ResultSet makeNativeQueryWithNameParams(
-      String query, String contactPoint, Map<String, Object> values) {
-    try (com.datastax.driver.core.Cluster cluster =
-        defaultBuilder().addContactPoint(contactPoint).build()) {
-      Session session = cluster.connect();
-      SimpleStatement statement = new SimpleStatement(query, values);
-      return session.execute(statement);
-    }
-  }
-
-  private ResultSet makeNativeQueryWithPositionalParam(
-      String query, String contactPoint, Object param) {
-    try (com.datastax.driver.core.Cluster cluster =
-        defaultBuilder().addContactPoint(contactPoint).build()) {
-      Session session = cluster.connect();
-      return session.execute(query, param);
     }
   }
 
@@ -792,33 +647,6 @@ public class HttpContainerIntegrationTest {
       fail("Exception encountered");
       return null;
     }
-  }
-
-  private HttpTestResponse getQueryLog(HttpClient client, String logPath) {
-    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
-    try {
-      client
-          .request(
-              HttpMethod.GET,
-              portNum,
-              "127.0.0.1",
-              "/log/" + logPath,
-              response -> {
-                response.bodyHandler(
-                    totalBuffer -> {
-                      future.complete(new HttpTestResponse(response, totalBuffer.toString()));
-                    });
-              })
-          .end();
-
-      HttpTestResponse responseToValidate = future.get();
-      assertThat(responseToValidate.response.statusCode()).isEqualTo(200);
-      return responseToValidate;
-    } catch (Exception e) {
-      logger.error("Exception", e);
-      fail("Exception encountered");
-    }
-    return null;
   }
 
   private void validateCluster(HttpTestResponse responseToValidate, int expectedStatusCode)

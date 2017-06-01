@@ -56,7 +56,7 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
   public InetAddress readInetAddr(ByteBuf source) {
     int len = readByte(source);
     byte[] addr = new byte[len];
-    source.getBytes(source.readerIndex(), addr, 0, len);
+    source.readBytes(addr);
     try {
       return InetAddress.getByAddress(addr);
     } catch (UnknownHostException uhe) {
@@ -96,7 +96,7 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
   public byte[] readShortBytes(ByteBuf source) {
     int len = readUnsignedShort(source);
     byte[] out = new byte[len];
-    source.getBytes(source.readerIndex(), out, 0, len);
+    source.readBytes(out);
     return out;
   }
 

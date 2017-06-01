@@ -2,10 +2,7 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
-import com.datastax.oss.protocol.internal.request.Options;
-import com.datastax.oss.protocol.internal.request.Query;
-import com.datastax.oss.protocol.internal.request.Register;
-import com.datastax.oss.protocol.internal.request.Startup;
+import com.datastax.oss.protocol.internal.request.*;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
@@ -292,6 +289,8 @@ class BoundNode extends Node {
         } else {
           response = INSTANCE;
         }
+      } else if (frame.message instanceof Execute) {
+        response = INSTANCE;
       }
       if (response != null) {
         if (deferFuture != null) {

@@ -1,13 +1,18 @@
 package com.datastax.simulacron.common.request;
 
 import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Prepare;
+import com.datastax.oss.protocol.internal.request.query.QueryOptions;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.CqlMapper;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -33,6 +38,19 @@ public final class Query extends Request {
 
   public boolean matches(Frame frame) {
 
+    if (frame.message instanceof Prepare) {
+      Prepare prepare = (Prepare) frame.message;
+      if (query.equals(prepare.cqlQuery)) {
+        return true;
+      }
+    }
+    if (frame.message instanceof Execute) {
+      Execute execute = (Execute) frame.message;
+      Integer queryIdInt = new BigInteger(execute.queryId).intValue();
+      if (getQueryId() == queryIdInt) {
+        return checkParamsMatch(execute.options, frame);
+      }
+    }
     if (frame.message instanceof com.datastax.oss.protocol.internal.request.Query) {
       //If the query expected matches the primed query example and CL levels match. Return true;
       com.datastax.oss.protocol.internal.request.Query query =
@@ -44,7 +62,7 @@ public final class Query extends Request {
           //Id any parameters are present we must make sure they match those in the primed queries
           if ((query.options.namedValues.size() != 0 || query.options.positionalValues.size() != 0)
               && this.params.size() != 0) {
-            return checkParamsMatch(query, frame);
+            return checkParamsMatch(query.options, frame);
           }
           return true;
         }
@@ -56,39 +74,42 @@ public final class Query extends Request {
   /**
    * * A method that will check to see if primed query and actual query parameters match
    *
-   * @param query The query to check.
+   * @param options query options to check.
    * @param frame The incoming frame.
    * @return True if the parameters match;
    */
-  private boolean checkParamsMatch(
-      com.datastax.oss.protocol.internal.request.Query query, Frame frame) {
-    CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
-    // Positional parameter cause, ensure number of parameters is the same.
-    if (query.options.positionalValues.size() != 0) {
-      if (query.options.positionalValues.size() != this.params.size()) {
-        return false;
-      }
-      Iterator<Object> primedPositionValues = this.params.values().iterator();
-      Iterator<String> primedPositiontypes = this.paramTypes.values().iterator();
-      // iterate over the parameters and make sure they all match
-      for (ByteBuffer buffer : query.options.positionalValues) {
-        if (!checkParamsEqual(
-            buffer, primedPositionValues.next(), primedPositiontypes.next(), mapper)) {
+  private boolean checkParamsMatch(QueryOptions options, Frame frame) {
+    if ((options.namedValues.size() != 0 || options.positionalValues.size() != 0)
+        && params.size() != 0) {
+
+      CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
+      // Positional parameter case, ensure number of parameters is the same.
+      if (options.positionalValues.size() != 0) {
+        if (options.positionalValues.size() != params.size()) {
           return false;
         }
-      }
-      // Named parameters case
-    } else if (query.options.namedValues.size() != 0) {
-      if (query.options.namedValues.size() != this.params.size()) {
-        return false;
-      }
-      //look up each parameter and make sure they match
-      for (String key : query.options.namedValues.keySet()) {
-        String stringType = this.paramTypes.get(key);
-
-        ByteBuffer buffer = query.options.namedValues.get(key);
-        if (!checkParamsEqual(buffer, this.params.get(key), stringType, mapper)) {
+        Iterator<Object> primedPositionValues = params.values().iterator();
+        Iterator<String> primedPositionTypes = paramTypes.values().iterator();
+        // iterate over the parameters and make sure they all match
+        for (ByteBuffer buffer : options.positionalValues) {
+          if (!checkParamsEqual(
+              buffer, primedPositionValues.next(), primedPositionTypes.next(), mapper)) {
+            return false;
+          }
+        }
+        // Named parameters case
+      } else if (options.namedValues.size() != 0) {
+        if (options.namedValues.size() != params.size()) {
           return false;
+        }
+        //look up each parameter and make sure they match
+        for (String key : options.namedValues.keySet()) {
+          String stringType = paramTypes.get(key);
+
+          ByteBuffer buffer = options.namedValues.get(key);
+          if (!checkParamsEqual(buffer, params.get(key), stringType, mapper)) {
+            return false;
+          }
         }
       }
     }
@@ -147,5 +168,15 @@ public final class Query extends Request {
       consistencyEnum.add(ConsistencyLevel.fromString(consistency));
     }
     return consistencyEnum;
+  }
+  /**
+   * Convience method to retrieve the queryId which happesn to be the hashcode associated query
+   * string
+   *
+   * @return
+   */
+  @JsonIgnore
+  public int getQueryId() {
+    return query.hashCode();
   }
 }
