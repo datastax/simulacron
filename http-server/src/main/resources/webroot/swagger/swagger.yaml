@@ -752,6 +752,34 @@ paths:
         '404':
           description: Not found
 definitions:
+  DataType:
+    type: string
+    description: Indicates a data type for a given column name
+    example: "map<ascii,date>"
+    enum:
+     - ascii
+     - bigint
+     - blob
+     - bool
+     - counter
+     - decimal
+     - date
+     - double
+     - float
+     - inet
+     - int
+     - uuid
+     - smallint
+     - time
+     - timestamp
+     - timeuuid
+     - tinyint
+     - varchar
+     - varint
+     - "map<key_type,value_type>"
+     - "list<element_type>"
+     - "set<element_type>"
+     - "tuple<element_type_0, element_type_1, ..., element_type_n>"
   Consistency:
     type: string
     description: The consistency to apply to data operations
@@ -915,6 +943,13 @@ definitions:
       delay_in_ms:
         type: integer
         example: 0
+  Row:
+    type: object
+    description: |
+      Each property is a mapping of column name to column value.  The value can be any type as simulacron will
+      attempt to map the json value to its native binary format.
+    additionalProperties:
+      - type: string
   SuccessResult:
     allOf:
       - $ref: '#/definitions/Then'
@@ -925,6 +960,8 @@ definitions:
         properties:
           rows:
             type: array
+            items:
+              $ref: "#/definitions/Row"
             example:
               - key: 0
                 description: "Important dates"
@@ -938,7 +975,10 @@ definitions:
                   leap day: "2020-02-29"
                   end of mayan calendar: "2012-12-21"
           column_types:
-            type: array
+            type: object
+            description: "Each property is a mapping of column name to column type"
+            additionalProperties:
+              $ref: "#/definitions/DataType"
             example:
               key: "bigint"
               description: "ascii"
