@@ -205,6 +205,30 @@ paths:
       responses:
         '200':
           description: Cluster deleted
+  '/prime-query-single (no_result)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a query that will not return a response
+      operationId: primeQuerySingleNoResult
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines an already exists error to be returned with the given message.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryNoResult'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryNoResult'
+        '400':
+          description: Unable to parse provided query
   '/prime-query-single (already_exists)':
     post:
       tags:
@@ -1213,12 +1237,18 @@ definitions:
     type: object
     required:
       - when
-      - then
     properties:
       when:
         $ref: '#/definitions/When'
       then:
         $ref: '#/definitions/Then'
+  PrimeQueryNoResult:
+    type: object
+    required:
+      - when
+    properties:
+      when:
+        $ref: '#/definitions/When'
   PrimeQuerySuccess:
     type: object
     required:
