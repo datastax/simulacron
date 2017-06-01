@@ -204,7 +204,115 @@ paths:
         - application/json
       responses:
         '200':
-          description: Cluster deleted
+          description: Primes deleted
+  '/prime-query-single/{clusterId}':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a response for a given query for all nodes in a cluster
+      operationId: primeQuerySingleByCluster
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id of the cluster
+          required: true
+          type: integer
+        - name: body
+          in: body
+          description: >
+            Contains a when section that defines the matching query text and a then section that defines the result
+            metadata and accompanying rows.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQuerySuccess'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQuerySuccess'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single/{clusterId}/{datacenterId}':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a response for a given query for all nodes in a data center
+      operationId: primeQuerySingleByDataCenter
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id of the cluster
+          required: true
+          type: integer
+        - name: datacenterId
+          in: path
+          description: Id of the datacenter
+          required: true
+          type: integer
+        - name: body
+          in: body
+          description: >
+            Contains a when section that defines the matching query text and a then section that defines the result
+            metadata and accompanying rows.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQuerySuccess'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQuerySuccess'
+        '400':
+          description: Unable to parse provided query
+  '/prime-query-single/{clusterId}/{datacenterId}/{nodeId}':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a response for a given query for a particular node
+      operationId: primeQuerySingleByNode
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id of the cluster
+          required: true
+          type: integer
+        - name: datacenterId
+          in: path
+          description: Id of the datacenter
+          required: true
+          type: integer
+        - name: nodeId
+          in: path
+          description: Id of the node
+          required: true
+          type: integer
+        - name: body
+          in: body
+          description: >
+            Contains a when section that defines the matching query text and a then section that defines the result
+            metadata and accompanying rows.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQuerySuccess'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQuerySuccess'
+        '400':
+          description: Unable to parse provided query
   '/prime-query-single (no_result)':
     post:
       tags:
@@ -690,7 +798,7 @@ paths:
     get:
       tags:
         - log
-      summary: Return all queries executed by clients on a datacenter.
+      summary: Return all queries executed by clients on a data center.
       operationId: getLogByDataCenter
       consumes:
         - application/json
