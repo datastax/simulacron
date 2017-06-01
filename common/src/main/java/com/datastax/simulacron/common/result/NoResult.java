@@ -15,7 +15,7 @@ public class NoResult extends Result {
   }
 
   @Override
-  public List<Action> toActions(Node node, Frame frame) {
+  public List<Action> toActions(Frame frame) {
     return Collections.singletonList(new NoResponseAction());
   }
 }

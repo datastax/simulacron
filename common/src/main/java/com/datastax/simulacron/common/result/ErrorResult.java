@@ -6,7 +6,6 @@ import java.util.List;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.Error;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -33,7 +32,7 @@ public abstract class ErrorResult extends Result {
     return this.errorCode;
   }
 
-  public List<Action> toActions(Node node, Frame frame) {
+  public List<Action> toActions(Frame frame) {
     return Collections.singletonList(new MessageResponseAction(toMessage(), getDelayInMs()));
   }
 

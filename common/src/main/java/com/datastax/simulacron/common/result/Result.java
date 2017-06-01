@@ -1,11 +1,17 @@
 package com.datastax.simulacron.common.result;
 
 import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.fasterxml.jackson.annotation.*;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "result")
 @JsonSubTypes({
@@ -35,6 +41,39 @@ import java.util.List;
 })
 public abstract class Result {
 
+  private class Scope {
+    Long nodeId = null;
+    Long datacenterId = null;
+    Long clusterId = null;
+
+    Scope(Long clusterId, Long datacenterId, Long nodeId) {
+      this.nodeId = nodeId;
+      this.datacenterId = datacenterId;
+      this.clusterId = clusterId;
+    }
+
+    Boolean isNodeInScope(Node node) {
+      if ((this.nodeId == null) && (this.datacenterId == null) && (this.clusterId == null)) {
+        return true;
+      }
+
+      Boolean sameCluster = node.getCluster().getId().equals(clusterId);
+      if (this.datacenterId == null) {
+        return sameCluster;
+      }
+
+      Boolean sameDatacenter = node.getDataCenter().getId().equals(datacenterId);
+      if (this.nodeId == null) {
+        return sameCluster && sameDatacenter;
+      }
+
+      Boolean sameNode = node.getId().equals(nodeId);
+      return sameCluster && sameDatacenter && sameNode;
+    }
+  }
+
+  private Scope scope;
+
   @JsonProperty("delay_in_ms")
   protected final long delayInMs;
 
@@ -48,7 +87,14 @@ public abstract class Result {
     return delayInMs;
   }
 
-  public abstract List<Action> toActions(Node node, Frame frame);
+  public List<Action> toActions(Node node, Frame frame) {
+    if (!(this.isNodeInScope(node))) {
+      return Collections.emptyList();
+    }
+    return this.toActions(frame);
+  }
+
+  public abstract List<Action> toActions(Frame frame);
 
   @Override
   public boolean equals(Object o) {
@@ -63,5 +109,13 @@ public abstract class Result {
   @Override
   public int hashCode() {
     return (int) (delayInMs ^ (delayInMs >>> 32));
+  }
+
+  public void setScope(Long clusterId, Long datacenterId, Long nodeId) {
+    this.scope = new Scope(clusterId, datacenterId, nodeId);
+  }
+
+  private boolean isNodeInScope(Node node) {
+    return scope.isNodeInScope(node);
   }
 }

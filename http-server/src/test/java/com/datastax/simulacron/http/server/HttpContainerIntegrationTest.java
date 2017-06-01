@@ -446,9 +446,124 @@ public class HttpContainerIntegrationTest {
     }
   }
 
-  private String getContactPointString(Cluster cluster) {
-    String rawaddress = cluster.getNodes().get(0).getAddress().toString();
+  @Test
+  public void testVerifyQueryParticularCluster() {
+    HttpClient client = vertx.createHttpClient();
+    Cluster clusterQueried = this.createMultiNodeCluster(client, "3,3");
+    Cluster clusterUnused = this.createMultiNodeCluster(client, "3,3");
+
+    QueryPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
+    HttpTestResponse response = this.primeSimpleQuery(client, prime, clusterQueried.getId());
+
+    Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
+    Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
+
+    while (nodeIteratorQueried.hasNext()) {
+      Node node = nodeIteratorQueried.next();
+
+      String contactPoint = getContactPointStringByNodeID(node);
+      ResultSet set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
+      List<Row> results = set.all();
+      assertThat(1).isEqualTo(results.size());
+    }
+
+    while (nodeIteratorUnused.hasNext()) {
+      String contactPointUnused = getContactPointStringByNodeID(nodeIteratorUnused.next());
+      ResultSet setUnused = makeNativeQuery("Select * FROM TABLE2", contactPointUnused);
+      List<Row> resultsUnused = setUnused.all();
+      assertThat(0).isEqualTo(resultsUnused.size());
+    }
+  }
+
+  @Test
+  public void testVerifyQueryParticularDatacenter() {
+    HttpClient client = vertx.createHttpClient();
+    Cluster clusterQueried = this.createMultiNodeCluster(client, "3,3");
+    Cluster clusterUnused = this.createMultiNodeCluster(client, "3,3");
+
+    QueryPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
+    List<DataCenter> datacenters = (List<DataCenter>) clusterQueried.getDataCenters();
+    DataCenter datacenterQueried = datacenters.get(0);
+
+    this.primeSimpleQuery(client, prime, clusterQueried.getId(), datacenterQueried.getId());
+
+    Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
+    Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
+
+    while (nodeIteratorQueried.hasNext()) {
+      Node node = nodeIteratorQueried.next();
+
+      String contactPoint = getContactPointStringByNodeID(node);
+      ResultSet set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
+      List<Row> results = set.all();
+      if (node.getDataCenter().equals(datacenterQueried)) {
+        assertThat(1).isEqualTo(results.size());
+      } else {
+        assertThat(0).isEqualTo(results.size());
+      }
+    }
+
+    while (nodeIteratorUnused.hasNext()) {
+      String contactPointUnused = getContactPointStringByNodeID(nodeIteratorUnused.next());
+      ResultSet setUnused = makeNativeQuery("Select * FROM TABLE2", contactPointUnused);
+      List<Row> resultsUnused = setUnused.all();
+      assertThat(0).isEqualTo(resultsUnused.size());
+    }
+  }
+
+  @Test
+  public void testVerifyQueryParticularNode() {
+    HttpClient client = vertx.createHttpClient();
+    Cluster clusterQueried = this.createMultiNodeCluster(client, "3,3");
+    Cluster clusterUnused = this.createMultiNodeCluster(client, "3,3");
+
+    QueryPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
+
+    List<DataCenter> datacenters = (List<DataCenter>) clusterQueried.getDataCenters();
+    DataCenter datacenterQueried = datacenters.get(0);
+    Iterator<Node> datacenterIterator = datacenterQueried.getNodes().iterator();
+
+    Node nodeQueried = datacenterIterator.next();
+
+    this.primeSimpleQuery(
+        client, prime, clusterQueried.getId(), datacenterQueried.getId(), nodeQueried.getId());
+
+    Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
+    Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
+
+    while (nodeIteratorQueried.hasNext()) {
+      Node node = nodeIteratorQueried.next();
+
+      String contactPoint = getContactPointStringByNodeID(node);
+      ResultSet set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
+      List<Row> results = set.all();
+      if (node.equals(nodeQueried)) {
+        assertThat(1).isEqualTo(results.size());
+      } else {
+        assertThat(0).isEqualTo(results.size());
+      }
+    }
+
+    while (nodeIteratorUnused.hasNext()) {
+      String contactPointUnused = getContactPointStringByNodeID(nodeIteratorUnused.next());
+      ResultSet setUnused = makeNativeQuery("Select * FROM TABLE2", contactPointUnused);
+      List<Row> resultsUnused = setUnused.all();
+      assertThat(0).isEqualTo(resultsUnused.size());
+    }
+  }
+
+  private String getContactPointStringByNodeID(Node node) {
+    String rawaddress = node.getAddress().toString();
     return rawaddress.substring(1, rawaddress.length() - 5);
+  }
+
+  private String getContactPointString(Cluster cluster, int node) {
+    String rawaddress = cluster.getNodes().get(node).getAddress().toString();
+    return rawaddress.substring(1, rawaddress.length() - 5);
+  }
+
+  private String getContactPointString(Cluster cluster) {
+    return this.getContactPointString(cluster, 0);
   }
 
   private ResultSet makeNativeQuery(String query, String contactPoint) {
@@ -498,7 +613,7 @@ public class HttpContainerIntegrationTest {
     return queryPrime;
   }
 
-  private HttpTestResponse primeSimpleQuery(HttpClient client, QueryPrime query) {
+  private HttpTestResponse primeSimpleQuery(HttpClient client, QueryPrime query, String path) {
     CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
     try {
       String jsonPrime = om.writerWithDefaultPrettyPrinter().writeValueAsString(query);
@@ -508,7 +623,7 @@ public class HttpContainerIntegrationTest {
               HttpMethod.POST,
               portNum,
               "127.0.0.1",
-              "/prime-query-single",
+              path,
               response -> {
                 response.bodyHandler(
                     totalBuffer -> {
@@ -529,6 +644,26 @@ public class HttpContainerIntegrationTest {
       fail("Exception encountered");
     }
     return null;
+  }
+
+  private HttpTestResponse primeSimpleQuery(HttpClient client, QueryPrime query) {
+    return this.primeSimpleQuery(client, query, "/prime-query-single");
+  }
+
+  private HttpTestResponse primeSimpleQuery(HttpClient client, QueryPrime query, Long ClusterID) {
+    return this.primeSimpleQuery(client, query, "/prime-query-single" + "/" + ClusterID);
+  }
+
+  private HttpTestResponse primeSimpleQuery(
+      HttpClient client, QueryPrime query, Long ClusterID, Long DatacenterID) {
+    return this.primeSimpleQuery(
+        client, query, "/prime-query-single" + "/" + ClusterID + "/" + DatacenterID);
+  }
+
+  private HttpTestResponse primeSimpleQuery(
+      HttpClient client, QueryPrime query, Long ClusterID, Long DatacenterID, Long nodeID) {
+    return this.primeSimpleQuery(
+        client, query, "/prime-query-single" + "/" + ClusterID + "/" + DatacenterID + "/" + nodeID);
   }
 
   private Cluster createSingleNodeCluster(HttpClient client) {

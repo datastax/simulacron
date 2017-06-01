@@ -5,7 +5,6 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.codec.CqlMapper;
 import com.datastax.simulacron.common.stubbing.Action;
@@ -48,7 +47,7 @@ public class SuccessResult extends Result {
   }
 
   @Override
-  public List<Action> toActions(Node node, Frame frame) {
+  public List<Action> toActions(Frame frame) {
     CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
     //This will return all the rows specified in the query, along with any corresponding metadata about the row
     boolean meta_constructed = false;

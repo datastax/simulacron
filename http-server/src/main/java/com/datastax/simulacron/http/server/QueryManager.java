@@ -53,9 +53,19 @@ public class QueryManager implements HttpListener {
               String jsonBody = "";
               try {
                 System.out.println("Full body received, length = " + totalBuffer.length());
+
+                String idToFetchS = context.request().getParam("clusterId");
+                String dcIdToFetchS = context.request().getParam("datacenterId");
+                String nodeIdToFetchS = context.request().getParam("nodeId");
+
+                Long idToFetch = idToFetchS == null ? null : Long.parseLong(idToFetchS);
+                Long dcIdToFetch = dcIdToFetchS == null ? null : Long.parseLong(dcIdToFetchS);
+                Long nodeIdToFetch = nodeIdToFetchS == null ? null : Long.parseLong(nodeIdToFetchS);
+
                 jsonBody = totalBuffer.toString();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 QueryPrime query = om.readValue(jsonBody, QueryPrime.class);
+                query.then.setScope(idToFetch, dcIdToFetch, nodeIdToFetch);
 
                 if (query.then instanceof SuccessResult) {
                   SuccessResult success = (SuccessResult) query.then;
@@ -212,6 +222,14 @@ public class QueryManager implements HttpListener {
   }
 
   public void registerWithRouter(Router router) {
+    router.route(HttpMethod.POST, "/prime-query-single/:clusterId").handler(this::primerQuery);
+    router
+        .route(HttpMethod.POST, "/prime-query-single/:clusterId/:datacenterId")
+        .handler(this::primerQuery);
+    router
+        .route(HttpMethod.POST, "/prime-query-single/:clusterId/:datacenterId/:nodeId")
+        .handler(this::primerQuery);
+
     router.route(HttpMethod.POST, "/prime*").handler(this::primerQuery);
     router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
     router.route(HttpMethod.GET, "/log/:clusterId").handler(this::getQueryLog);
