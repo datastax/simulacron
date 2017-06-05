@@ -89,7 +89,7 @@ public class DisconnectActionTest {
               public List<Action> getActions(Node node, Frame frame) {
                 ArrayList<Action> actions = new ArrayList<>();
                 actions.add(new MessageResponseAction(new Supported(Collections.emptyMap())));
-                actions.add(new DisconnectAction());
+                actions.add(DisconnectAction.builder().build());
                 return actions;
               }
             });
@@ -176,7 +176,7 @@ public class DisconnectActionTest {
     DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
     Iterator<Node> nodes = dc0.getNodes().iterator();
     BoundNode boundNode = (BoundNode) nodes.next();
-    stubCloseOnStartup(Scope.DATACENTER);
+    stubCloseOnStartup(Scope.DATA_CENTER);
 
     Map<Node, MockClient> nodeToClients = new HashMap<>();
     MockClient client = null;
@@ -279,7 +279,8 @@ public class DisconnectActionTest {
 
               @Override
               public List<Action> getActions(Node node, Frame frame) {
-                return Collections.singletonList(new DisconnectAction(scope));
+                return Collections.singletonList(
+                    DisconnectAction.builder().withScope(scope).build());
               }
             });
   }

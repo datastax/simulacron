@@ -13,6 +13,7 @@ import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
+import com.datastax.simulacron.common.stubbing.DisconnectAction.CloseType;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import com.datastax.simulacron.common.stubbing.NoResponseAction;
 import io.netty.bootstrap.ServerBootstrap;
@@ -22,6 +23,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.util.Timeout;
 import io.netty.util.Timer;
 import io.netty.util.TimerTask;
@@ -30,20 +32,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.datastax.oss.protocol.internal.response.result.Void.INSTANCE;
+import static com.datastax.simulacron.common.stubbing.DisconnectAction.CloseType.SHUTDOWN_READ;
+import static com.datastax.simulacron.common.stubbing.DisconnectAction.Scope.CLUSTER;
+import static com.datastax.simulacron.common.stubbing.DisconnectAction.Scope.NODE;
 import static com.datastax.simulacron.common.utils.FrameUtils.wrapResponse;
 import static com.datastax.simulacron.server.ChannelUtils.completable;
 
@@ -349,32 +351,38 @@ class BoundNode extends Node {
       } else if (action instanceof DisconnectAction) {
         DisconnectAction cAction = (DisconnectAction) action;
         switch (cAction.getScope()) {
-          case NODE:
-            future = disconnectConnections().thenApply(n -> null);
-            break;
-          case DATACENTER:
-            List<CompletableFuture<Void>> futures =
-                getDataCenter()
-                    .getNodes()
-                    .stream()
-                    .map(n -> completable(((BoundNode) n).clientChannelGroup.disconnect()))
-                    .collect(Collectors.toList());
-
-            future = CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
-            break;
-          case CLUSTER:
-            futures =
-                getCluster()
-                    .getNodes()
-                    .stream()
-                    .map(n -> completable(((BoundNode) n).clientChannelGroup.disconnect()))
-                    .collect(Collectors.toList());
-
-            future = CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
-            break;
           case CONNECTION:
+            switch (cAction.getCloseType()) {
+              case DISCONNECT:
+                future = completable(ctx.disconnect());
+                break;
+              default:
+                Function<SocketChannel, ChannelFuture> shutdownMethod =
+                    cAction.getCloseType() == SHUTDOWN_READ
+                        ? SocketChannel::shutdownInput
+                        : SocketChannel::shutdownOutput;
+
+                Channel c = ctx.channel();
+                if (c instanceof SocketChannel) {
+                  future = completable(shutdownMethod.apply(((SocketChannel) c)));
+                } else {
+                  logger.warn(
+                      "Got {} request for non-SocketChannel {}, disconnecting instead.",
+                      cAction.getCloseType(),
+                      c);
+                  future = completable(ctx.disconnect());
+                }
+                break;
+            }
+            break;
           default:
-            future = completable(ctx.disconnect());
+            Stream<Node> nodes =
+                cAction.getScope() == NODE
+                    ? Stream.of(BoundNode.this)
+                    : cAction.getScope() == CLUSTER
+                        ? getCluster().getNodes().stream()
+                        : getDataCenter().getNodes().stream();
+            future = closeNodes(nodes, cAction.getCloseType());
             break;
         }
       } else if (action instanceof NoResponseAction) {
@@ -395,6 +403,44 @@ class BoundNode extends Node {
             }
           });
     }
+  }
+
+  private CompletableFuture<Void> closeNodes(Stream<Node> nodes, CloseType closeType) {
+    List<CompletableFuture<Void>> futures = null;
+    switch (closeType) {
+      case DISCONNECT:
+        futures =
+            nodes
+                .map(n -> completable(((BoundNode) n).clientChannelGroup.disconnect()))
+                .collect(Collectors.toList());
+        break;
+      case SHUTDOWN_READ:
+      case SHUTDOWN_WRITE:
+        futures =
+            nodes
+                .flatMap(n -> ((BoundNode) n).clientChannelGroup.stream())
+                .map(
+                    c -> {
+                      CompletableFuture<Void> f;
+                      Function<SocketChannel, ChannelFuture> shutdownMethod =
+                          closeType == SHUTDOWN_READ
+                              ? SocketChannel::shutdownInput
+                              : SocketChannel::shutdownOutput;
+                      if (c instanceof SocketChannel) {
+                        f = completable(shutdownMethod.apply((SocketChannel) c));
+                      } else {
+                        logger.warn(
+                            "Got {} request for non-SocketChannel {}, disconnecting instead.",
+                            closeType,
+                            c);
+                        f = completable(c.disconnect());
+                      }
+                      return f;
+                    })
+                .collect(Collectors.toList());
+        break;
+    }
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
   }
 
   private ChannelFuture sendMessage(

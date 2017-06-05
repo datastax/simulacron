@@ -10,6 +10,7 @@ import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.datastax.simulacron.common.codec.WriteType;
 import com.datastax.simulacron.common.result.*;
+import com.datastax.simulacron.common.stubbing.DisconnectAction;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -276,6 +277,18 @@ public class ErrorResultIntegrationTest {
 
     thrown.expect(OperationTimedOutException.class);
     query(new SimpleStatement(query).setReadTimeoutMillis(1000));
+  }
+
+  @Test
+  public void testShouldReturnTransportException() throws Exception {
+    CloseConnectionResult result =
+        new CloseConnectionResult(
+            DisconnectAction.Scope.CONNECTION, DisconnectAction.CloseType.DISCONNECT, 0);
+    server.prime(new QueryPrime(query, result));
+
+    // expect a transport exception as the connection should have been closed.
+    thrown.expect(TransportException.class);
+    query();
   }
 
   private void query() throws Exception {

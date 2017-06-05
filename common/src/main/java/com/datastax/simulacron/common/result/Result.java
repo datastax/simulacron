@@ -1,24 +1,16 @@
 package com.datastax.simulacron.common.result;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.fasterxml.jackson.annotation.*;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "result")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = SuccessResult.class, name = "success"),
-  // This is probably going to make the serialization wrong
-  // But I don't think we are required to serialize these
-  // Also we can't write an integration test
   @JsonSubTypes.Type(value = NoResult.class, name = "no_result"),
   @JsonSubTypes.Type(value = ServerErrorResult.class, name = "server_error"),
   @JsonSubTypes.Type(value = ProtocolErrorResult.class, name = "protocol_error"),
@@ -37,7 +29,8 @@ import java.util.stream.Collectors;
   @JsonSubTypes.Type(value = UnauthorizedResult.class, name = "unauthorized"),
   @JsonSubTypes.Type(value = UnpreparedResult.class, name = "unprepared"),
   @JsonSubTypes.Type(value = WriteFailureResult.class, name = "write_failure"),
-  @JsonSubTypes.Type(value = WriteTimeoutResult.class, name = "write_timeout")
+  @JsonSubTypes.Type(value = WriteTimeoutResult.class, name = "write_timeout"),
+  @JsonSubTypes.Type(value = CloseConnectionResult.class, name = "close_connection")
 })
 public abstract class Result {
 

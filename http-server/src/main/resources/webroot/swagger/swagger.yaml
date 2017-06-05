@@ -72,7 +72,7 @@ paths:
             peer info, or socket addresses bound to nodes.
 
 
-            **Note**: Used only if `dataCenters` is not provided.
+            **Note**: Used only if `data_centers` is not provided.
           required: false
           schema:
             $ref: '#/definitions/Cluster'
@@ -769,6 +769,30 @@ paths:
             $ref: '#/definitions/PrimeQueryWriteFailure'
         '400':
           description: Unable to parse provided query
+  '/prime-query-single (close_connection)':
+    post:
+      tags:
+        - prime-query-single
+      summary: Primes a scenario such that when a query is received closes client connections
+      operationId: primeQuerySingleCloseConnection
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          description: Contains a then section that defines how to close connections and which to close.
+          required: true
+          schema:
+            $ref: '#/definitions/PrimeQueryCloseConnection'
+      responses:
+        '201':
+          description: PrimedQuery
+          schema:
+            $ref: '#/definitions/PrimeQueryCloseConnection'
+        '400':
+          description: Unable to parse provided query
   '/log/{clusterId}':
     get:
       tags:
@@ -922,6 +946,23 @@ definitions:
       - CAS
       - VIEW
       - CDC
+  CloseType:
+    type: string
+    description: The kind of close operation
+    example: disconnect
+    enum:
+      - disconnect
+      - shutdown_read
+      - shutdown_write
+  CloseScope:
+    type: string
+    description: The scope of the close operation
+    example: connection
+    enum:
+      - connection
+      - node
+      - data_center
+      - cluster
   PeerInfo:
     type: object
     properties:
@@ -1381,6 +1422,17 @@ definitions:
             example: 2
           write_type:
             $ref: '#/definitions/WriteType'
+  CloseConnectionResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        properties:
+          result:
+            example: close_connection
+          close_type:
+            $ref: '#/definitions/CloseType'
+          scope:
+            $ref: '#/definitions/CloseScope'
   PrimeQuery:
     type: object
     required:
@@ -1587,6 +1639,16 @@ definitions:
         $ref: '#/definitions/When'
       then:
         $ref: '#/definitions/WriteTimeoutResult'
+  PrimeQueryCloseConnection:
+    type: object
+    required:
+      - when
+      - then
+    properties:
+      when:
+        $ref: '#/definitions/When'
+      then:
+        $ref: '#/definitions/CloseConnectionResult'
   QueryLog:
     type: object
     properties:

@@ -1,29 +1,42 @@
 package com.datastax.simulacron.common.stubbing;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import static com.datastax.simulacron.common.stubbing.DisconnectAction.CloseType.DISCONNECT;
+import static com.datastax.simulacron.common.stubbing.DisconnectAction.Scope.CONNECTION;
+
 public class DisconnectAction implements Action {
 
   public enum Scope {
+    @JsonProperty("connection")
     CONNECTION,
+    @JsonProperty("node")
     NODE,
-    DATACENTER,
+    @JsonProperty("data_center")
+    DATA_CENTER,
+    @JsonProperty("cluster")
     CLUSTER
+  }
+
+  public enum CloseType {
+    @JsonProperty("disconnect")
+    DISCONNECT,
+    @JsonProperty("shutdown_read")
+    SHUTDOWN_READ,
+    @JsonProperty("shutdown_write")
+    SHUTDOWN_WRITE
   }
 
   private final Scope scope;
 
   private final long delayInMs;
 
-  public DisconnectAction() {
-    this(Scope.CONNECTION, 0L);
-  }
+  private final CloseType closeType;
 
-  public DisconnectAction(Scope scope) {
-    this(scope, 0L);
-  }
-
-  public DisconnectAction(Scope scope, long delayInMs) {
+  DisconnectAction(Scope scope, CloseType closeType, long delayInMs) {
     this.scope = scope;
     this.delayInMs = delayInMs;
+    this.closeType = closeType;
   }
 
   @Override
@@ -35,8 +48,41 @@ public class DisconnectAction implements Action {
     return scope;
   }
 
+  public CloseType getCloseType() {
+    return closeType;
+  }
+
   @Override
   public String toString() {
     return "DisconnectAction{" + "scope=" + scope + ", delayInMs=" + delayInMs + '}';
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static class Builder {
+    private Scope scope = CONNECTION;
+    private CloseType closeType = DISCONNECT;
+    long delayInMs = 0L;
+
+    public Builder withScope(Scope scope) {
+      this.scope = scope;
+      return this;
+    }
+
+    public Builder withCloseType(CloseType closeType) {
+      this.closeType = closeType;
+      return this;
+    }
+
+    public Builder withDelayInMs(long delayInMs) {
+      this.delayInMs = delayInMs;
+      return this;
+    }
+
+    public DisconnectAction build() {
+      return new DisconnectAction(scope, closeType, delayInMs);
+    }
   }
 }
