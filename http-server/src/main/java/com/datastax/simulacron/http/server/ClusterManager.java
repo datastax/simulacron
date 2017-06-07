@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
@@ -122,18 +123,19 @@ public class ClusterManager implements HttpListener {
             b -> {
               try {
                 CompletableFuture<Integer> future;
-                String idToFetch = context.request().getParam("clusterId");
-                if (idToFetch == null) {
+                String idOrNameToFetch = context.request().getParam("clusterIdOrName");
+                if (idOrNameToFetch == null) {
                   future = server.unregisterAll();
                 } else {
-                  Long id = Long.parseLong(idToFetch);
-                  if (!server.getClusterRegistry().containsKey(id)) {
+                  Optional<Long> clusterId = server.getClusterIdFromIdOrName(idOrNameToFetch);
+                  if (clusterId.isPresent()) {
+                    future = server.unregister(clusterId.get()).thenApply(__ -> 1);
+                  } else {
                     handleError(
-                        new ErrorMessage("No cluster registered with id " + id + ".", 404),
+                        new ErrorMessage(
+                            "No cluster registered with id or name " + idOrNameToFetch + ".", 404),
                         context);
                     return;
-                  } else {
-                    future = server.unregister(id).thenApply(__ -> 1);
                   }
                 }
 
@@ -142,13 +144,14 @@ public class ClusterManager implements HttpListener {
                       if (ex != null) {
                         handleError(new ErrorMessage(ex, 400), context);
                       } else {
-                        if (idToFetch == null) {
+                        if (idOrNameToFetch == null) {
                           handleMessage(
                               new Message("All (" + count + ") clusters unregistered.", 202),
                               context);
                         } else {
                           handleMessage(
-                              new Message("Cluster " + idToFetch + " unregistered.", 202), context);
+                              new Message("Cluster " + idOrNameToFetch + " unregistered.", 202),
+                              context);
                         }
                       }
                     });
@@ -160,8 +163,8 @@ public class ClusterManager implements HttpListener {
 
   /**
    * This is an async callback that will be invoked whenever a request to /cluster is submited with
-   * GET. When a clusterId is provided in the format of /cluster/:clusterId, we will fetch that
-   * specific id.
+   * GET. When a clusterIdOrName is provided in the format of /cluster/:clusterIdOrName, we will
+   * fetch that specific id.
    *
    * <p>Example supported HTTP requests
    *
@@ -180,20 +183,21 @@ public class ClusterManager implements HttpListener {
                 Map<Long, Cluster> clusters = this.server.getClusterRegistry();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
-                String idToFetch = context.request().getParam("clusterId");
-                if (idToFetch != null) {
-                  Long id = Long.parseLong(idToFetch);
-                  Cluster cluster = clusters.get(id);
-                  if (cluster == null) {
+                String idOrNameToFetch = context.request().getParam("clusterIdOrName");
+                if (idOrNameToFetch != null) {
+                  Optional<Long> clusterId = server.getClusterIdFromIdOrName(idOrNameToFetch);
+                  if (clusterId.isPresent()) {
+                    Cluster cluster = clusters.get(clusterId.get());
+                    String clusterStr =
+                        om.writerWithDefaultPrettyPrinter().writeValueAsString(cluster);
+                    response.append(clusterStr);
+                  } else {
                     handleError(
-                        new ErrorMessage("No cluster registered with id " + id, 404), context);
+                        new ErrorMessage("No cluster registered with id " + idOrNameToFetch, 404),
+                        context);
+                    return;
                   }
-                  String clusterStr =
-                      om.writerWithDefaultPrettyPrinter().writeValueAsString(cluster);
-                  response.append(clusterStr);
-
                 } else {
-
                   String clusterStr =
                       om.writerWithDefaultPrettyPrinter().writeValueAsString(clusters.values());
                   response.append(clusterStr);
@@ -218,9 +222,9 @@ public class ClusterManager implements HttpListener {
    */
   public void registerWithRouter(Router router) {
     router.route(HttpMethod.POST, "/cluster").handler(this::provisionCluster);
-    router.route(HttpMethod.DELETE, "/cluster/:clusterId").handler(this::unregisterCluster);
+    router.route(HttpMethod.DELETE, "/cluster/:clusterIdOrName").handler(this::unregisterCluster);
     router.route(HttpMethod.DELETE, "/cluster").handler(this::unregisterCluster);
-    router.route(HttpMethod.GET, "/cluster/:clusterId").handler(this::getCluster);
+    router.route(HttpMethod.GET, "/cluster/:clusterIdOrName").handler(this::getCluster);
     router.route(HttpMethod.GET, "/cluster").handler(this::getCluster);
   }
 }

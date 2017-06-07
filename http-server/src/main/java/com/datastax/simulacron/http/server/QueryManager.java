@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
 import static com.datastax.simulacron.http.server.HttpUtils.handleMessage;
@@ -55,13 +56,63 @@ public class QueryManager implements HttpListener {
               try {
                 System.out.println("Full body received, length = " + totalBuffer.length());
 
-                String idToFetchS = context.request().getParam("clusterId");
-                String dcIdToFetchS = context.request().getParam("datacenterId");
-                String nodeIdToFetchS = context.request().getParam("nodeId");
+                String idToFetchS = context.request().getParam("clusterIdOrName");
+                String dcIdToFetchS = context.request().getParam("datacenterIdOrName");
+                String nodeIdToFetchS = context.request().getParam("nodeIdOrName");
+                Long idToFetch = null;
+                Long dcIdToFetch = null;
+                Long nodeIdToFetch = null;
 
-                Long idToFetch = idToFetchS == null ? null : Long.parseLong(idToFetchS);
-                Long dcIdToFetch = dcIdToFetchS == null ? null : Long.parseLong(dcIdToFetchS);
-                Long nodeIdToFetch = nodeIdToFetchS == null ? null : Long.parseLong(nodeIdToFetchS);
+                if (idToFetchS != null) {
+                  Optional<Long> clusterId = server.getClusterIdFromIdOrName(idToFetchS);
+                  if (clusterId.isPresent()) {
+                    idToFetch = clusterId.get();
+
+                    if (dcIdToFetchS != null) {
+                      Optional<Long> dcId =
+                          server.getDatacenterIdFromIdOrName(idToFetch, dcIdToFetchS);
+                      if (dcId.isPresent()) {
+                        dcIdToFetch = dcId.get();
+
+                        if (nodeIdToFetchS != null) {
+                          Optional<Long> nodeId =
+                              server.getNodeIdFromIdOrName(idToFetch, dcIdToFetch, nodeIdToFetchS);
+
+                          if (nodeId.isPresent()) {
+                            nodeIdToFetch = nodeId.get();
+                          } else {
+                            handleError(
+                                new ErrorMessage(
+                                    "No node registered with id "
+                                        + idToFetch
+                                        + "/"
+                                        + dcIdToFetch
+                                        + "/"
+                                        + nodeIdToFetchS,
+                                    404),
+                                context);
+                            return;
+                          }
+                        }
+                      } else {
+                        handleError(
+                            new ErrorMessage(
+                                "No datacenter registered with id "
+                                    + idToFetchS
+                                    + "/"
+                                    + dcIdToFetchS,
+                                404),
+                            context);
+                        return;
+                      }
+                    }
+                  } else {
+                    handleError(
+                        new ErrorMessage("No cluster registered with id " + idToFetchS, 404),
+                        context);
+                    return;
+                  }
+                }
 
                 jsonBody = totalBuffer.toString();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
@@ -123,19 +174,19 @@ public class QueryManager implements HttpListener {
 
   /**
    * This is an async callback that will be invoked whenever a request to /log is submitted with
-   * GET. When a clusterId is provided in the format of /log/:clusterId, we will fetch that specific
-   * id.
+   * GET. When a clusterIdOrName is provided in the format of /log/:clusterIdOrName, we will fetch
+   * that specific id.
    *
    * <p>Example supported HTTP requests
    *
-   * <p>GET http://iphere:porthere/log/:clusterId Will return all queries invoked by clients to a
-   * cluster
+   * <p>GET http://iphere:porthere/log/:clusterIdOrName Will return all queries invoked by clients
+   * to a cluster
    *
-   * <p>GET http://iphere:porthere/log/:clusterId/:datacenterId Will return all queries invoked by
-   * clients to a datacenter of a cluster
+   * <p>GET http://iphere:porthere/log/:clusterIdOrName/:datacenterIdOrName Will return all queries
+   * invoked by clients to a datacenter of a cluster
    *
-   * <p>GET http://iphere:porthere/log/:clusterIdi/:datacenterId/:nodeId Will return all queries
-   * invoked by clients to a node of a datacenter of a cluster
+   * <p>GET http://iphere:porthere/log/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName Will
+   * return all queries invoked by clients to a node of a datacenter of a cluster
    *
    * @param context RoutingContext Provided by vertx
    */
@@ -148,44 +199,61 @@ public class QueryManager implements HttpListener {
                 Map<Long, Cluster> clusters = this.server.getClusterRegistry();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
-                String idToFetch = context.request().getParam("clusterId");
-                String dcIdToFetch = context.request().getParam("datacenterId");
-                String nodeIdToFetch = context.request().getParam("nodeId");
+                String idToFetch = context.request().getParam("clusterIdOrName");
+                String dcIdToFetch = context.request().getParam("datacenterIdOrName");
+                String nodeIdToFetch = context.request().getParam("nodeIdOrName");
                 if (idToFetch != null) {
-                  Long id = Long.parseLong(idToFetch);
-                  Cluster cluster = clusters.get(id);
-                  if (cluster == null) {
+                  Optional<Long> id = server.getClusterIdFromIdOrName(idToFetch);
+                  Optional<Cluster> clusterOption = id.map(clusters::get);
+                  if (clusterOption.isPresent()) {
+                    Cluster cluster = clusterOption.get();
+                    List<QueryLog> logs = cluster.getActivityLog().getLogs();
+                    if (dcIdToFetch != null) {
+                      Optional<Long> datacenterId =
+                          server.getDatacenterIdFromIdOrName(cluster.getId(), dcIdToFetch);
+                      if (datacenterId.isPresent()) {
+                        Long dcId = datacenterId.get();
+                        if (nodeIdToFetch != null) {
+                          Optional<Long> nodeId =
+                              server.getNodeIdFromIdOrName(cluster.getId(), dcId, nodeIdToFetch);
+                          if (nodeId.isPresent()) {
+                            logs = cluster.getActivityLog().getLogsFromNode(dcId, nodeId.get());
+                          } else {
+                            handleError(
+                                new ErrorMessage(
+                                    "No node registered with id "
+                                        + idToFetch
+                                        + "/"
+                                        + dcIdToFetch
+                                        + "/"
+                                        + nodeIdToFetch,
+                                    404),
+                                context);
+                            return;
+                          }
+                        } else {
+                          logs = cluster.getActivityLog().getLogsFromDatacenter(dcId);
+                        }
+                      } else {
+                        handleError(
+                            new ErrorMessage(
+                                "No datacenter registered with id " + idToFetch + "/" + dcIdToFetch,
+                                404),
+                            context);
+                        return;
+                      }
+                    }
+
+                    String activityLogStr =
+                        om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
+                    response.append(activityLogStr);
+                  } else {
                     handleError(
-                        new ErrorMessage("No cluster registered with id " + id, 404), context);
+                        new ErrorMessage("No cluster registered with id " + idToFetch, 404),
+                        context);
+                    return;
                   }
-
-                  List<QueryLog> logs = cluster.getActivityLog().getLogs();
-
-                  if (dcIdToFetch != null && nodeIdToFetch != null) {
-                    try {
-                      long datacenterId = Long.parseLong(dcIdToFetch);
-                      long nodeId = Long.parseLong(nodeIdToFetch);
-                      logs = cluster.getActivityLog().getLogsFromNode(datacenterId, nodeId);
-                    } catch (NumberFormatException exception) {
-                      handleError(new ErrorMessage(exception.getMessage(), 404), context);
-                    }
-                  }
-
-                  if (dcIdToFetch != null && nodeIdToFetch == null) {
-                    try {
-                      long datacenterId = Long.parseLong(dcIdToFetch);
-                      logs = cluster.getActivityLog().getLogsFromDatacenter(datacenterId);
-                    } catch (NumberFormatException exception) {
-                      handleError(new ErrorMessage(exception.getMessage(), 404), context);
-                    }
-                  }
-
-                  String activityLogStr =
-                      om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
-                  response.append(activityLogStr);
-
                 } else {
-
                   String clusterStr =
                       om.writerWithDefaultPrettyPrinter().writeValueAsString(clusters.values());
                   response.append(clusterStr);
@@ -226,20 +294,24 @@ public class QueryManager implements HttpListener {
   }
 
   public void registerWithRouter(Router router) {
-    router.route(HttpMethod.POST, "/prime-query-single/:clusterId").handler(this::primeQuery);
+    router.route(HttpMethod.POST, "/prime-query-single/:clusterIdOrName").handler(this::primeQuery);
     router
-        .route(HttpMethod.POST, "/prime-query-single/:clusterId/:datacenterId")
+        .route(HttpMethod.POST, "/prime-query-single/:clusterIdOrName/:datacenterIdOrName")
         .handler(this::primeQuery);
     router
-        .route(HttpMethod.POST, "/prime-query-single/:clusterId/:datacenterId/:nodeId")
+        .route(
+            HttpMethod.POST,
+            "/prime-query-single/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::primeQuery);
 
     router.route(HttpMethod.POST, "/prime*").handler(this::primeQuery);
     router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
-    router.route(HttpMethod.GET, "/log/:clusterId").handler(this::getQueryLog);
-    router.route(HttpMethod.GET, "/log/:clusterId/:datacenterId").handler(this::getQueryLog);
+    router.route(HttpMethod.GET, "/log/:clusterIdOrName").handler(this::getQueryLog);
     router
-        .route(HttpMethod.GET, "/log/:clusterId/:datacenterId/:nodeId")
+        .route(HttpMethod.GET, "/log/:clusterIdOrName/:datacenterIdOrName")
+        .handler(this::getQueryLog);
+    router
+        .route(HttpMethod.GET, "/log/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::getQueryLog);
   }
 }

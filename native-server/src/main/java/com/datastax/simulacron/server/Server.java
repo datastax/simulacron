@@ -2,6 +2,7 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.FrameCodec;
+import com.datastax.simulacron.common.cluster.AbstractNodeProperties;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
@@ -326,6 +327,47 @@ public final class Server {
     return this.stubStore;
   }
 
+  public Optional<Long> getClusterIdFromIdOrName(String IdOrName) {
+    return this.getClusterRegistry()
+        .entrySet()
+        .stream()
+        .filter(
+            c ->
+                c.getValue().getName().equals(IdOrName)
+                    || c.getValue().getId().toString().equals(IdOrName))
+        .map(Map.Entry::getValue)
+        .findAny()
+        .map(AbstractNodeProperties::getId);
+  }
+
+  public Optional<Long> getDatacenterIdFromIdOrName(Long clusterId, String IdOrName) {
+    return this.getClusterRegistry()
+        .get(clusterId)
+        .getDataCenters()
+        .stream()
+        .filter(d -> d.getName().equals(IdOrName) || d.getId().toString().equals(IdOrName))
+        .findAny()
+        .map(AbstractNodeProperties::getId);
+  }
+
+  public Optional<Long> getNodeIdFromIdOrName(Long clusterId, Long datacenterId, String IdOrName) {
+    Optional<DataCenter> dc =
+        this.getClusterRegistry()
+            .get(clusterId)
+            .getDataCenters()
+            .stream()
+            .filter(d -> d.getId().equals(datacenterId))
+            .findAny();
+
+    return dc.flatMap(
+        d ->
+            d.getNodes()
+                .stream()
+                .filter(n -> n.getName().equals(IdOrName) || n.getId().toString().equals(IdOrName))
+                .findAny()
+                .map(AbstractNodeProperties::getId));
+  }
+
   private CompletableFuture<Node> bindInternal(
       Node refNode, DataCenter parent, String token, boolean activityLogging) {
     // derive a token for this node. This is done here as the ordering of nodes under a
@@ -402,7 +444,6 @@ public final class Server {
       return builder(new NioEventLoopGroup(), NioServerSocketChannel.class);
     }
   }
-
   /**
    * Constructs a {@link Builder} that uses the given {@link EventLoopGroup} and {@link
    * ServerChannel} to construct a {@link ServerBootstrap} to be used by this {@link Server}.
