@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
+import static com.datastax.simulacron.http.server.HttpUtils.handleMessage;
 
 public class QueryManager implements HttpListener {
   Logger logger = LoggerFactory.getLogger(QueryManager.class);
@@ -44,7 +45,7 @@ public class QueryManager implements HttpListener {
    *
    * @param context RoutingContext provided by vertx
    */
-  public void primerQuery(RoutingContext context) {
+  public void primeQuery(RoutingContext context) {
 
     context
         .request()
@@ -83,9 +84,13 @@ public class QueryManager implements HttpListener {
                 handleQueryError(e, "prime query", context);
               }
               if (!context.response().ended()) {
-                context.request().response().setStatusCode(201).end(jsonBody);
+                context
+                    .request()
+                    .response()
+                    .putHeader("content-type", "application/json")
+                    .setStatusCode(201)
+                    .end(jsonBody);
               }
-              ;
             });
   }
   /**
@@ -104,16 +109,15 @@ public class QueryManager implements HttpListener {
         .request()
         .bodyHandler(
             totalBuffer -> {
-              String jsonBody = "";
+              int cleared = 0;
               try {
-                server.clearStubsMatchingType(QueryHandler.class);
+                cleared = server.clearStubsMatchingType(QueryHandler.class);
               } catch (Exception e) {
                 handleQueryError(e, "clear primed queries", context);
               }
               if (!context.response().ended()) {
-                context.request().response().setStatusCode(202).end(jsonBody);
+                handleMessage(new Message("Cleared " + cleared + " primed queries", 202), context);
               }
-              ;
             });
   }
 
@@ -222,15 +226,15 @@ public class QueryManager implements HttpListener {
   }
 
   public void registerWithRouter(Router router) {
-    router.route(HttpMethod.POST, "/prime-query-single/:clusterId").handler(this::primerQuery);
+    router.route(HttpMethod.POST, "/prime-query-single/:clusterId").handler(this::primeQuery);
     router
         .route(HttpMethod.POST, "/prime-query-single/:clusterId/:datacenterId")
-        .handler(this::primerQuery);
+        .handler(this::primeQuery);
     router
         .route(HttpMethod.POST, "/prime-query-single/:clusterId/:datacenterId/:nodeId")
-        .handler(this::primerQuery);
+        .handler(this::primeQuery);
 
-    router.route(HttpMethod.POST, "/prime*").handler(this::primerQuery);
+    router.route(HttpMethod.POST, "/prime*").handler(this::primeQuery);
     router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
     router.route(HttpMethod.GET, "/log/:clusterId").handler(this::getQueryLog);
     router.route(HttpMethod.GET, "/log/:clusterId/:datacenterId").handler(this::getQueryLog);

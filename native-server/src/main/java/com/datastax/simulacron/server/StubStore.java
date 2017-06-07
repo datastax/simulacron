@@ -21,14 +21,17 @@ public class StubStore {
     stubMappings.add(mapping);
   }
 
-  public void clearAllMatchingType(Class clazz) {
+  public int clearAllMatchingType(Class clazz) {
     Iterator<StubMapping> iterator = stubMappings.iterator();
+    int count = 0;
     while (iterator.hasNext()) {
       StubMapping mapping = iterator.next();
       if (mapping.getClass().equals(clazz)) {
         stubMappings.remove(mapping);
+        count++;
       }
     }
+    return count;
   }
 
   public void clear() {
