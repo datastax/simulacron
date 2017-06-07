@@ -327,30 +327,36 @@ public final class Server {
     return this.stubStore;
   }
 
-  public Optional<Long> getClusterIdFromIdOrName(String IdOrName) {
-    return this.getClusterRegistry()
-        .entrySet()
-        .stream()
-        .filter(
-            c ->
-                c.getValue().getName().equals(IdOrName)
-                    || c.getValue().getId().toString().equals(IdOrName))
-        .map(Map.Entry::getValue)
-        .findAny()
-        .map(AbstractNodeProperties::getId);
+  public Optional<Long> getClusterIdFromIdOrName(String idOrName) {
+    try {
+      long id = Long.parseLong(idOrName);
+      if (this.getClusterRegistry().containsKey(id)) {
+        return Optional.of(id);
+      } else {
+        return Optional.empty();
+      }
+    } catch (NumberFormatException e) {
+      return this.getClusterRegistry()
+          .entrySet()
+          .stream()
+          .filter(c -> c.getValue().getName().equals(idOrName))
+          .map(p -> p.getValue())
+          .findAny()
+          .map(AbstractNodeProperties::getId);
+    }
   }
 
-  public Optional<Long> getDatacenterIdFromIdOrName(Long clusterId, String IdOrName) {
+  public Optional<Long> getDatacenterIdFromIdOrName(Long clusterId, String idOrName) {
     return this.getClusterRegistry()
         .get(clusterId)
         .getDataCenters()
         .stream()
-        .filter(d -> d.getName().equals(IdOrName) || d.getId().toString().equals(IdOrName))
+        .filter(d -> d.getName().equals(idOrName) || d.getId().toString().equals(idOrName))
         .findAny()
         .map(AbstractNodeProperties::getId);
   }
 
-  public Optional<Long> getNodeIdFromIdOrName(Long clusterId, Long datacenterId, String IdOrName) {
+  public Optional<Long> getNodeIdFromIdOrName(Long clusterId, Long datacenterId, String idOrName) {
     Optional<DataCenter> dc =
         this.getClusterRegistry()
             .get(clusterId)
@@ -363,7 +369,7 @@ public final class Server {
         d ->
             d.getNodes()
                 .stream()
-                .filter(n -> n.getName().equals(IdOrName) || n.getId().toString().equals(IdOrName))
+                .filter(n -> n.getName().equals(idOrName) || n.getId().toString().equals(idOrName))
                 .findAny()
                 .map(AbstractNodeProperties::getId));
   }
