@@ -65,6 +65,15 @@ public class App {
     SwaggerUI swaggerUI = new SwaggerUI();
     swaggerUI.registerWithRouter(httpServer.getRouter());
 
+    // redirect the root to docs page.
+    httpServer
+        .getRouter()
+        .route("/")
+        .handler(
+            context -> {
+              context.response().putHeader("location", "/doc").setStatusCode(302).end();
+            });
+
     httpServer.start();
     logger.info(
         "Started HTTP server interface @ http://{}:{}.  Created nodes will start with ip {}.",
