@@ -52,9 +52,26 @@ public class BoundNodeTest {
           null,
           timer,
           null, // channel reference only needed for closing, not useful in context of this test.
-          stubStore);
+          stubStore,
+          false);
+
+  private final BoundNode loggedNode =
+      new BoundNode(
+          new LocalAddress(UUID.randomUUID().toString()),
+          "node0",
+          0L,
+          "1.2.19",
+          null,
+          Collections.emptyMap(),
+          dc,
+          null,
+          timer,
+          null, // channel reference only needed for closing, not useful in context of this test.
+          stubStore,
+          true);
 
   private final EmbeddedChannel channel = new EmbeddedChannel(new RequestHandler(node));
+  private final EmbeddedChannel loggedChannel = new EmbeddedChannel(new RequestHandler(loggedNode));
 
   @After
   public void tearDown() {
@@ -174,7 +191,7 @@ public class BoundNodeTest {
   }
 
   @Test
-  public void shouldStoreFrameHistory() {
+  public void shouldStoreActivityLogIfEnabled() {
     Frame request1 = FrameUtils.wrapRequest(new Query("use myks"));
     QueryOptions options =
         new QueryOptions(
@@ -188,13 +205,12 @@ public class BoundNodeTest {
             Long.MIN_VALUE);
     Query query2 = new Query("select * from table1", options);
     Frame request2 = FrameUtils.wrapRequest(query2);
-    channel.writeInbound(request1);
-    channel.readOutbound();
-    channel.writeInbound(request2);
-    channel.readOutbound();
+    loggedChannel.writeInbound(request1);
+    loggedChannel.readOutbound();
+    loggedChannel.writeInbound(request2);
+    loggedChannel.readOutbound();
 
-    assertThat(node.getCluster().getActivityLog()).isInstanceOf(ActivityLog.class);
-    ActivityLog activityLog = node.getCluster().getActivityLog();
+    ActivityLog activityLog = loggedNode.getCluster().getActivityLog();
     assertThat(activityLog.getSize()).isEqualTo(2);
     QueryLog log1 = activityLog.getLogs().get(0);
     assertThat(log1.getQuery()).isEqualTo("use myks");
@@ -202,5 +218,19 @@ public class BoundNodeTest {
     QueryLog log2 = activityLog.getLogs().get(1);
     assertThat(log2.getQuery()).isEqualTo("select * from table1");
     assertThat(log2.getConsistency()).isEqualTo(ProtocolConstants.ConsistencyLevel.QUORUM);
+  }
+
+  @Test
+  public void shouldNotStoreActivityLogIfDisabled() {
+    Frame request1 = FrameUtils.wrapRequest(new Query("use myks"));
+    Query query2 = new Query("select * from table1");
+    Frame request2 = FrameUtils.wrapRequest(query2);
+    channel.writeInbound(request1);
+    channel.readOutbound();
+    channel.writeInbound(request2);
+    channel.readOutbound();
+
+    ActivityLog activityLog = node.getCluster().getActivityLog();
+    assertThat(activityLog.getSize()).isEqualTo(0);
   }
 }

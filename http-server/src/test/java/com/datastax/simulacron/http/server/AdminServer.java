@@ -1,9 +1,8 @@
 package com.datastax.simulacron.http.server;
 
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
-import com.datastax.simulacron.common.cluster.QueryPrime;
+import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.server.Server;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
@@ -13,6 +12,8 @@ import org.junit.rules.ExternalResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -36,6 +37,8 @@ public class AdminServer extends ExternalResource {
 
   private ObjectMapper om = ObjectMapperHolder.getMapper();
 
+  private final Server.Builder serverBuilder;
+
   Logger logger = LoggerFactory.getLogger(AdminServer.class);
 
   public AdminServer() {
@@ -43,14 +46,19 @@ public class AdminServer extends ExternalResource {
   }
 
   public AdminServer(Cluster cluster) {
+    this(cluster, Server.builder());
+  }
+
+  public AdminServer(Cluster cluster, Server.Builder serverBuilder) {
     this.clusterRequest = cluster;
+    this.serverBuilder = serverBuilder;
   }
 
   @Override
   protected void before() throws Exception {
     vertx = Vertx.vertx();
     httpContainer = new HttpContainer(port++, true);
-    nativeServer = Server.builder().build();
+    nativeServer = serverBuilder.build();
 
     if (clusterRequest != null) {
       cluster = nativeServer.register(clusterRequest).get(10, TimeUnit.SECONDS);
@@ -133,5 +141,14 @@ public class AdminServer extends ExternalResource {
   public HttpTestResponse prime(QueryPrime prime) throws Exception {
     String jsonPrime = om.writerWithDefaultPrettyPrinter().writeValueAsString(prime);
     return post("/prime-query-single", jsonPrime);
+  }
+
+  public <T> T mapTo(HttpTestResponse response, Class<T> clazz) throws IOException {
+    return om.readValue(response.body, clazz);
+  }
+
+  public List<QueryLog> getLogs(AbstractNodeProperties topic) throws Exception {
+    String path = topic.resolveId();
+    return om.readValue(get("/log/" + path).body, new TypeReference<List<QueryLog>>() {});
   }
 }

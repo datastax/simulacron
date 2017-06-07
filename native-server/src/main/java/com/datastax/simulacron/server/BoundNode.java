@@ -73,6 +73,8 @@ class BoundNode extends Node {
 
   private final transient StubStore stubStore;
 
+  private final boolean activityLogging;
+
   enum RejectScope {
     UNBIND, // unbind the channel so can't establish TCP connection
     REJECT_STARTUP // keep channel bound so can establish TCP connection, but doesn't reply to startup.
@@ -105,12 +107,14 @@ class BoundNode extends Node {
       ServerBootstrap bootstrap,
       Timer timer,
       Channel channel,
-      StubStore stubStore) {
+      StubStore stubStore,
+      boolean activityLogging) {
     super(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
     this.bootstrap = bootstrap;
     this.timer = timer;
     this.channel = new AtomicReference<>(channel);
     this.stubStore = stubStore;
+    this.activityLogging = activityLogging;
   }
 
   @Override
@@ -227,9 +231,9 @@ class BoundNode extends Node {
     logger.debug("Got request streamId: {} msg: {}", frame.streamId, frame.message);
 
     //store the frame in history
-    Node clusterNode =
-        getCluster().getNodes().stream().filter(n -> n.getId() == getId()).findFirst().get();
-    getCluster().getActivityLog().addLog(clusterNode, frame);
+    if (activityLogging) {
+      getCluster().getActivityLog().addLog(this, frame);
+    }
 
     // On receiving a message, first check the stub store to see if there is handling logic for it.
     // If there is, handle each action.

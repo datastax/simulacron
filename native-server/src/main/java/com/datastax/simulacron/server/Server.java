@@ -73,17 +73,22 @@ public final class Server {
   /** Mapping of registered {@link Cluster} instances to their identifier. */
   private final Map<Long, Cluster> clusters = new ConcurrentHashMap<>();
 
+  /** Whether or not activity logging is enabled. */
+  private final boolean activityLogging;
+
   private Server(
       AddressResolver addressResolver,
       ServerBootstrap serverBootstrap,
       Timer timer,
       long bindTimeoutInNanos,
-      StubStore stubStore) {
+      StubStore stubStore,
+      boolean activityLogging) {
     this.serverBootstrap = serverBootstrap;
     this.addressResolver = addressResolver;
     this.timer = timer;
     this.bindTimeoutInNanos = bindTimeoutInNanos;
     this.stubStore = stubStore;
+    this.activityLogging = activityLogging;
   }
 
   /**
@@ -106,6 +111,11 @@ public final class Server {
     return this.stubStore.clearAllMatchingType(clazz);
   }
 
+  /** see {@link #register(Cluster, ServerOptions)} */
+  public CompletableFuture<Cluster> register(Cluster cluster) {
+    return register(cluster, ServerOptions.DEFAULT);
+  }
+
   /**
    * Registers a {@link Cluster} and binds it's {@link Node} instances to their respective
    * interfaces. If any members of the cluster lack an id, this will assign a random one for them.
@@ -116,15 +126,20 @@ public final class Server {
    * Server.Builder#withBindTimeout(long, TimeUnit)}.
    *
    * @param cluster cluster to register
+   * @param serverOptions custom server options to use when registering this cluster.
    * @return A future that when it completes provides an updated {@link Cluster} with ids and
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
-  public CompletableFuture<Cluster> register(Cluster cluster) {
+  public CompletableFuture<Cluster> register(Cluster cluster, ServerOptions serverOptions) {
     long clusterId = clusterCounter.getAndIncrement();
     Cluster c = Cluster.builder().copy(cluster).withId(clusterId).build();
 
     List<CompletableFuture<Node>> bindFutures = new ArrayList<>();
 
+    boolean activityLogging =
+        serverOptions.isActivityLoggingEnabled() != null
+            ? serverOptions.isActivityLoggingEnabled()
+            : this.activityLogging;
     int dcPos = 0;
     int nPos = 0;
     for (DataCenter dataCenter : cluster.getDataCenters()) {
@@ -143,7 +158,7 @@ public final class Server {
           long nodeOffset = nPos * nodeBase;
           tokenStr = "" + (nodeOffset + dcOffset);
         }
-        bindFutures.add(bindInternal(node, dc, tokenStr));
+        bindFutures.add(bindInternal(node, dc, tokenStr, activityLogging));
         nPos++;
       }
       dcPos++;
@@ -259,6 +274,11 @@ public final class Server {
         .thenApply(__ -> futures.size());
   }
 
+  /** see {@link #register(Node, ServerOptions)} */
+  public CompletableFuture<Node> register(Node node) {
+    return register(node, ServerOptions.DEFAULT);
+  }
+
   /**
    * Convenience method that registers a {@link Node} by wrapping it in a 'dummy' {@link Cluster}
    * and registering that.
@@ -267,10 +287,11 @@ public final class Server {
    * fail with an {@link IllegalArgumentException}.
    *
    * @param node node to register.
+   * @param serverOptions custom server options to use when registering this node.
    * @return A future that when it completes provides an updated {@link Cluster} with ids and
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
-  public CompletableFuture<Node> register(Node node) {
+  public CompletableFuture<Node> register(Node node, ServerOptions serverOptions) {
     if (node.getDataCenter() != null) {
       CompletableFuture<Node> future = new CompletableFuture<>();
       future.completeExceptionally(
@@ -284,8 +305,15 @@ public final class Server {
 
     clusters.put(clusterId, dummyCluster);
 
+    boolean activityLogging =
+        serverOptions.isActivityLoggingEnabled() != null
+            ? serverOptions.isActivityLoggingEnabled()
+            : this.activityLogging;
     return bindInternal(
-        node, dummyDataCenter, node.resolvePeerInfo("token").orElse("0").toString());
+        node,
+        dummyDataCenter,
+        node.resolvePeerInfo("token").orElse("0").toString(),
+        activityLogging);
   }
 
   /** @return a map of registered {@link Cluster} instances keyed by their identifier. */
@@ -298,7 +326,8 @@ public final class Server {
     return this.stubStore;
   }
 
-  private CompletableFuture<Node> bindInternal(Node refNode, DataCenter parent, String token) {
+  private CompletableFuture<Node> bindInternal(
+      Node refNode, DataCenter parent, String token, boolean activityLogging) {
     // derive a token for this node. This is done here as the ordering of nodes under a
     // data center is changed when it is bound.
     Map<String, Object> newPeerInfo = new HashMap<>(refNode.getPeerInfo());
@@ -329,7 +358,8 @@ public final class Server {
                         serverBootstrap,
                         timer,
                         channelFuture.channel(),
-                        stubStore);
+                        stubStore,
+                        activityLogging);
                 logger.info("Bound {} to {}", node, channelFuture.channel());
                 channelFuture.channel().attr(HANDLER).set(node);
                 f.complete(node);
@@ -405,6 +435,8 @@ public final class Server {
 
     private StubStore stubStore;
 
+    private boolean activityLogging = true;
+
     Builder(ServerBootstrap initialBootstrap) {
       this.serverBootstrap = initialBootstrap;
     }
@@ -459,6 +491,17 @@ public final class Server {
       return this;
     }
 
+    /**
+     * Whether or not to enable activity logging. By default it is enabled.
+     *
+     * @param enabled enablement flag.
+     * @return This builder.
+     */
+    public Builder withActivityLoggingEnabled(boolean enabled) {
+      this.activityLogging = enabled;
+      return this;
+    }
+
     /** @return a {@link Server} instance based on this builder's configuration. */
     public Server build() {
       if (stubStore == null) {
@@ -480,7 +523,8 @@ public final class Server {
       if (timer == null) {
         this.timer = new HashedWheelTimer();
       }
-      return new Server(addressResolver, serverBootstrap, timer, bindTimeoutInNanos, stubStore);
+      return new Server(
+          addressResolver, serverBootstrap, timer, bindTimeoutInNanos, stubStore, activityLogging);
     }
   }
 

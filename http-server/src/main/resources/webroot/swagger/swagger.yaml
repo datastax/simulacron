@@ -60,6 +60,11 @@ paths:
           description: The name to give this Cluster.  This only applies if `data_centers` is specified.
           required: false
           type: string
+        - in: query
+          name: activity_log
+          description: Whether or not to enable activity logging of queries.  By default falls back to global behavior (which itself defaults to true).
+          required: false
+          type: boolean
         - in: body
           name: body
           description: >

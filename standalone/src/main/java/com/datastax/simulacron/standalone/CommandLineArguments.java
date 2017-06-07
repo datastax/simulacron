@@ -39,6 +39,12 @@ class CommandLineArguments {
   Level logLevel = Level.INFO;
 
   @Parameter(
+    names = {"--disable-activity-log", "-d"},
+    description = "Disables activity logging by default"
+  )
+  boolean disableActivityLogging = false;
+
+  @Parameter(
     names = {"--help", "-h"},
     hidden = true
   )

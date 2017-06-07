@@ -53,7 +53,11 @@ public class App {
           e);
     }
     byte[] ipBytes = ipAddress.getAddress();
-    Server nativeServer = Server.builder().withAddressResolver(new Inet4Resolver(ipBytes)).build();
+    Server nativeServer =
+        Server.builder()
+            .withAddressResolver(new Inet4Resolver(ipBytes))
+            .withActivityLoggingEnabled(!cli.disableActivityLogging)
+            .build();
 
     // TODO: There should probably be a module in http-server for setting up the http server instead of doing it here.
     ClusterManager provisioner = new ClusterManager(nativeServer);

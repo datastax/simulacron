@@ -3,6 +3,7 @@ package com.datastax.simulacron.http.server;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.simulacron.server.Server;
+import com.datastax.simulacron.server.ServerOptions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
@@ -52,6 +53,9 @@ public class ClusterManager implements HttpListener {
                 String dcRawString = context.request().getParam("data_centers");
                 String dseVersion = context.request().getParam("dse_version");
                 String cassandraVersion = context.request().getParam("cassandra_version");
+                String activityLog = context.request().getParam("activity_log");
+                Boolean activityLogEnabled =
+                    activityLog != null ? Boolean.parseBoolean(activityLog) : null;
                 String name = context.request().getParam("name");
                 StringBuilder response = new StringBuilder();
                 Cluster cluster = null;
@@ -75,7 +79,12 @@ public class ClusterManager implements HttpListener {
                   String jsonBody = totalBuffer.toString();
                   cluster = om.readValue(jsonBody, Cluster.class);
                 }
-                CompletableFuture<Cluster> future = server.register(cluster);
+                CompletableFuture<Cluster> future =
+                    server.register(
+                        cluster,
+                        ServerOptions.builder()
+                            .withActivityLoggingEnabled(activityLogEnabled)
+                            .build());
                 future.whenComplete(
                     (completedCluster, ex) -> {
                       if (ex == null) {

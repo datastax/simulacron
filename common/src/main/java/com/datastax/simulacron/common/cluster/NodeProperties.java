@@ -110,6 +110,14 @@ public interface NodeProperties {
   }
 
   /**
+   * @return {@link NodeProperties#getName()} for this, and if there are parents, prefixes parent's
+   *     name(s) separated by '/', otherwise returns.
+   */
+  default String resolveIdPath() {
+    return getParent().map(p -> p.resolveIdPath() + "/").orElse("") + getId();
+  }
+
+  /**
    * @param key peer column name
    * @return the value for this peer column for this if set, otherwise its parents. If it is not
    *     set, Optional.empty is returned.
