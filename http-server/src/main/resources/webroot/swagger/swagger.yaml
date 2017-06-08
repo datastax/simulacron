@@ -140,9 +140,9 @@ paths:
       parameters:
         - name: id
           in: path
-          description: Id of the cluster
+          description: Id or name of the cluster
           required: true
-          type: integer
+          type: string
       responses:
         '200':
           description: Cluster state
@@ -162,9 +162,9 @@ paths:
       parameters:
         - name: id
           in: path
-          description: Id of the cluster
+          description: Id or name of the cluster
           required: true
-          type: integer
+          type: string
       responses:
         '202':
           description: Cluster deleted
@@ -223,9 +223,9 @@ paths:
       parameters:
         - name: clusterId
           in: path
-          description: Id of the cluster
+          description: Id or name of the cluster
           required: true
-          type: integer
+          type: string
         - name: body
           in: body
           description: >
@@ -254,14 +254,14 @@ paths:
       parameters:
         - name: clusterId
           in: path
-          description: Id of the cluster
+          description: Id or name of the cluster
           required: true
-          type: integer
+          type: string
         - name: datacenterId
           in: path
-          description: Id of the datacenter
+          description: Id or name of the datacenter
           required: true
-          type: integer
+          type: string
         - name: body
           in: body
           description: >
@@ -290,19 +290,19 @@ paths:
       parameters:
         - name: clusterId
           in: path
-          description: Id of the cluster
+          description: Id or name of the cluster
           required: true
-          type: integer
+          type: string
         - name: datacenterId
           in: path
-          description: Id of the datacenter
+          description: Id or name of the datacenter
           required: true
-          type: integer
+          type: string
         - name: nodeId
           in: path
-          description: Id of the node
+          description: Id or name of the node
           required: true
-          type: integer
+          type: string
         - name: body
           in: body
           description: >
@@ -811,9 +811,9 @@ paths:
       parameters:
         - name: clusterId
           in: path
-          description: Id of the cluster
+          description: Id or name of the cluster
           required: true
-          type: integer
+          type: string
       responses:
         '200':
           description: Queries executed
@@ -836,14 +836,14 @@ paths:
       parameters:
         - name: clusterId
           in: path
-          description: Id of the cluster
+          description: Id or name of the cluster
           required: true
-          type: integer
+          type: string
         - name: datacenterId
           in: path
-          description: Id of the datacenter
+          description: Id or name of the datacenter
           required: true
-          type: integer
+          type: string
       responses:
         '200':
           description: Queries executed
@@ -866,19 +866,19 @@ paths:
       parameters:
         - name: clusterId
           in: path
-          description: Id of the cluster
+          description: Id or name of the cluster
           required: true
-          type: integer
+          type: string
         - name: datacenterId
           in: path
-          description: Id of the datacenter
+          description: Id or name of the datacenter
           required: true
-          type: integer
+          type: string
         - name: nodeId
           in: path
-          description: Id of the node
+          description: Id or name of the node
           required: true
-          type: integer
+          type: string
       responses:
         '200':
           description: Queries executed
