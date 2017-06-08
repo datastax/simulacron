@@ -12,8 +12,6 @@ import io.vertx.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
@@ -58,7 +56,8 @@ public class QueryManager implements HttpListener {
                 String nodeIdToFetchS = context.request().getParam("nodeIdOrName");
 
                 Scope scope =
-                    this.parseQueryParameters(idToFetchS, dcIdToFetchS, nodeIdToFetchS, context);
+                    HttpUtils.parseQueryParameters(
+                        idToFetchS, dcIdToFetchS, nodeIdToFetchS, context, server);
                 if (scope == null) {
                   return;
                 }
@@ -116,7 +115,8 @@ public class QueryManager implements HttpListener {
               String nodeIdToFetchS = context.request().getParam("nodeId");
 
               Scope scope =
-                  this.parseQueryParameters(idToFetchS, dcIdToFetchS, nodeIdToFetchS, context);
+                  HttpUtils.parseQueryParameters(
+                      idToFetchS, dcIdToFetchS, nodeIdToFetchS, context, server);
               if (scope == null) {
                 return;
               }
@@ -131,128 +131,6 @@ public class QueryManager implements HttpListener {
                 handleMessage(new Message("Cleared " + cleared + " primed queries", 202), context);
               }
             });
-  }
-
-  /**
-   * This is an async callback that will be invoked whenever a request to /log is submitted with
-   * GET. When a clusterIdOrName is provided in the format of /log/:clusterIdOrName, we will fetch
-   * that specific id.
-   *
-   * <p>Example supported HTTP requests
-   *
-   * <p>GET http://iphere:porthere/log/:clusterIdOrName Will return all queries invoked by clients
-   * to a cluster
-   *
-   * <p>GET http://iphere:porthere/log/:clusterIdOrName/:datacenterIdOrName Will return all queries
-   * invoked by clients to a datacenter of a cluster
-   *
-   * <p>GET http://iphere:porthere/log/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName Will
-   * return all queries invoked by clients to a node of a datacenter of a cluster
-   *
-   * @param context RoutingContext Provided by vertx
-   */
-  private void getQueryLog(RoutingContext context) {
-    context
-        .request()
-        .bodyHandler(
-            totalBuffer -> {
-              try {
-                Map<Long, Cluster> clusters = this.server.getClusterRegistry();
-                ObjectMapper om = ObjectMapperHolder.getMapper();
-                StringBuilder response = new StringBuilder();
-                String idToFetchS = context.request().getParam("clusterIdOrName");
-                String dcIdToFetchS = context.request().getParam("datacenterIdOrName");
-                String nodeIdToFetchS = context.request().getParam("nodeIdOrName");
-
-                Scope scope =
-                    this.parseQueryParameters(idToFetchS, dcIdToFetchS, nodeIdToFetchS, context);
-
-                if (scope == null) {
-                  return;
-                }
-
-                if (scope.getClusterId() != null) {
-                  Cluster cluster = clusters.get(scope.getClusterId());
-                  List<QueryLog> logs = cluster.getActivityLog().getLogs();
-                  if (scope.getDatacenterId() != null) {
-                    Long dcId = scope.getDatacenterId();
-                    if (scope.getNodeId() != null) {
-                      logs = cluster.getActivityLog().getLogsFromNode(dcId, scope.getNodeId());
-                    } else {
-                      logs = cluster.getActivityLog().getLogsFromDatacenter(dcId);
-                    }
-                  }
-
-                  String activityLogStr =
-                      om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
-                  response.append(activityLogStr);
-                } else {
-                  String clusterStr =
-                      om.writerWithDefaultPrettyPrinter().writeValueAsString(clusters.values());
-                  response.append(clusterStr);
-                }
-                context
-                    .request()
-                    .response()
-                    .putHeader("content-type", "application/json")
-                    .setStatusCode(200)
-                    .end(response.toString());
-              } catch (Exception e) {
-                handleError(new ErrorMessage(e, 404), context);
-              }
-            });
-  }
-
-  private Scope parseQueryParameters(
-      String idToFetchS, String dcIdToFetchS, String nodeIdToFetchS, RoutingContext context) {
-    Long idToFetch = null;
-    Long dcIdToFetch = null;
-    Long nodeIdToFetch = null;
-
-    if (idToFetchS != null) {
-      Optional<Long> clusterId = server.getClusterIdFromIdOrName(idToFetchS);
-      if (clusterId.isPresent()) {
-        idToFetch = clusterId.get();
-
-        if (dcIdToFetchS != null) {
-          Optional<Long> dcId = server.getDatacenterIdFromIdOrName(idToFetch, dcIdToFetchS);
-          if (dcId.isPresent()) {
-            dcIdToFetch = dcId.get();
-
-            if (nodeIdToFetchS != null) {
-              Optional<Long> nodeId =
-                  server.getNodeIdFromIdOrName(idToFetch, dcIdToFetch, nodeIdToFetchS);
-
-              if (nodeId.isPresent()) {
-                nodeIdToFetch = nodeId.get();
-              } else {
-                handleError(
-                    new ErrorMessage(
-                        "No node registered with id "
-                            + idToFetch
-                            + "/"
-                            + dcIdToFetch
-                            + "/"
-                            + nodeIdToFetchS,
-                        404),
-                    context);
-                return null;
-              }
-            }
-          } else {
-            handleError(
-                new ErrorMessage(
-                    "No datacenter registered with id " + idToFetchS + "/" + dcIdToFetchS, 404),
-                context);
-            return null;
-          }
-        }
-      } else {
-        handleError(new ErrorMessage("No cluster registered with id " + idToFetchS, 404), context);
-        return null;
-      }
-    }
-    return new Scope(idToFetch, dcIdToFetch, nodeIdToFetch);
   }
 
   /**
@@ -305,14 +183,5 @@ public class QueryManager implements HttpListener {
             "/prime-query-single/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::primeQuery);
     router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
-
-    //Logging queries
-    router.route(HttpMethod.GET, "/log/:clusterIdOrName").handler(this::getQueryLog);
-    router
-        .route(HttpMethod.GET, "/log/:clusterIdOrName/:datacenterIdOrName")
-        .handler(this::getQueryLog);
-    router
-        .route(HttpMethod.GET, "/log/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
-        .handler(this::getQueryLog);
   }
 }

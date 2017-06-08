@@ -15,6 +15,7 @@ import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.oss.protocol.internal.response.result.Void;
 import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import com.datastax.simulacron.common.stubbing.StubMapping;
@@ -214,10 +215,11 @@ public class BoundNodeTest {
     assertThat(activityLog.getSize()).isEqualTo(2);
     QueryLog log1 = activityLog.getLogs().get(0);
     assertThat(log1.getQuery()).isEqualTo("use myks");
-    assertThat(log1.getConsistency()).isEqualTo(ProtocolConstants.ConsistencyLevel.ONE);
+    assertThat(ConsistencyLevel.fromString(log1.getConsistency())).isEqualTo(ConsistencyLevel.ONE);
     QueryLog log2 = activityLog.getLogs().get(1);
     assertThat(log2.getQuery()).isEqualTo("select * from table1");
-    assertThat(log2.getConsistency()).isEqualTo(ProtocolConstants.ConsistencyLevel.QUORUM);
+    assertThat(ConsistencyLevel.fromString(log2.getConsistency()))
+        .isEqualTo(ConsistencyLevel.QUORUM);
   }
 
   @Test

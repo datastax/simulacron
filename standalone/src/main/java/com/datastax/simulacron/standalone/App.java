@@ -3,10 +3,7 @@ package com.datastax.simulacron.standalone;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.beust.jcommander.JCommander;
-import com.datastax.simulacron.http.server.ClusterManager;
-import com.datastax.simulacron.http.server.HttpContainer;
-import com.datastax.simulacron.http.server.QueryManager;
-import com.datastax.simulacron.http.server.SwaggerUI;
+import com.datastax.simulacron.http.server.*;
 import com.datastax.simulacron.server.AddressResolver.Inet4Resolver;
 import com.datastax.simulacron.server.Server;
 import org.slf4j.LoggerFactory;
@@ -65,6 +62,9 @@ public class App {
 
     QueryManager queryManager = new QueryManager(nativeServer);
     queryManager.registerWithRouter(httpServer.getRouter());
+
+    ActivityLogManager logManager = new ActivityLogManager(nativeServer);
+    logManager.registerWithRouter(httpServer.getRouter());
 
     SwaggerUI swaggerUI = new SwaggerUI();
     swaggerUI.registerWithRouter(httpServer.getRouter());

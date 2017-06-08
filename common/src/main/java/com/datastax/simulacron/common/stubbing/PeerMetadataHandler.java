@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
 import static com.datastax.simulacron.common.codec.CodecUtils.*;
 
-public class PeerMetadataHandler extends StubMapping {
+public class PeerMetadataHandler extends InternalStubMapping {
 
   private static final List<String> queries = new ArrayList<>();
   private static final List<Pattern> queryPatterns = new ArrayList();

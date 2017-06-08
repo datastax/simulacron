@@ -68,6 +68,8 @@ public class AdminServer extends ExternalResource {
     provisioner.registerWithRouter(httpContainer.getRouter());
     QueryManager qManager = new QueryManager(nativeServer);
     qManager.registerWithRouter(httpContainer.getRouter());
+    ActivityLogManager logManager = new ActivityLogManager(nativeServer);
+    logManager.registerWithRouter(httpContainer.getRouter());
     httpContainer.start();
     client = vertx.createHttpClient();
   }
@@ -150,5 +152,13 @@ public class AdminServer extends ExternalResource {
   public List<QueryLog> getLogs(AbstractNodeProperties topic) throws Exception {
     String path = topic.resolveId();
     return om.readValue(get("/log/" + path).body, new TypeReference<List<QueryLog>>() {});
+  }
+
+  public List<QueryLog> getLogs(String path) throws Exception {
+    return om.readValue(get("/log/" + path).body, new TypeReference<List<QueryLog>>() {});
+  }
+
+  public ObjectMapper getObjectMapper() {
+    return om;
   }
 }

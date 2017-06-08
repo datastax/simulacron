@@ -11,11 +11,8 @@ import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.stubbing.Action;
-import com.datastax.simulacron.common.stubbing.DisconnectAction;
+import com.datastax.simulacron.common.stubbing.*;
 import com.datastax.simulacron.common.stubbing.DisconnectAction.CloseType;
-import com.datastax.simulacron.common.stubbing.MessageResponseAction;
-import com.datastax.simulacron.common.stubbing.NoResponseAction;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -229,17 +226,26 @@ class BoundNode extends Node {
 
   void handle(ChannelHandlerContext ctx, Frame frame) {
     logger.debug("Got request streamId: {} msg: {}", frame.streamId, frame.message);
-
-    //store the frame in history
-    if (activityLogging) {
-      getCluster().getActivityLog().addLog(this, frame);
-    }
-
     // On receiving a message, first check the stub store to see if there is handling logic for it.
     // If there is, handle each action.
     // Otherwise delegate to default behavior.
-    List<Action> actions = stubStore.handle(this, frame);
-    if (actions.size() != 0) {
+    Optional<StubMapping> stubOption = stubStore.find(this, frame);
+    List<Action> actions = null;
+    boolean isPrimed = false;
+    if (stubOption.isPresent()) {
+      StubMapping stub = stubOption.get();
+      isPrimed = !(stub instanceof InternalStubMapping);
+      actions = stub.getActions(this, frame);
+    }
+
+    //store the frame in history
+    if (activityLogging) {
+      getCluster()
+          .getActivityLog()
+          .addLog(this, frame, ctx.channel().remoteAddress(), System.currentTimeMillis(), isPrimed);
+    }
+
+    if (actions != null && !actions.isEmpty()) {
       // TODO: It might be useful to tie behavior to completion of actions but for now this isn't necessary.
       CompletableFuture<Void> future = new CompletableFuture<>();
       handleActions(actions.iterator(), ctx, frame, future);

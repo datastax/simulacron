@@ -12,11 +12,9 @@ import java.nio.ByteBuffer;
 import java.util.*;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INT;
-import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecBuilder;
-import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecs;
-import static com.datastax.simulacron.common.codec.CodecUtils.primitive;
+import static com.datastax.simulacron.common.codec.CodecUtils.*;
 
-public class EmptyReturnMetadataHandler extends StubMapping {
+public class EmptyReturnMetadataHandler extends InternalStubMapping {
 
   private List<String> queries = new ArrayList<>();
 

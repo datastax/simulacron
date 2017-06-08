@@ -48,6 +48,8 @@ public class HttpContainerIntegrationTest {
     provisioner.registerWithRouter(httpContainer.getRouter());
     QueryManager qManager = new QueryManager(nativeServer);
     qManager.registerWithRouter(httpContainer.getRouter());
+    ActivityLogManager logManager = new ActivityLogManager(nativeServer);
+    logManager.registerWithRouter(httpContainer.getRouter());
     httpContainer.start();
   }
 
@@ -396,65 +398,6 @@ public class HttpContainerIntegrationTest {
           makeNativeQueryWithPositionalParam(
               "SELECT table FROM foo WHERE c1=?", contactPoint, "d1");
       assertThat(set.all().size()).isEqualTo(0);
-    } catch (Exception e) {
-      fail("error encountered");
-    }
-  }
-
-  @Test
-  public void testVerifyQueriesFromCluster() {
-    try {
-      HttpClient client = vertx.createHttpClient();
-      Cluster clusterCreated = this.createSingleNodeCluster(client);
-
-      createSimplePrimedQuery("Select * FROM TABLE1");
-      createSimplePrimedQuery("Select * FROM TABLE2");
-
-      String contactPoint = getContactPointString(clusterCreated);
-      makeNativeQuery("Select * FROM TABLE1", contactPoint);
-      makeNativeQuery("Select * FROM TABLE2", contactPoint);
-
-      HttpTestResponse queryLogResponse = getQueryLog(client, clusterCreated.getId().toString());
-      assertThat(queryLogResponse.body).isNotEmpty();
-      QueryLog[] queryLogs = om.readValue(queryLogResponse.body, QueryLog[].class);
-      assertThat(queryLogs).isNotNull();
-      assertThat(queryLogs.length).isGreaterThan(2);
-
-      queryLogResponse = getQueryLog(client, clusterCreated.getName());
-      assertThat(queryLogResponse.body).isNotEmpty();
-      queryLogs = om.readValue(queryLogResponse.body, QueryLog[].class);
-      assertThat(queryLogs).isNotNull();
-      assertThat(queryLogs.length).isGreaterThan(2);
-    } catch (Exception e) {
-      fail("error encountered");
-    }
-  }
-
-  @Test
-  public void testVerifyQueriesFromDataCenterAndNode() {
-    try {
-      HttpClient client = vertx.createHttpClient();
-      Cluster clusterCreated = this.createMultiNodeCluster(client, "3,3");
-
-      createSimplePrimedQuery("Select * FROM TABLE1");
-      createSimplePrimedQuery("Select * FROM TABLE2");
-
-      String contactPoint = getContactPointString(clusterCreated);
-      makeNativeQuery("Select * FROM TABLE1", contactPoint);
-      makeNativeQuery("Select * FROM TABLE2", contactPoint);
-
-      HttpTestResponse queryLogResponse =
-          getQueryLog(client, clusterCreated.getName() + "/0/node1");
-      assertThat(queryLogResponse.body).isNotEmpty();
-      QueryLog[] queryLogs = om.readValue(queryLogResponse.body, QueryLog[].class);
-      assertThat(queryLogs).isNotNull();
-      assertThat(queryLogs.length).isGreaterThanOrEqualTo(2);
-
-      queryLogResponse = getQueryLog(client, clusterCreated.getId() + "/dc2");
-      assertThat(queryLogResponse.body).isNotEmpty();
-      queryLogs = om.readValue(queryLogResponse.body, QueryLog[].class);
-      assertThat(queryLogs).isNotNull();
-      assertThat(queryLogs.length).isEqualTo(0);
     } catch (Exception e) {
       fail("error encountered");
     }

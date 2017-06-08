@@ -840,6 +840,15 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+        - name: filter
+          in: query
+          description: >
+            Filter executed queries. Use this paremeter to filter primed or non primed executed queries.
+
+            Accepts "primed" or "nonprimed" values. If not set it will return all queries.
+          required: false
+          type: string
+          example: primed
       responses:
         '200':
           description: Queries executed
@@ -848,7 +857,27 @@ paths:
             items :
               $ref : '#/definitions/QueryLog'
         '404':
-          description: Not found
+          description: Cluster not found
+    delete:
+      tags:
+        - log
+      summary: Delete all activity log queries executed by clients on a cluster.
+      operationId: deleteLogByCluster
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+      responses:
+        '204':
+          description: Log deleted
+        '404':
+          description: Cluster not found
   '/log/{clusterId}/{datacenterId}':
     get:
       tags:
@@ -870,6 +899,15 @@ paths:
           description: Id or name of the datacenter
           required: true
           type: string
+        - name: filter
+          in: query
+          description: >
+            Filter executed queries. Use this paremeter to filter primed or non primed executed queries.
+
+            Accepts "primed" or "nonprimed" values. If not set it will return all queries.
+          required: false
+          type: string
+          example: primed
       responses:
         '200':
           description: Queries executed
@@ -878,7 +916,32 @@ paths:
             items :
               $ref : '#/definitions/QueryLog'
         '404':
-          description: Not found
+          description: Cluster/Datacenter not found
+    delete:
+      tags:
+        - log
+      summary: Delete all activity log queries executed by clients on a data center.
+      operationId: deleteLogByDataCenter
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: datacenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+      responses:
+        '204':
+          description: Log deleted
+        '404':
+          description: Cluster/Datacenter not found
   '/log/{clusterId}/{datacenterId}/{nodeId}':
     get:
       tags:
@@ -905,6 +968,15 @@ paths:
           description: Id or name of the node
           required: true
           type: string
+        - name: filter
+          in: query
+          description: >
+            Filter executed queries. Use this paremeter to filter primed or non primed executed queries.
+
+            Accepts "primed" or "nonprimed" values. If not set it will return all queries.
+          required: false
+          type: string
+          example: primed
       responses:
         '200':
           description: Queries executed
@@ -913,7 +985,37 @@ paths:
             items :
               $ref : '#/definitions/QueryLog'
         '404':
-          description: Not found
+          description: Cluster/Datacenter/Node not found
+    delete:
+      tags:
+        - log
+      summary: Delete all activity log queries executed by clients on a node.
+      operationId: deleteLogByNode
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: datacenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+        - name: nodeId
+          in: path
+          description: Id or name of the node
+          required: true
+          type: string
+      responses:
+        '204':
+          description: Log deleted
+        '404':
+          description: Cluster/Datacenter/Node not found
 definitions:
   DataType:
     type: string
@@ -1716,13 +1818,21 @@ definitions:
         type: string
         example: "select * from tbl"
       consistency_level:
-        type: integer
-        example: 10 (LOCAL_QUORUM)
+        type: string
+        example: "LOCAL_QUORUM"
+      connection:
+        type: string
+        example: "/127.0.0.1:34662"
+      timestamp:
+        type: long
+        description: Current timemillis
     example:
       datacenter_id: 1
       node_id: 0
       query: "select * from tbl"
-      consistency_level: 10
+      consistency_level: "LOCAL_QUORUM"
+      connection: "/127.0.0.1:34662"
+      timestamp: 1496955368551
 
   Error:
     type: object
