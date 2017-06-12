@@ -1,10 +1,7 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.oss.protocol.internal.response.result.RawType;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
-import com.datastax.simulacron.common.cluster.QueryLog;
-import com.datastax.simulacron.common.cluster.QueryPrime;
+import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
@@ -59,65 +56,16 @@ public class QueryManager implements HttpListener {
                 String idToFetchS = context.request().getParam("clusterIdOrName");
                 String dcIdToFetchS = context.request().getParam("datacenterIdOrName");
                 String nodeIdToFetchS = context.request().getParam("nodeIdOrName");
-                Long idToFetch = null;
-                Long dcIdToFetch = null;
-                Long nodeIdToFetch = null;
 
-                if (idToFetchS != null) {
-                  Optional<Long> clusterId = server.getClusterIdFromIdOrName(idToFetchS);
-                  if (clusterId.isPresent()) {
-                    idToFetch = clusterId.get();
-
-                    if (dcIdToFetchS != null) {
-                      Optional<Long> dcId =
-                          server.getDatacenterIdFromIdOrName(idToFetch, dcIdToFetchS);
-                      if (dcId.isPresent()) {
-                        dcIdToFetch = dcId.get();
-
-                        if (nodeIdToFetchS != null) {
-                          Optional<Long> nodeId =
-                              server.getNodeIdFromIdOrName(idToFetch, dcIdToFetch, nodeIdToFetchS);
-
-                          if (nodeId.isPresent()) {
-                            nodeIdToFetch = nodeId.get();
-                          } else {
-                            handleError(
-                                new ErrorMessage(
-                                    "No node registered with id "
-                                        + idToFetch
-                                        + "/"
-                                        + dcIdToFetch
-                                        + "/"
-                                        + nodeIdToFetchS,
-                                    404),
-                                context);
-                            return;
-                          }
-                        }
-                      } else {
-                        handleError(
-                            new ErrorMessage(
-                                "No datacenter registered with id "
-                                    + idToFetchS
-                                    + "/"
-                                    + dcIdToFetchS,
-                                404),
-                            context);
-                        return;
-                      }
-                    }
-                  } else {
-                    handleError(
-                        new ErrorMessage("No cluster registered with id " + idToFetchS, 404),
-                        context);
-                    return;
-                  }
+                Scope scope =
+                    this.parseQueryParameters(idToFetchS, dcIdToFetchS, nodeIdToFetchS, context);
+                if (scope == null) {
+                  return;
                 }
 
                 jsonBody = totalBuffer.toString();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 QueryPrime query = om.readValue(jsonBody, QueryPrime.class);
-                query.then.setScope(idToFetch, dcIdToFetch, nodeIdToFetch);
 
                 if (query.then instanceof SuccessResult) {
                   SuccessResult success = (SuccessResult) query.then;
@@ -129,8 +77,10 @@ public class QueryManager implements HttpListener {
                     }
                   }
                 }
+                QueryHandler queryHandler = new QueryHandler(query);
+                queryHandler.setScope(scope);
 
-                server.registerStub(new QueryHandler(query));
+                server.registerStub(queryHandler);
               } catch (Exception e) {
                 handleQueryError(e, "prime query", context);
               }
@@ -155,14 +105,25 @@ public class QueryManager implements HttpListener {
    * @param context RoutingContext provided by vertx
    */
   public void clearPrimedQueries(RoutingContext context) {
-
     context
         .request()
         .bodyHandler(
             totalBuffer -> {
+              String jsonBody = "";
+
+              String idToFetchS = context.request().getParam("clusterId");
+              String dcIdToFetchS = context.request().getParam("datacenterId");
+              String nodeIdToFetchS = context.request().getParam("nodeId");
+
+              Scope scope =
+                  this.parseQueryParameters(idToFetchS, dcIdToFetchS, nodeIdToFetchS, context);
+              if (scope == null) {
+                return;
+              }
+
               int cleared = 0;
               try {
-                cleared = server.clearStubsMatchingType(QueryHandler.class);
+                server.clear(scope, QueryHandler.class);
               } catch (Exception e) {
                 handleQueryError(e, "clear primed queries", context);
               }
@@ -199,60 +160,32 @@ public class QueryManager implements HttpListener {
                 Map<Long, Cluster> clusters = this.server.getClusterRegistry();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
-                String idToFetch = context.request().getParam("clusterIdOrName");
-                String dcIdToFetch = context.request().getParam("datacenterIdOrName");
-                String nodeIdToFetch = context.request().getParam("nodeIdOrName");
-                if (idToFetch != null) {
-                  Optional<Long> id = server.getClusterIdFromIdOrName(idToFetch);
-                  Optional<Cluster> clusterOption = id.map(clusters::get);
-                  if (clusterOption.isPresent()) {
-                    Cluster cluster = clusterOption.get();
-                    List<QueryLog> logs = cluster.getActivityLog().getLogs();
-                    if (dcIdToFetch != null) {
-                      Optional<Long> datacenterId =
-                          server.getDatacenterIdFromIdOrName(cluster.getId(), dcIdToFetch);
-                      if (datacenterId.isPresent()) {
-                        Long dcId = datacenterId.get();
-                        if (nodeIdToFetch != null) {
-                          Optional<Long> nodeId =
-                              server.getNodeIdFromIdOrName(cluster.getId(), dcId, nodeIdToFetch);
-                          if (nodeId.isPresent()) {
-                            logs = cluster.getActivityLog().getLogsFromNode(dcId, nodeId.get());
-                          } else {
-                            handleError(
-                                new ErrorMessage(
-                                    "No node registered with id "
-                                        + idToFetch
-                                        + "/"
-                                        + dcIdToFetch
-                                        + "/"
-                                        + nodeIdToFetch,
-                                    404),
-                                context);
-                            return;
-                          }
-                        } else {
-                          logs = cluster.getActivityLog().getLogsFromDatacenter(dcId);
-                        }
-                      } else {
-                        handleError(
-                            new ErrorMessage(
-                                "No datacenter registered with id " + idToFetch + "/" + dcIdToFetch,
-                                404),
-                            context);
-                        return;
-                      }
-                    }
+                String idToFetchS = context.request().getParam("clusterIdOrName");
+                String dcIdToFetchS = context.request().getParam("datacenterIdOrName");
+                String nodeIdToFetchS = context.request().getParam("nodeIdOrName");
 
-                    String activityLogStr =
-                        om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
-                    response.append(activityLogStr);
-                  } else {
-                    handleError(
-                        new ErrorMessage("No cluster registered with id " + idToFetch, 404),
-                        context);
-                    return;
+                Scope scope =
+                    this.parseQueryParameters(idToFetchS, dcIdToFetchS, nodeIdToFetchS, context);
+
+                if (scope == null) {
+                  return;
+                }
+
+                if (scope.getClusterId() != null) {
+                  Cluster cluster = clusters.get(scope.getClusterId());
+                  List<QueryLog> logs = cluster.getActivityLog().getLogs();
+                  if (scope.getDatacenterId() != null) {
+                    Long dcId = scope.getDatacenterId();
+                    if (scope.getNodeId() != null) {
+                      logs = cluster.getActivityLog().getLogsFromNode(dcId, scope.getNodeId());
+                    } else {
+                      logs = cluster.getActivityLog().getLogsFromDatacenter(dcId);
+                    }
                   }
+
+                  String activityLogStr =
+                      om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
+                  response.append(activityLogStr);
                 } else {
                   String clusterStr =
                       om.writerWithDefaultPrettyPrinter().writeValueAsString(clusters.values());
@@ -268,6 +201,58 @@ public class QueryManager implements HttpListener {
                 handleError(new ErrorMessage(e, 404), context);
               }
             });
+  }
+
+  private Scope parseQueryParameters(
+      String idToFetchS, String dcIdToFetchS, String nodeIdToFetchS, RoutingContext context) {
+    Long idToFetch = null;
+    Long dcIdToFetch = null;
+    Long nodeIdToFetch = null;
+
+    if (idToFetchS != null) {
+      Optional<Long> clusterId = server.getClusterIdFromIdOrName(idToFetchS);
+      if (clusterId.isPresent()) {
+        idToFetch = clusterId.get();
+
+        if (dcIdToFetchS != null) {
+          Optional<Long> dcId = server.getDatacenterIdFromIdOrName(idToFetch, dcIdToFetchS);
+          if (dcId.isPresent()) {
+            dcIdToFetch = dcId.get();
+
+            if (nodeIdToFetchS != null) {
+              Optional<Long> nodeId =
+                  server.getNodeIdFromIdOrName(idToFetch, dcIdToFetch, nodeIdToFetchS);
+
+              if (nodeId.isPresent()) {
+                nodeIdToFetch = nodeId.get();
+              } else {
+                handleError(
+                    new ErrorMessage(
+                        "No node registered with id "
+                            + idToFetch
+                            + "/"
+                            + dcIdToFetch
+                            + "/"
+                            + nodeIdToFetchS,
+                        404),
+                    context);
+                return null;
+              }
+            }
+          } else {
+            handleError(
+                new ErrorMessage(
+                    "No datacenter registered with id " + idToFetchS + "/" + dcIdToFetchS, 404),
+                context);
+            return null;
+          }
+        }
+      } else {
+        handleError(new ErrorMessage("No cluster registered with id " + idToFetchS, 404), context);
+        return null;
+      }
+    }
+    return new Scope(idToFetch, dcIdToFetch, nodeIdToFetch);
   }
 
   /**
@@ -294,6 +279,7 @@ public class QueryManager implements HttpListener {
   }
 
   public void registerWithRouter(Router router) {
+    // Priming queries
     router.route(HttpMethod.POST, "/prime-query-single/:clusterIdOrName").handler(this::primeQuery);
     router
         .route(HttpMethod.POST, "/prime-query-single/:clusterIdOrName/:datacenterIdOrName")
@@ -305,7 +291,22 @@ public class QueryManager implements HttpListener {
         .handler(this::primeQuery);
 
     router.route(HttpMethod.POST, "/prime*").handler(this::primeQuery);
+
+    //Deleting primed queries
+    router
+        .route(HttpMethod.DELETE, "/prime-query-single/:clusterIdOrName")
+        .handler(this::clearPrimedQueries);
+    router
+        .route(HttpMethod.DELETE, "/prime-query-single/:clusterIdOrName/:datacenterIdOrName")
+        .handler(this::clearPrimedQueries);
+    router
+        .route(
+            HttpMethod.DELETE,
+            "/prime-query-single/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
+        .handler(this::primeQuery);
     router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
+
+    //Logging queries
     router.route(HttpMethod.GET, "/log/:clusterIdOrName").handler(this::getQueryLog);
     router
         .route(HttpMethod.GET, "/log/:clusterIdOrName/:datacenterIdOrName")

@@ -6,6 +6,7 @@ import com.datastax.simulacron.common.cluster.AbstractNodeProperties;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.stubbing.EmptyReturnMetadataHandler;
 import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
 import com.datastax.simulacron.common.stubbing.StubMapping;
@@ -105,11 +106,13 @@ public final class Server {
   /**
    * Clears all stubmappings that match a specific classtype
    *
+   * @param scope if it set only the stubmapping matching this scope will be removed, all of them
+   *     otherwise
    * @param clazz all stubmapping matching this class type will be removed
    * @return number of primes deleted
    */
-  public int clearStubsMatchingType(Class clazz) {
-    return this.stubStore.clearAllMatchingType(clazz);
+  public int clear(Scope scope, Class clazz) {
+    return this.stubStore.clear(scope, clazz);
   }
 
   /** see {@link #register(Cluster, ServerOptions)} */
@@ -441,7 +444,6 @@ public final class Server {
    *     NioServerSocketChannel}.
    */
   public static Builder builder() {
-    // Use Epoll or KQueue if available.
     if (Epoll.isAvailable()) {
       logger.debug("Detected epoll support, using EpollEventLoopGroup");
       return builder(new EpollEventLoopGroup(), EpollServerSocketChannel.class);

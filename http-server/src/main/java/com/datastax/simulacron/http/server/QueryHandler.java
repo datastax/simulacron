@@ -15,7 +15,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 
-public class QueryHandler implements StubMapping {
+public class QueryHandler extends StubMapping {
   QueryPrime primedQuery;
 
   public QueryHandler(QueryPrime primedQuery) {
@@ -23,7 +23,7 @@ public class QueryHandler implements StubMapping {
   }
 
   @Override
-  public boolean matches(Node node, Frame frame) {
+  public boolean matches(Frame frame) {
 
     if (frame.message instanceof Query) {
       //If the query expected matches the primed query example and CL levels match. Return true;

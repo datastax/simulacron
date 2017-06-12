@@ -2,6 +2,7 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 
@@ -10,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 
 public class StubStore {
 
@@ -21,14 +23,21 @@ public class StubStore {
     stubMappings.add(mapping);
   }
 
-  public int clearAllMatchingType(Class clazz) {
+  public int clear(Scope scope, Class clazz) {
     Iterator<StubMapping> iterator = stubMappings.iterator();
     int count = 0;
     while (iterator.hasNext()) {
       StubMapping mapping = iterator.next();
       if (mapping.getClass().equals(clazz)) {
-        stubMappings.remove(mapping);
-        count++;
+        if (scope.isScopeUnSet()) {
+          stubMappings.remove(mapping);
+          count++;
+        } else {
+          if (mapping.getScope().equals(scope)) {
+            stubMappings.remove(mapping);
+            count++;
+          }
+        }
       }
     }
     return count;

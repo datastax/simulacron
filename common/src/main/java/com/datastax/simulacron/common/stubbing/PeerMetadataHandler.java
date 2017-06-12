@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
 import static com.datastax.simulacron.common.codec.CodecUtils.*;
 
-public class PeerMetadataHandler implements StubMapping {
+public class PeerMetadataHandler extends StubMapping {
 
   private static final List<String> queries = new ArrayList<>();
   private static final List<Pattern> queryPatterns = new ArrayList();
@@ -60,7 +60,7 @@ public class PeerMetadataHandler implements StubMapping {
   public PeerMetadataHandler() {}
 
   @Override
-  public boolean matches(Node node, Frame frame) {
+  public boolean matches(Frame frame) {
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
       String queryStr = query.query;

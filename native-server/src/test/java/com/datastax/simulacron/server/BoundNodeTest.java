@@ -121,7 +121,7 @@ public class BoundNodeTest {
         new StubMapping() {
 
           @Override
-          public boolean matches(Node node, Frame frame) {
+          public boolean matches(Frame frame) {
             Message msg = frame.message;
             if (msg instanceof Prepare) {
               Prepare p = (Prepare) msg;
@@ -153,7 +153,7 @@ public class BoundNodeTest {
         new StubMapping() {
 
           @Override
-          public boolean matches(Node node, Frame frame) {
+          public boolean matches(Frame frame) {
             Message msg = frame.message;
             if (msg instanceof Prepare) {
               Prepare p = (Prepare) msg;

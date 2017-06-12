@@ -469,6 +469,63 @@ public class HttpContainerIntegrationTest {
         p -> p.getId().toString(), DataCenter::getName, p -> p.getId().toString());
   }
 
+  @Test
+  public void testQueryClearAll() {
+    try {
+      HttpClient client = vertx.createHttpClient();
+      Cluster clusterCreated = this.createSingleNodeCluster(client);
+
+      QueryPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
+      this.primeSimpleQuery(client, prime);
+      String contactPoint = getContactPointString(clusterCreated);
+      ResultSet set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
+      assertThat(1).isEqualTo(set.all().size());
+
+      this.clearQueries(client);
+      set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
+      assertThat(0).isEqualTo(set.all().size());
+
+    } catch (Exception e) {
+      fail("error encountered");
+    }
+  }
+
+  @Test
+  public void testQueryClearTarget() {
+    HttpClient client = vertx.createHttpClient();
+    Cluster cluster = this.createMultiNodeCluster(client, "3,3");
+
+    String query = "Select * FROM TABLE2_" + cluster.getName();
+
+    QueryPrime prime = createSimplePrimedQuery(query);
+    List<DataCenter> datacenters = (List<DataCenter>) cluster.getDataCenters();
+    DataCenter datacenter = datacenters.get(0);
+
+    this.primeSimpleQuery(client, prime, cluster.getName(), datacenter.getName());
+
+    Iterator<Node> nodeIteratorQueried = cluster.getNodes().iterator();
+
+    while (nodeIteratorQueried.hasNext()) {
+      Node node = nodeIteratorQueried.next();
+
+      String contactPoint = getContactPointStringByNodeID(node);
+      ResultSet set = makeNativeQuery(query, contactPoint);
+      if (node.getDataCenter().equals(datacenter)) {
+        assertThat(1).isEqualTo(set.all().size());
+      } else {
+        assertThat(0).isEqualTo(set.all().size());
+      }
+    }
+    this.clearQueries(client, new Scope(cluster.getId(), datacenter.getId(), null));
+    while (nodeIteratorQueried.hasNext()) {
+      Node node = nodeIteratorQueried.next();
+
+      String contactPoint = getContactPointStringByNodeID(node);
+      ResultSet set = makeNativeQuery(query, contactPoint);
+      assertThat(0).isEqualTo(set.all().size());
+    }
+  }
+
   private void testVerifyQueryParticularCluster(Function<Cluster, String> f) {
     HttpClient client = vertx.createHttpClient();
     Cluster clusterQueried = this.createMultiNodeCluster(client, "3,3");
@@ -694,6 +751,39 @@ public class HttpContainerIntegrationTest {
       HttpClient client, QueryPrime query, String ClusterID, String DatacenterID, String nodeID) {
     return this.primeSimpleQuery(
         client, query, "/prime-query-single" + "/" + ClusterID + "/" + DatacenterID + "/" + nodeID);
+  }
+
+  private HttpTestResponse clearQueries(HttpClient client, Scope scope) {
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    try {
+      client
+          .request(
+              HttpMethod.DELETE,
+              portNum,
+              "127.0.0.1",
+              "/prime-query-single/" + scope.toString(),
+              response -> {
+                response.bodyHandler(
+                    totalBuffer -> {
+                      String body = totalBuffer.toString();
+                      HttpTestResponse testResponse = new HttpTestResponse(response, body);
+                      future.complete(testResponse);
+                    });
+              })
+          .end();
+
+      HttpTestResponse responseToValidate = future.get();
+      assertThat(responseToValidate.response.statusCode()).isEqualTo(202);
+      return responseToValidate;
+    } catch (Exception e) {
+      logger.error("Exception", e);
+      fail("Exception encountered");
+    }
+    return null;
+  }
+
+  private HttpTestResponse clearQueries(HttpClient client) {
+    return this.clearQueries(client, new Scope(null, null, null));
   }
 
   private Cluster createSingleNodeCluster(HttpClient client) {

@@ -81,7 +81,7 @@ public class DisconnectActionTest {
         .register(
             new StubMapping() {
               @Override
-              public boolean matches(Node node, Frame frame) {
+              public boolean matches(Frame frame) {
                 return frame.message instanceof Options;
               }
 
@@ -273,7 +273,7 @@ public class DisconnectActionTest {
         .register(
             new StubMapping() {
               @Override
-              public boolean matches(Node node, Frame frame) {
+              public boolean matches(Frame frame) {
                 return frame.message instanceof Startup;
               }
 

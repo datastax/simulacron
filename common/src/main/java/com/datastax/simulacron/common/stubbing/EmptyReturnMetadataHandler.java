@@ -16,7 +16,7 @@ import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecBuilder;
 import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecs;
 import static com.datastax.simulacron.common.codec.CodecUtils.primitive;
 
-public class EmptyReturnMetadataHandler implements StubMapping {
+public class EmptyReturnMetadataHandler extends StubMapping {
 
   private List<String> queries = new ArrayList<>();
 
@@ -25,7 +25,7 @@ public class EmptyReturnMetadataHandler implements StubMapping {
   }
 
   @Override
-  public boolean matches(Node node, Frame frame) {
+  public boolean matches(Frame frame) {
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
       String queryStr = query.query;
