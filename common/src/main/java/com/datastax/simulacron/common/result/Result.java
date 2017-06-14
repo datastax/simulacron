@@ -2,7 +2,6 @@ package com.datastax.simulacron.common.result;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.fasterxml.jackson.annotation.*;
 

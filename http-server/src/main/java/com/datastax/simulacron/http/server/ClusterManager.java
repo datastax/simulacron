@@ -163,7 +163,7 @@ public class ClusterManager implements HttpListener {
 
   /**
    * This is an async callback that will be invoked whenever a request to /cluster is submited with
-   * GET. When a clusterIdOrName is provided in the format of /cluster/:clusterIdOrName, we will
+   * GET. Query a clusterIdOrName is provided in the format of /cluster/:clusterIdOrName, we will
    * fetch that specific id.
    *
    * <p>Example supported HTTP requests

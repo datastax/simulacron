@@ -51,7 +51,7 @@ public class QueryManager implements HttpListener {
             totalBuffer -> {
               String jsonBody = "";
               try {
-                System.out.println("Full body received, length = " + totalBuffer.length());
+                logger.info("Full body received, length = " + totalBuffer.length());
 
                 String idToFetchS = context.request().getParam("clusterIdOrName");
                 String dcIdToFetchS = context.request().getParam("datacenterIdOrName");
@@ -65,7 +65,7 @@ public class QueryManager implements HttpListener {
 
                 jsonBody = totalBuffer.toString();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
-                QueryPrime query = om.readValue(jsonBody, QueryPrime.class);
+                RequestPrime query = om.readValue(jsonBody, RequestPrime.class);
 
                 if (query.then instanceof SuccessResult) {
                   SuccessResult success = (SuccessResult) query.then;
@@ -77,10 +77,10 @@ public class QueryManager implements HttpListener {
                     }
                   }
                 }
-                QueryHandler queryHandler = new QueryHandler(query);
-                queryHandler.setScope(scope);
+                RequestHandler requestHandler = new RequestHandler(query);
+                requestHandler.setScope(scope);
 
-                server.registerStub(queryHandler);
+                server.registerStub(requestHandler);
               } catch (Exception e) {
                 handleQueryError(e, "prime query", context);
               }
@@ -123,7 +123,7 @@ public class QueryManager implements HttpListener {
 
               int cleared = 0;
               try {
-                server.clear(scope, QueryHandler.class);
+                server.clear(scope, RequestHandler.class);
               } catch (Exception e) {
                 handleQueryError(e, "clear primed queries", context);
               }

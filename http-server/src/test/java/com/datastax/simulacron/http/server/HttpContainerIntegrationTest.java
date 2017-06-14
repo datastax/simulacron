@@ -5,6 +5,8 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.request.Options;
+import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
@@ -304,10 +306,10 @@ public class HttpContainerIntegrationTest {
       HttpClient client = vertx.createHttpClient();
       Cluster clusterCreated = this.createSingleNodeCluster(client);
 
-      QueryPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
-      HttpTestResponse response = this.primeSimpleQuery(client, prime);
+      RequestPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
+      HttpTestResponse response = this.primeSimpleRequest(client, prime);
       assertNotNull(response);
-      QueryPrime responseQuery = (QueryPrime) om.readValue(response.body, QueryPrime.class);
+      RequestPrime responseQuery = (RequestPrime) om.readValue(response.body, RequestPrime.class);
       assertThat(responseQuery).isEqualTo(prime);
 
       String contactPoint = getContactPointString(clusterCreated);
@@ -335,12 +337,12 @@ public class HttpContainerIntegrationTest {
       HashMap<String, Object> params = new HashMap<>();
       params.put("id", new Long(1));
       params.put("id2", new Long(2));
-      QueryPrime prime =
+      RequestPrime prime =
           createSimpleParameterizedQuery(
               "SELECT * FROM users WHERE id = :id and id2 = :id2", params, paramTypes);
-      HttpTestResponse response = this.primeSimpleQuery(client, prime);
+      HttpTestResponse response = this.primeSimpleRequest(client, prime);
       assertNotNull(response);
-      QueryPrime responseQuery = (QueryPrime) om.readValue(response.body, QueryPrime.class);
+      RequestPrime responseQuery = (RequestPrime) om.readValue(response.body, RequestPrime.class);
       assertThat(responseQuery).isEqualTo(prime);
       Map<String, Object> values =
           ImmutableMap.<String, Object>of("id", new Long(1), "id2", new Long(2));
@@ -374,11 +376,11 @@ public class HttpContainerIntegrationTest {
       paramTypes.put("c1", "ascii");
       HashMap<String, Object> params = new HashMap<>();
       params.put("c1", "c1");
-      QueryPrime prime =
+      RequestPrime prime =
           createSimpleParameterizedQuery("SELECT table FROM foo WHERE c1=?", params, paramTypes);
-      HttpTestResponse response = this.primeSimpleQuery(client, prime);
+      HttpTestResponse response = this.primeSimpleRequest(client, prime);
       assertNotNull(response);
-      QueryPrime responseQuery = om.readValue(response.body, QueryPrime.class);
+      RequestPrime responseQuery = om.readValue(response.body, RequestPrime.class);
       assertThat(responseQuery).isEqualTo(prime);
       String contactPoint = getContactPointString(clusterCreated);
       ResultSet set =
@@ -475,8 +477,8 @@ public class HttpContainerIntegrationTest {
       HttpClient client = vertx.createHttpClient();
       Cluster clusterCreated = this.createSingleNodeCluster(client);
 
-      QueryPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
-      this.primeSimpleQuery(client, prime);
+      RequestPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
+      this.primeSimpleRequest(client, prime);
       String contactPoint = getContactPointString(clusterCreated);
       ResultSet set = makeNativeQuery("Select * FROM TABLE2", contactPoint);
       assertThat(1).isEqualTo(set.all().size());
@@ -497,11 +499,11 @@ public class HttpContainerIntegrationTest {
 
     String query = "Select * FROM TABLE2_" + cluster.getName();
 
-    QueryPrime prime = createSimplePrimedQuery(query);
+    RequestPrime prime = createSimplePrimedQuery(query);
     List<DataCenter> datacenters = (List<DataCenter>) cluster.getDataCenters();
     DataCenter datacenter = datacenters.get(0);
 
-    this.primeSimpleQuery(client, prime, cluster.getName(), datacenter.getName());
+    this.primeSimpleRequest(client, prime, cluster.getName(), datacenter.getName());
 
     Iterator<Node> nodeIteratorQueried = cluster.getNodes().iterator();
 
@@ -533,9 +535,10 @@ public class HttpContainerIntegrationTest {
 
     String query = "Select * FROM TABLE2_" + clusterQueried.getName();
 
-    QueryPrime prime = createSimplePrimedQuery(query);
+    RequestPrime prime = createSimplePrimedQuery(query);
     HttpTestResponse response =
-        this.primeSimpleQuery(client, prime, "/prime-query-single" + "/" + f.apply(clusterQueried));
+        this.primeSimpleRequest(
+            client, prime, "/prime-query-single" + "/" + f.apply(clusterQueried));
 
     Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
     Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
@@ -565,11 +568,11 @@ public class HttpContainerIntegrationTest {
 
     String query = "Select * FROM TABLE2_" + clusterQueried.getName();
 
-    QueryPrime prime = createSimplePrimedQuery(query);
+    RequestPrime prime = createSimplePrimedQuery(query);
     List<DataCenter> datacenters = (List<DataCenter>) clusterQueried.getDataCenters();
     DataCenter datacenterQueried = datacenters.get(0);
 
-    this.primeSimpleQuery(client, prime, fc.apply(clusterQueried), fd.apply(datacenterQueried));
+    this.primeSimpleRequest(client, prime, fc.apply(clusterQueried), fd.apply(datacenterQueried));
 
     Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
     Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
@@ -603,7 +606,7 @@ public class HttpContainerIntegrationTest {
 
     String query = "Select * FROM TABLE2_" + clusterQueried.getName();
 
-    QueryPrime prime = createSimplePrimedQuery(query);
+    RequestPrime prime = createSimplePrimedQuery(query);
 
     List<DataCenter> datacenters = (List<DataCenter>) clusterQueried.getDataCenters();
     DataCenter datacenterQueried = datacenters.get(0);
@@ -611,7 +614,7 @@ public class HttpContainerIntegrationTest {
 
     Node nodeQueried = datacenterIterator.next();
 
-    this.primeSimpleQuery(
+    this.primeSimpleRequest(
         client,
         prime,
         fc.apply(clusterQueried),
@@ -684,13 +687,13 @@ public class HttpContainerIntegrationTest {
     }
   }
 
-  private QueryPrime createSimplePrimedQuery(String query) {
+  private RequestPrime createSimplePrimedQuery(String query) {
     return createSimpleParameterizedQuery(query, null, null);
   }
 
-  private QueryPrime createSimpleParameterizedQuery(
+  private RequestPrime createSimpleParameterizedQuery(
       String query, HashMap<String, Object> params, HashMap<String, String> paramTypes) {
-    QueryPrime.When when = new QueryPrime.When(query, null, params, paramTypes);
+    Query when = new Query(query, null, params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
     HashMap row1 = new HashMap<String, String>();
     row1.put("column1", "column1");
@@ -700,11 +703,11 @@ public class HttpContainerIntegrationTest {
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
     Result then = new SuccessResult(rows, column_types);
-    QueryPrime queryPrime = new QueryPrime(when, then);
-    return queryPrime;
+    RequestPrime requestPrime = new RequestPrime(when, then);
+    return requestPrime;
   }
 
-  private HttpTestResponse primeSimpleQuery(HttpClient client, QueryPrime query, String path) {
+  private HttpTestResponse primeSimpleRequest(HttpClient client, RequestPrime query, String path) {
     CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
     try {
       String jsonPrime = om.writerWithDefaultPrettyPrinter().writeValueAsString(query);
@@ -737,19 +740,19 @@ public class HttpContainerIntegrationTest {
     return null;
   }
 
-  private HttpTestResponse primeSimpleQuery(HttpClient client, QueryPrime query) {
-    return this.primeSimpleQuery(client, query, "/prime-query-single");
+  private HttpTestResponse primeSimpleRequest(HttpClient client, RequestPrime query) {
+    return this.primeSimpleRequest(client, query, "/prime-query-single");
   }
 
-  private HttpTestResponse primeSimpleQuery(
-      HttpClient client, QueryPrime query, String ClusterID, String DatacenterID) {
-    return this.primeSimpleQuery(
+  private HttpTestResponse primeSimpleRequest(
+      HttpClient client, RequestPrime query, String ClusterID, String DatacenterID) {
+    return this.primeSimpleRequest(
         client, query, "/prime-query-single" + "/" + ClusterID + "/" + DatacenterID);
   }
 
-  private HttpTestResponse primeSimpleQuery(
-      HttpClient client, QueryPrime query, String ClusterID, String DatacenterID, String nodeID) {
-    return this.primeSimpleQuery(
+  private HttpTestResponse primeSimpleRequest(
+      HttpClient client, RequestPrime query, String ClusterID, String DatacenterID, String nodeID) {
+    return this.primeSimpleRequest(
         client, query, "/prime-query-single" + "/" + ClusterID + "/" + DatacenterID + "/" + nodeID);
   }
 

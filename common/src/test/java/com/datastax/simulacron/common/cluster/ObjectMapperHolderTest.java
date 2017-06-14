@@ -1,17 +1,19 @@
 package com.datastax.simulacron.common.cluster;
 
+import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.oss.protocol.internal.request.Startup;
+import com.datastax.simulacron.common.request.Options;
+import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.NoResult;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
+import com.datastax.simulacron.common.utils.FrameUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -70,7 +72,7 @@ public class ObjectMapperHolderTest {
 
   @Test
   public void testPrimeQuery() throws Exception {
-    QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
+    Query when = new Query("SELECT * table_name", null, null, null);
     List<Map<String, Object>> rows = new ArrayList<>();
     HashMap<String, Object> row1 = new HashMap<>();
     row1.put("column1", "column1");
@@ -80,56 +82,87 @@ public class ObjectMapperHolderTest {
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
     Result then = new SuccessResult(rows, column_types);
-    QueryPrime queryPrime = new QueryPrime(when, then);
+    RequestPrime requestPrime = new RequestPrime(when, then);
 
-    String json = mapper.writeValueAsString(queryPrime);
+    String json = mapper.writeValueAsString(requestPrime);
 
     String expectedJson =
-        "{\"when\":{\"query\":\"SELECT * table_name\"},\"then\":{\"result\":\"success\",\"rows\":[{\"column1\":\"column1\",\"column2\":\"2\"}],\"column_types\":{\"column1\":\"ascii\",\"column2\":\"bigint\"},\"delay_in_ms\":0}}";
+        "{\"when\":{\"request\":\"query\",\"query\":\"SELECT * table_name\"},\"then\":{\"result\":\"success\",\"rows\":[{\"column1\":\"column1\",\"column2\":\"2\"}],\"column_types\":{\"column1\":\"ascii\",\"column2\":\"bigint\"},\"delay_in_ms\":0}}";
 
     assertThat(json).isEqualTo(expectedJson);
 
-    QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
-    assertThat(readQueryPrime.when).isEqualTo(when);
-    assertThat(readQueryPrime.then).isEqualTo(then);
+    RequestPrime readRequestPrime = mapper.readValue(json, RequestPrime.class);
+    assertThat(readRequestPrime.when).isEqualTo(when);
+    assertThat(readRequestPrime.then).isEqualTo(then);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testPrimeQueryWithRowNull() throws Exception {
-    QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
+    Query when = new Query("SELECT * table_name", null, null, null);
 
     Map<String, String> column_types = new HashMap<>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
 
     Result then = new SuccessResult(null, column_types);
-    QueryPrime queryPrime = new QueryPrime(when, then);
-    String json = mapper.writeValueAsString(queryPrime);
-    mapper.readValue(json, QueryPrime.class);
+    RequestPrime requestPrime = new RequestPrime(when, then);
+    String json = mapper.writeValueAsString(requestPrime);
+    mapper.readValue(json, RequestPrime.class);
   }
 
   @Test
   public void testPrimeQueryWithNulls() throws Exception {
-    QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
+    Query when = new Query("SELECT * table_name", null, null, null);
     Result then = new SuccessResult(null, null);
 
-    QueryPrime queryPrime = new QueryPrime(when, then);
-    String json = mapper.writeValueAsString(queryPrime);
-    QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
-    assertThat(readQueryPrime.when).isEqualTo(when);
-    assertThat(readQueryPrime.then)
+    RequestPrime requestPrime = new RequestPrime(when, then);
+    String json = mapper.writeValueAsString(requestPrime);
+    RequestPrime readRequestPrime = mapper.readValue(json, RequestPrime.class);
+    assertThat(readRequestPrime.when).isEqualTo(when);
+    assertThat(readRequestPrime.then)
         .isEqualTo(new SuccessResult(new ArrayList<>(), new HashMap<>()));
   }
 
   @Test
   public void testPrimeQueryWithNoThen() throws Exception {
-    QueryPrime.When when = new QueryPrime.When("SELECT * table_name", null, null, null);
+    Query when = new Query("SELECT * table_name", null, null, null);
 
-    QueryPrime queryPrime = new QueryPrime(when, null);
-    String json = mapper.writeValueAsString(queryPrime);
-    QueryPrime readQueryPrime = mapper.readValue(json, QueryPrime.class);
+    RequestPrime requestPrime = new RequestPrime(when, null);
+    String json = mapper.writeValueAsString(requestPrime);
+    RequestPrime readRequestPrime = mapper.readValue(json, RequestPrime.class);
 
-    assertThat(readQueryPrime.when).isEqualTo(when);
-    assertThat(readQueryPrime.then).isEqualTo(new NoResult());
+    assertThat(readRequestPrime.when).isEqualTo(when);
+    assertThat(readRequestPrime.then).isEqualTo(new NoResult());
+  }
+
+  @Test
+  public void testPrimeOptions() throws Exception {
+    Options when = Options.INSTANCE;
+    Result then = new NoResult();
+    RequestPrime requestPrime = new RequestPrime(when, then);
+
+    String json = mapper.writeValueAsString(requestPrime);
+
+    String expectedJson =
+        "{\"when\":{\"request\":\"options\"},\"then\":{\"result\":\"no_result\",\"delay_in_ms\":0}}";
+
+    assertThat(json).isEqualTo(expectedJson);
+
+    RequestPrime readRequestPrime = mapper.readValue(json, RequestPrime.class);
+    assertThat(readRequestPrime.when).isEqualTo(when);
+    assertThat(readRequestPrime.then).isEqualTo(then);
+
+    Frame frame =
+        new Frame(
+            6,
+            false,
+            0,
+            false,
+            null,
+            FrameUtils.emptyCustomPayload,
+            Collections.emptyList(),
+            com.datastax.oss.protocol.internal.request.Options.INSTANCE);
+
+    assertThat(when.matches(frame)).isTrue();
   }
 }

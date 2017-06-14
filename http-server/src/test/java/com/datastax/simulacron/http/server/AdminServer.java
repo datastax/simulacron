@@ -138,7 +138,7 @@ public class AdminServer extends ExternalResource {
     return request(HttpMethod.DELETE, endpoint, null);
   }
 
-  public HttpTestResponse prime(QueryPrime prime) throws Exception {
+  public HttpTestResponse prime(RequestPrime prime) throws Exception {
     String jsonPrime = om.writerWithDefaultPrettyPrinter().writeValueAsString(prime);
     return post("/prime-query-single", jsonPrime);
   }
