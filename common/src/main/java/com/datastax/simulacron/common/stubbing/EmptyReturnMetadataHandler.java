@@ -52,6 +52,6 @@ public class EmptyReturnMetadataHandler extends InternalStubMapping {
         columnSpecBuilder("whatever_keyspace", "whatever_table");
     List<ColumnSpec> systemPeersSpecs = columnSpecs(systemPeers.apply("key", primitive(INT)));
 
-    return new RowsMetadata(systemPeersSpecs, null, new int[] {0});
+    return new RowsMetadata(systemPeersSpecs, systemPeersSpecs.size(), null, new int[] {0});
   }
 }
