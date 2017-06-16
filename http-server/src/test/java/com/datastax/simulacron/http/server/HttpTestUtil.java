@@ -8,10 +8,7 @@ import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
 
@@ -62,7 +59,7 @@ public class HttpTestUtil {
 
   public static RequestPrime createSimpleParameterizedQuery(
       String query, HashMap<String, Object> params, HashMap<String, String> paramTypes) {
-    Query when = new Query(query, null, params, paramTypes);
+    Query when = new Query(query, Collections.emptyList(), params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
     HashMap row1 = new HashMap<String, String>();
     row1.put("column1", "column1");

@@ -29,10 +29,6 @@ public class UnavailableResult extends ErrorResult {
     this("Cannot achieve consistency level " + cl, cl, required, alive, 0);
   }
 
-  public UnavailableResult(ConsistencyLevel cl, String dc, int required, int alive) {
-    this("Cannot achieve consistency level " + cl + " in DC " + dc, cl, required, alive, 0);
-  }
-
   @JsonCreator
   UnavailableResult(
       @JsonProperty(value = "message", required = true) String errorMessage,

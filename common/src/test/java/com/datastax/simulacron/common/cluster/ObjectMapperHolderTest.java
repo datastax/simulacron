@@ -1,7 +1,6 @@
 package com.datastax.simulacron.common.cluster;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.simulacron.common.request.Options;
 import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.NoResult;
@@ -72,7 +71,7 @@ public class ObjectMapperHolderTest {
 
   @Test
   public void testPrimeQuery() throws Exception {
-    Query when = new Query("SELECT * table_name", null, null, null);
+    Query when = new Query("SELECT * table_name");
     List<Map<String, Object>> rows = new ArrayList<>();
     HashMap<String, Object> row1 = new HashMap<>();
     row1.put("column1", "column1");
@@ -98,7 +97,7 @@ public class ObjectMapperHolderTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void testPrimeQueryWithRowNull() throws Exception {
-    Query when = new Query("SELECT * table_name", null, null, null);
+    Query when = new Query("SELECT * table_name");
 
     Map<String, String> column_types = new HashMap<>();
     column_types.put("column1", "ascii");
@@ -112,7 +111,7 @@ public class ObjectMapperHolderTest {
 
   @Test
   public void testPrimeQueryWithNulls() throws Exception {
-    Query when = new Query("SELECT * table_name", null, null, null);
+    Query when = new Query("SELECT * table_name");
     Result then = new SuccessResult(null, null);
 
     RequestPrime requestPrime = new RequestPrime(when, then);
@@ -125,7 +124,7 @@ public class ObjectMapperHolderTest {
 
   @Test
   public void testPrimeQueryWithNoThen() throws Exception {
-    Query when = new Query("SELECT * table_name", null, null, null);
+    Query when = new Query("SELECT * table_name");
 
     RequestPrime requestPrime = new RequestPrime(when, null);
     String json = mapper.writeValueAsString(requestPrime);

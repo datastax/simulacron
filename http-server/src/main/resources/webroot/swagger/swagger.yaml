@@ -1820,17 +1820,21 @@ definitions:
       consistency_level:
         type: string
         example: "LOCAL_QUORUM"
+      serial_consistency_level:
+        type: string
+        example: "SERIAL"
       connection:
         type: string
         example: "/127.0.0.1:34662"
       timestamp:
         type: long
-        description: Current timemillis
+        description: Epoch time in milliseconds
     example:
       datacenter_id: 1
       node_id: 0
       query: "select * from tbl"
       consistency_level: "LOCAL_QUORUM"
+      serial_consistency_level: "SERIAL"
       connection: "/127.0.0.1:34662"
       timestamp: 1496955368551
 

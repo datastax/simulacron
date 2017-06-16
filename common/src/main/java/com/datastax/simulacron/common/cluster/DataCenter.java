@@ -59,6 +59,16 @@ public class DataCenter extends AbstractNodeProperties {
   }
 
   /**
+   * Convenience method to look up node by id.
+   *
+   * @param id The id of the node.
+   * @return The node if found or null.
+   */
+  public Node node(long id) {
+    return nodes.stream().filter(n -> n.getId() == id).findFirst().orElse(null);
+  }
+
+  /**
    * Intended to be called in {@link Node} construction to add the {@link Node} to this data center.
    *
    * @param node The node to tie to this data center.

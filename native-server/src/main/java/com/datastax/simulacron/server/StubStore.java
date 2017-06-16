@@ -4,6 +4,7 @@ import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.stubbing.Action;
+import com.datastax.simulacron.common.stubbing.Prime;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 
 import java.util.Collections;
@@ -11,7 +12,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
 
 public class StubStore {
 
@@ -21,6 +21,10 @@ public class StubStore {
 
   public void register(StubMapping mapping) {
     stubMappings.add(mapping);
+  }
+
+  void registerInternal(Prime prime) {
+    stubMappings.add(new InternalStubWrapper(prime));
   }
 
   public int clear(Scope scope, Class clazz) {

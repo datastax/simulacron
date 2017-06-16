@@ -18,10 +18,13 @@ import java.util.*;
 
 public final class Query extends Request {
   public final String query;
-  public final String[] consistency;
   public final List<ConsistencyLevel> consistencyEnum;
   public final Map<String, String> paramTypes;
   public final Map<String, Object> params;
+
+  public Query(String query) {
+    this(query, Collections.emptyList(), null, null);
+  }
 
   @JsonCreator
   public Query(
@@ -29,11 +32,27 @@ public final class Query extends Request {
       @JsonProperty("consistency") String[] consistency,
       @JsonProperty("params") Map<String, Object> params,
       @JsonProperty("paramTypes") Map<String, String> paramTypes) {
+    this(query, createEnumFromConsistency(consistency), params, paramTypes);
+  }
+
+  public Query(
+      String query,
+      List<ConsistencyLevel> consistencies,
+      Map<String, Object> params,
+      Map<String, String> paramTypes) {
     this.query = query;
-    this.consistency = consistency;
-    this.consistencyEnum = createEnumFromConsistency(consistency);
-    this.paramTypes = paramTypes;
+    this.consistencyEnum = consistencies;
     this.params = params;
+    this.paramTypes = paramTypes;
+  }
+
+  @JsonProperty("consistency")
+  public String[] getConsistency() {
+    String[] consistency = new String[consistencyEnum.size()];
+    for (int i = 0; i < consistencyEnum.size(); i++) {
+      consistency[i] = consistencyEnum.get(i).toString();
+    }
+    return consistency;
   }
 
   public boolean matches(Frame frame) {
@@ -136,29 +155,6 @@ public final class Query extends Request {
     return false;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-
-    Query when = (Query) o;
-
-    if (query != null ? !query.equals(when.query) : when.query != null) return false;
-    // Probably incorrect - comparing Object[] arrays with Arrays.equals
-    if (!Arrays.equals(consistency, when.consistency)) return false;
-    return consistencyEnum != null
-        ? consistencyEnum.equals(when.consistencyEnum)
-        : when.consistencyEnum == null;
-  }
-
-  @Override
-  public int hashCode() {
-    int result = query != null ? query.hashCode() : 0;
-    result = 31 * result + Arrays.hashCode(consistency);
-    result = 31 * result + (consistencyEnum != null ? consistencyEnum.hashCode() : 0);
-    return result;
-  }
-
   private static List<ConsistencyLevel> createEnumFromConsistency(String[] consistencies) {
     if (consistencies == null) {
       return new LinkedList<ConsistencyLevel>();
@@ -169,6 +165,29 @@ public final class Query extends Request {
     }
     return consistencyEnum;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    Query query1 = (Query) o;
+
+    if (query != null ? !query.equals(query1.query) : query1.query != null) return false;
+    return consistencyEnum != null
+        ? consistencyEnum.equals(query1.consistencyEnum)
+        : query1.consistencyEnum == null;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = query != null ? query.hashCode() : 0;
+    result = 31 * result + (consistencyEnum != null ? consistencyEnum.hashCode() : 0);
+    result = 31 * result + (paramTypes != null ? paramTypes.hashCode() : 0);
+    result = 31 * result + (params != null ? params.hashCode() : 0);
+    return result;
+  }
+
   /**
    * Convience method to retrieve the queryId which happesn to be the hashcode associated query
    * string

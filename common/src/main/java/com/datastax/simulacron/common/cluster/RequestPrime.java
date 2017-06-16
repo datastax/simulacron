@@ -12,7 +12,7 @@ public final class RequestPrime {
   public final Result then;
 
   public RequestPrime(String query, Result then) {
-    this(new Query(query, null, null, null), then);
+    this(new Query(query), then);
   }
 
   @JsonCreator

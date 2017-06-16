@@ -51,16 +51,20 @@ public class ServerTest {
     Node boundNode = localServer.register(node).get(5, TimeUnit.SECONDS);
     assertThat(boundNode).isInstanceOf(BoundNode.class);
 
-    // Should be wrapped and registered in a dummy cluster.
-    assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
-        .isSameAs(boundNode.getCluster());
+    try {
+      // Should be wrapped and registered in a dummy cluster.
+      assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+          .isSameAs(boundNode.getCluster());
 
-    try (MockClient client = new MockClient(eventLoop)) {
-      client.connect(boundNode.getAddress());
-      client.write(new Startup());
-      // Expect a Ready response.
-      Frame response = client.next();
-      assertThat(response.message).isInstanceOf(Ready.class);
+      try (MockClient client = new MockClient(eventLoop)) {
+        client.connect(boundNode.getAddress());
+        client.write(new Startup());
+        // Expect a Ready response.
+        Frame response = client.next();
+        assertThat(response.message).isInstanceOf(Ready.class);
+      }
+    } finally {
+      localServer.unregister(boundNode).get(5, TimeUnit.SECONDS);
     }
   }
 
@@ -231,7 +235,7 @@ public class ServerTest {
       assertThat(response.message).isInstanceOf(Ready.class);
 
       // Unregistering the cluster should close each nodes channel and remove cluster.
-      assertThat(localServer.unregister(boundCluster.getId()).get(5, TimeUnit.SECONDS))
+      assertThat(localServer.unregister(boundCluster).get(5, TimeUnit.SECONDS))
           .isSameAs(boundCluster);
 
       // Cluster should be removed from registry.
@@ -260,7 +264,7 @@ public class ServerTest {
     // attempting to unregister using a Cluster without an assigned ID should thrown an exception.
     Cluster cluster = Cluster.builder().withNodes(2, 2).build();
     try {
-      localServer.unregister(cluster.getId()).get(5, TimeUnit.SECONDS);
+      localServer.unregister(cluster).get(5, TimeUnit.SECONDS);
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
@@ -272,7 +276,7 @@ public class ServerTest {
     // attemping to unregister a Cluster that is not registered should throw an exception.
     Cluster cluster = Cluster.builder().withId(Long.MAX_VALUE).withNodes(1).build();
     try {
-      localServer.unregister(cluster.getId()).get(5, TimeUnit.SECONDS);
+      localServer.unregister(cluster).get(5, TimeUnit.SECONDS);
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
@@ -285,7 +289,7 @@ public class ServerTest {
     // attempting to unregister a Node that has no parent cluster should throw an exception.
     Node node = Node.builder().build();
     try {
-      localServer.unregister(node.getId()).get(5, TimeUnit.SECONDS);
+      localServer.unregister(node).get(5, TimeUnit.SECONDS);
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);

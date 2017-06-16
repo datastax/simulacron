@@ -5,14 +5,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.IS_BOOTSTRAPPING;
 
-public class IsBoostrappingResult extends ErrorResult {
+public class IsBootstrappingResult extends ErrorResult {
 
-  public IsBoostrappingResult() {
+  public IsBootstrappingResult() {
     this(0);
   }
 
   @JsonCreator
-  public IsBoostrappingResult(@JsonProperty("delay_in_ms") long delayInMs) {
+  public IsBootstrappingResult(@JsonProperty("delay_in_ms") long delayInMs) {
     super(IS_BOOTSTRAPPING, "Cannot read from a bootstrapping node", delayInMs);
   }
 }

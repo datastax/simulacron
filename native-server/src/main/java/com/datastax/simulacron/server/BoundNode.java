@@ -5,6 +5,7 @@ import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.*;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
+import com.datastax.oss.protocol.internal.response.error.Unprepared;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
@@ -25,6 +26,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigInteger;
 import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -40,6 +42,8 @@ import static com.datastax.oss.protocol.internal.response.result.Void.INSTANCE;
 import static com.datastax.simulacron.common.stubbing.DisconnectAction.CloseType.SHUTDOWN_READ;
 import static com.datastax.simulacron.common.stubbing.DisconnectAction.Scope.CLUSTER;
 import static com.datastax.simulacron.common.stubbing.DisconnectAction.Scope.NODE;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.noRows;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.when;
 import static com.datastax.simulacron.common.utils.FrameUtils.wrapResponse;
 import static com.datastax.simulacron.server.ChannelUtils.completable;
 
@@ -228,18 +232,16 @@ class BoundNode extends Node {
     // Otherwise delegate to default behavior.
     Optional<StubMapping> stubOption = stubStore.find(this, frame);
     List<Action> actions = null;
-    boolean isPrimed = false;
     if (stubOption.isPresent()) {
       StubMapping stub = stubOption.get();
-      isPrimed = !(stub instanceof InternalStubMapping);
       actions = stub.getActions(this, frame);
     }
 
     //store the frame in history
     if (activityLogging) {
-      getCluster()
-          .getActivityLog()
-          .addLog(this, frame, ctx.channel().remoteAddress(), System.currentTimeMillis(), isPrimed);
+      getActivityLog()
+          .addLog(
+              this, frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
     }
 
     if (actions != null && !actions.isEmpty()) {
@@ -290,7 +292,18 @@ class BoundNode extends Node {
           response = INSTANCE;
         }
       } else if (frame.message instanceof Execute) {
-        response = INSTANCE;
+        // Unprepared execute received, return an unprepared.
+        Execute execute = (Execute) frame.message;
+        String hex = new BigInteger(1, execute.queryId).toString(16);
+        response = new Unprepared("No prepared statement with id: " + hex, execute.queryId);
+      } else if (frame.message instanceof Prepare) {
+        // fake up a prepared statement from the message and register an internal prime for it.
+        Prepare prepare = (Prepare) frame.message;
+        // TODO: Maybe attempt to identify bind parameters
+        String query = prepare.cqlQuery;
+        Prime prime = when(query).then(noRows()).forCluster(this.getCluster()).build();
+        this.stubStore.registerInternal(prime);
+        response = prime.toPrepared();
       }
       if (response != null) {
         if (deferFuture != null) {

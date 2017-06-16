@@ -56,6 +56,32 @@ public class Cluster extends AbstractNodeProperties {
   }
 
   /**
+   * Convenience method to find the DataCenter with the given id.
+   *
+   * @param id id of the data center.
+   * @return the data center if found or null.
+   */
+  public DataCenter dc(long id) {
+    return dataCenters.stream().filter(dc -> dc.getId() == id).findFirst().orElse(null);
+  }
+
+  /**
+   * Convenience method to find the Node with the given DataCenter id and node id.
+   *
+   * @param dcId id of the data center.
+   * @param nodeId id of the node.
+   * @return the node if found or null
+   */
+  public Node node(long dcId, long nodeId) {
+    DataCenter dc = dc(dcId);
+    if (dc != null) {
+      return dc.node(nodeId);
+    } else {
+      return null;
+    }
+  }
+
+  /**
    * Intended to be called in {@link DataCenter} construction to add the {@link DataCenter} to this
    * cluster.
    *

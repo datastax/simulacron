@@ -76,6 +76,20 @@ public class DataCenterTest {
   }
 
   @Test
+  public void testLookupNode() {
+    DataCenter dc = new DataCenter();
+    dc.addNode().build();
+    dc.addNode().build();
+    dc.addNode().build();
+
+    // Lookup node by id
+    assertThat(dc.node(0).getId()).isEqualTo(0);
+    assertThat(dc.node(1).getId()).isEqualTo(1);
+    assertThat(dc.node(2).getId()).isEqualTo(2);
+    assertThat(dc.node(3)).isNull();
+  }
+
+  @Test
   public void testCopy() {
     Cluster cluster = Cluster.builder().build();
     DataCenter dc =

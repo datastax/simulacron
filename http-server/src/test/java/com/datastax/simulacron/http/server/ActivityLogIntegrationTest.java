@@ -6,14 +6,16 @@ import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.policies.FallthroughRetryPolicy;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.QueryLog;
-import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.rows;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.when;
 import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,7 +40,7 @@ public class ActivityLogIntegrationTest {
   private void primeAndExecuteQueries(String[] primed, String[] queries) throws Exception {
     SuccessResult result = getSampleSuccessResult();
     for (String primeQuery : primed) {
-      server.prime(new RequestPrime(primeQuery, result));
+      server.prime(when(primeQuery).then(result));
     }
 
     try (com.datastax.driver.core.Cluster driverCluster =
@@ -212,14 +214,9 @@ public class ActivityLogIntegrationTest {
   }
 
   private SuccessResult getSampleSuccessResult() {
-    List<Map<String, Object>> rows = new ArrayList<>();
-    Map<String, Object> row1 = new HashMap<>();
-    row1.put("column1", "column1");
-    row1.put("column2", "2");
-    rows.add(row1);
-    Map<String, String> column_types = new HashMap<>();
-    column_types.put("column1", "ascii");
-    column_types.put("column2", "bigint");
-    return new SuccessResult(rows, column_types);
+    return rows()
+        .row("column1", "column1", "column2", 2)
+        .columnTypes("column1", "ascii", "column2", "bigint")
+        .build();
   }
 }

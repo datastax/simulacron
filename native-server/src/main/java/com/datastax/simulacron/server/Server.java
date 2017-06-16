@@ -2,14 +2,8 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.FrameCodec;
-import com.datastax.simulacron.common.cluster.AbstractNodeProperties;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.cluster.Scope;
-import com.datastax.simulacron.common.stubbing.EmptyReturnMetadataHandler;
-import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
-import com.datastax.simulacron.common.stubbing.StubMapping;
+import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.stubbing.*;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -94,8 +88,28 @@ public final class Server {
   }
 
   /**
+   * Registers a prime that can be used by the native server to provide responses to various client
+   * requests. This is simply a convenience abstraction over {@link #registerStub(StubMapping)}.
+   *
+   * @param prime to register
+   */
+  public void prime(PrimeDsl.PrimeBuilder prime) {
+    prime(prime.build());
+  }
+
+  /**
+   * Registers a prime that can be used by the native server to provide responses to various client
+   * requests. This is simply a convenience abstraction over {@link #registerStub(StubMapping)}.
+   *
+   * @param prime to register
+   */
+  public void prime(Prime prime) {
+    registerStub(prime);
+  }
+
+  /**
    * Provide a means to add a new StubMapping that can be used by the native server to provide
-   * responses to various client requets.
+   * responses to various client requests.
    *
    * @param stubMapping to register
    */
@@ -222,6 +236,35 @@ public final class Server {
   }
 
   /**
+   * Convenience method for unregistering Node's cluster by object instead of by id as in {@link
+   * #unregister(Long)}.
+   *
+   * @param node Node to unregister
+   * @return A future that when completed provides the unregistered cluster as it existed in the
+   *     registry, may not be the same object as the input.
+   */
+  public CompletableFuture<Cluster> unregister(Node node) {
+    if (node.getCluster() == null) {
+      CompletableFuture<Cluster> future = new CompletableFuture<>();
+      future.completeExceptionally(new IllegalArgumentException("Node has no parent Cluster"));
+      return future;
+    }
+    return unregister(node.getCluster().getId());
+  }
+
+  /**
+   * Convenience method for unregistering Cluster by object instead of by id as in {@link
+   * #unregister(Long)}.
+   *
+   * @param cluster Cluster to unregister
+   * @return A future that when completed provides the unregistered cluster as it existed in the
+   *     registry, may not be the same object as the input.
+   */
+  public CompletableFuture<Cluster> unregister(Cluster cluster) {
+    return unregister(cluster.getId());
+  }
+
+  /**
    * Unregisters a {@link Cluster} and closes all listening network interfaces associated with it.
    *
    * <p>If the cluster is not currently registered the returned future will fail with an {@link
@@ -343,7 +386,7 @@ public final class Server {
           .entrySet()
           .stream()
           .filter(c -> c.getValue().getName().equals(idOrName))
-          .map(p -> p.getValue())
+          .map(Map.Entry::getValue)
           .findAny()
           .map(AbstractNodeProperties::getId);
     }

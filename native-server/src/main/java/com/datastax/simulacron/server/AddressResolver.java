@@ -14,11 +14,14 @@ import java.util.function.Supplier;
 
 public interface AddressResolver extends Supplier<SocketAddress> {
 
+  byte[] defaultStartingIp = new byte[] {127, 0, 1, 1};
+  int defaultStartingPort = 9042;
+
   // TODO: make this configurable when needed.  For now we'll just use incrementing IPs from 127.0.1.1
   // but eventually it might be nice to have a resolver that returns incrementing ips + ports when C*
   // supports multiple instances per IP.  Also might be nice if a user wants to use a different IP range
   // or run multiple instances.
-  AddressResolver defaultResolver = new Inet4Resolver(new byte[] {127, 0, 1, 1});
+  AddressResolver defaultResolver = new Inet4Resolver();
 
   AddressResolver localAddressResolver = () -> new LocalAddress(UUID.randomUUID().toString());
 
@@ -26,18 +29,38 @@ public interface AddressResolver extends Supplier<SocketAddress> {
    * A resolver that returns next unused IP address at port 9042. Starts from an input address and
    * cycles up to the next subnet as it goes, i.e. the order would go something like:
    *
+   * <p>
+   *
+   * <p>
+   *
+   * <p>
+   *
    * <p>127.0.0.1, 127.0.0.2 ... 127.0.0.255, 127.0.1.1, 127.0.1.2 and so on.
    */
   class Inet4Resolver implements AddressResolver {
     private final AtomicReference<byte[]> ipParts;
+    private final int port;
 
     Queue<InetSocketAddress> releasedAddresses = new LinkedBlockingQueue<>();
 
     public Inet4Resolver(byte[] startingAddress) {
+      this(startingAddress, defaultStartingPort);
+    }
+
+    public Inet4Resolver() {
+      this(defaultStartingIp, defaultStartingPort);
+    }
+
+    public Inet4Resolver(int port) {
+      this(defaultStartingIp, port);
+    }
+
+    public Inet4Resolver(byte startingAddress[], int port) {
       byte[] ipAddr = new byte[4];
 
       System.arraycopy(startingAddress, 0, ipAddr, 0, 4);
-      ipParts = new AtomicReference<>(ipAddr);
+      this.ipParts = new AtomicReference<>(ipAddr);
+      this.port = port;
     }
 
     @Override
@@ -71,7 +94,7 @@ public interface AddressResolver extends Supplier<SocketAddress> {
             }
           }
           if (ipParts.compareAndSet(ref, ipAddr)) {
-            return new InetSocketAddress(addr, 9042);
+            return new InetSocketAddress(addr, this.port);
           }
         }
       }

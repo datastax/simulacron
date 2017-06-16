@@ -5,11 +5,9 @@ import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.*;
 import com.datastax.driver.core.policies.FallthroughRetryPolicy;
 import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.datastax.simulacron.common.codec.WriteType;
-import com.datastax.simulacron.common.result.*;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -25,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.*;
 import static com.datastax.simulacron.test.FluentMatcher.match;
 import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
 import static org.hamcrest.CoreMatchers.*;
@@ -40,7 +39,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnServerError() throws Exception {
     String errMessage = "This is a server error";
-    server.prime(new RequestPrime(query, new ServerErrorResult(errMessage)));
+    server.prime(when(query).then(serverError(errMessage)));
 
     thrown.expect(ServerError.class);
     thrown.expectMessage(endsWith(errMessage));
@@ -51,7 +50,7 @@ public class ErrorResultIntegrationTest {
   public void testShouldReturnAlreadyExists() throws Exception {
     String keyspace = "ks";
     String table = "tbl";
-    server.prime(new RequestPrime(query, new AlreadyExistsResult("unused", keyspace, table)));
+    server.prime(when(query).then(alreadyExists(keyspace, table)));
 
     thrown.expect(AlreadyExistsException.class);
     thrown.expectMessage(containsString(keyspace + "." + table));
@@ -61,7 +60,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnAuthenticationError() throws Exception {
     String message = "Invalid password, man!";
-    server.prime(new RequestPrime(query, new AuthenticationErrorResult(message)));
+    server.prime(when(query).then(authenticationError(message)));
 
     thrown.expect(AuthenticationException.class);
     thrown.expectMessage(endsWith(message));
@@ -71,7 +70,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnConfigurationError() throws Exception {
     String message = "This is a config error";
-    server.prime(new RequestPrime(query, new ConfigurationErrorResult(message)));
+    server.prime(when(query).then(configurationError(message)));
 
     thrown.expect(InvalidConfigurationInQueryException.class);
     thrown.expectMessage(endsWith(message));
@@ -86,8 +85,7 @@ public class ErrorResultIntegrationTest {
     List<String> argTypes = new ArrayList<>();
     argTypes.add("text");
     argTypes.add("int");
-    server.prime(
-        new RequestPrime(query, new FunctionFailureResult(keyspace, function, argTypes, detail)));
+    server.prime(when(query).then(functionFailure(keyspace, function, argTypes, detail)));
 
     thrown.expect(FunctionExecutionException.class);
     thrown.expectMessage(
@@ -100,7 +98,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnInvalidResult() throws Exception {
     String message = "This is an invalid result";
-    server.prime(new RequestPrime(query, new InvalidResult(message)));
+    server.prime(when(query).then(invalid(message)));
 
     thrown.expect(InvalidQueryException.class);
     thrown.expectMessage(message);
@@ -109,7 +107,7 @@ public class ErrorResultIntegrationTest {
 
   @Test
   public void testShouldReturnIsBootstrapping() throws Exception {
-    server.prime(new RequestPrime(query, new IsBoostrappingResult()));
+    server.prime(when(query).then(isBootstrapping()));
 
     thrown.expect(hasHostError(instanceOf(BootstrappingException.class)));
     query();
@@ -118,7 +116,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnOverloaded() throws Exception {
     String message = "DANGER WILL ROBINSON!";
-    server.prime(new RequestPrime(query, new OverloadedResult(message)));
+    server.prime(when(query).then(overloaded(message)));
 
     thrown.expect(OverloadedException.class);
     thrown.expectMessage(message);
@@ -128,7 +126,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnProtocolError() throws Exception {
     String message = "Invalid Protocol Message";
-    server.prime(new RequestPrime(query, new ProtocolErrorResult(message)));
+    server.prime(when(query).then(protocolError(message)));
 
     thrown.expect(ProtocolError.class);
     thrown.expectMessage(message);
@@ -138,7 +136,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnSyntaxError() throws Exception {
     String message = "pc load letter";
-    server.prime(new RequestPrime(query, new SyntaxErrorResult(message)));
+    server.prime(when(query).then(syntaxError(message)));
 
     thrown.expect(SyntaxError.class);
     thrown.expectMessage(message);
@@ -148,7 +146,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnTruncateError() throws Exception {
     String message = "This is a truncate error";
-    server.prime(new RequestPrime(query, new TruncateErrorResult(message)));
+    server.prime(when(query).then(truncateError(message)));
 
     thrown.expect(TruncateException.class);
     thrown.expectMessage(message);
@@ -158,7 +156,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnUnauthorized() throws Exception {
     String message = "unacceptable";
-    server.prime(new RequestPrime(query, new UnauthorizedResult(message)));
+    server.prime(when(query).then(unauthorized(message)));
 
     thrown.expect(UnauthorizedException.class);
     thrown.expectMessage(message);
@@ -169,7 +167,7 @@ public class ErrorResultIntegrationTest {
   @Ignore("Skipping as this creates a loop in the driver")
   public void testShouldReturnUnprepared() throws Exception {
     String message = "I'm not ready for this";
-    server.prime(new RequestPrime(query, new UnpreparedResult(message)));
+    server.prime(when(query).then(unprepared(message)));
 
     thrown.expect(UnpreparedException.class);
     thrown.expectMessage(message);
@@ -181,8 +179,7 @@ public class ErrorResultIntegrationTest {
     Map<InetAddress, RequestFailureReason> reasons = new LinkedHashMap<>();
     InetAddress addr = InetAddress.getByAddress(new byte[] {127, 0, 0, 1});
     reasons.put(addr, RequestFailureReason.READ_TOO_MANY_TOMBSTONES);
-    ReadFailureResult result = new ReadFailureResult(ConsistencyLevel.THREE, 1, 4, reasons, true);
-    server.prime(new RequestPrime(query, result));
+    server.prime(when(query).then(readFailure(ConsistencyLevel.THREE, 1, 4, reasons, true)));
 
     thrown.expect(ReadFailureException.class);
     thrown.expect(
@@ -204,9 +201,9 @@ public class ErrorResultIntegrationTest {
     Map<InetAddress, RequestFailureReason> reasons = new LinkedHashMap<>();
     InetAddress addr = InetAddress.getByAddress(new byte[] {127, 0, 0, 1});
     reasons.put(addr, RequestFailureReason.UNKNOWN);
-    WriteFailureResult result =
-        new WriteFailureResult(ConsistencyLevel.EACH_QUORUM, 1, 7, reasons, WriteType.SIMPLE);
-    server.prime(new RequestPrime(query, result));
+    server.prime(
+        when(query)
+            .then(writeFailure(ConsistencyLevel.EACH_QUORUM, 1, 7, reasons, WriteType.SIMPLE)));
 
     thrown.expect(WriteFailureException.class);
     thrown.expect(
@@ -224,8 +221,7 @@ public class ErrorResultIntegrationTest {
 
   @Test
   public void testShouldReturnUnavailable() throws Exception {
-    UnavailableResult result = new UnavailableResult(ConsistencyLevel.ALL, 5, 1);
-    server.prime(new RequestPrime(query, result));
+    server.prime(when(query).then(unavailable(ConsistencyLevel.ALL, 5, 1)));
 
     thrown.expect(UnavailableException.class);
     thrown.expect(
@@ -239,9 +235,7 @@ public class ErrorResultIntegrationTest {
 
   @Test
   public void testShouldReturnWriteTimeout() throws Exception {
-    WriteTimeoutResult result =
-        new WriteTimeoutResult(ConsistencyLevel.QUORUM, 3, 1, WriteType.BATCH);
-    server.prime(new RequestPrime(query, result));
+    server.prime(when(query).then(writeTimeout(ConsistencyLevel.QUORUM, 3, 1, WriteType.BATCH)));
 
     thrown.expect(WriteTimeoutException.class);
     thrown.expect(
@@ -257,8 +251,7 @@ public class ErrorResultIntegrationTest {
 
   @Test
   public void testShouldReturnReadTimeout() throws Exception {
-    ReadTimeoutResult result = new ReadTimeoutResult(ConsistencyLevel.TWO, 1, 2, false);
-    server.prime(new RequestPrime(query, result));
+    server.prime(when(query).then(readTimeout(ConsistencyLevel.TWO, 1, 2, false)));
 
     thrown.expect(ReadTimeoutException.class);
     thrown.expect(
@@ -273,7 +266,7 @@ public class ErrorResultIntegrationTest {
 
   @Test
   public void testShouldReturnClientTimeout() throws Exception {
-    server.prime(new RequestPrime(query, new NoResult()));
+    server.prime(when(query));
 
     thrown.expect(OperationTimedOutException.class);
     query(new SimpleStatement(query).setReadTimeoutMillis(1000));
@@ -281,10 +274,11 @@ public class ErrorResultIntegrationTest {
 
   @Test
   public void testShouldReturnTransportException() throws Exception {
-    CloseConnectionResult result =
-        new CloseConnectionResult(
-            DisconnectAction.Scope.CONNECTION, DisconnectAction.CloseType.DISCONNECT, 0);
-    server.prime(new RequestPrime(query, result));
+    server.prime(
+        when(query)
+            .then(
+                closeConnection(
+                    DisconnectAction.Scope.CONNECTION, DisconnectAction.CloseType.DISCONNECT)));
 
     // expect a transport exception as the connection should have been closed.
     thrown.expect(TransportException.class);

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.Map;
@@ -50,6 +51,19 @@ public class Node extends AbstractNodeProperties {
   }
 
   /**
+   * Convenience method to get access {@link #getAddress()} as {@link InetSocketAddress} instance
+   * which it almost always is (except in testing scenarios.
+   *
+   * @return address as an {@link InetSocketAddress}
+   */
+  public InetSocketAddress inet() {
+    if (address instanceof InetSocketAddress) {
+      return (InetSocketAddress) address;
+    }
+    return null;
+  }
+
+  /**
    * @return The {@link DataCenter} this node belongs to, otherwise null if it does not have one.
    */
   @JsonIgnore
@@ -91,6 +105,16 @@ public class Node extends AbstractNodeProperties {
     // In the case of a concrete 'Node' instance, active connections will always be 0 since there is no actual
     // connection state here.  We expect specialized implementations of Node to override this.
     return 0L;
+  }
+
+  /**
+   * Convenience to get access to the node's cluster's {@link ActivityLog}
+   *
+   * @return activity log for this node's cluster.
+   */
+  @JsonIgnore
+  public ActivityLog getActivityLog() {
+    return this.getCluster().getActivityLog();
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, DataCenter> {

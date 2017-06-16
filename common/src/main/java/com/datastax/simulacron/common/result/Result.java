@@ -6,6 +6,7 @@ import com.datastax.simulacron.common.stubbing.Action;
 import com.fasterxml.jackson.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "result")
 @JsonSubTypes({
@@ -19,7 +20,7 @@ import java.util.List;
   @JsonSubTypes.Type(value = ConfigurationErrorResult.class, name = "config_error"),
   @JsonSubTypes.Type(value = FunctionFailureResult.class, name = "function_failure"),
   @JsonSubTypes.Type(value = InvalidResult.class, name = "invalid"),
-  @JsonSubTypes.Type(value = IsBoostrappingResult.class, name = "is_bootstrapping"),
+  @JsonSubTypes.Type(value = IsBootstrappingResult.class, name = "is_bootstrapping"),
   @JsonSubTypes.Type(value = OverloadedResult.class, name = "overloaded"),
   @JsonSubTypes.Type(value = ReadFailureResult.class, name = "read_failure"),
   @JsonSubTypes.Type(value = ReadTimeoutResult.class, name = "read_timeout"),
@@ -34,7 +35,7 @@ import java.util.List;
 public abstract class Result {
 
   @JsonProperty("delay_in_ms")
-  protected final long delayInMs;
+  protected long delayInMs;
 
   @JsonCreator
   public Result(@JsonProperty("delay_in_ms") long delayInMs) {
@@ -44,6 +45,10 @@ public abstract class Result {
   @JsonIgnore
   public long getDelayInMs() {
     return delayInMs;
+  }
+
+  public void setDelay(long delay, TimeUnit delayUnit) {
+    this.delayInMs = TimeUnit.MILLISECONDS.convert(delay, delayUnit);
   }
 
   public abstract List<Action> toActions(Node node, Frame frame);

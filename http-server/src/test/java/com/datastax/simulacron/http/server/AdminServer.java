@@ -1,6 +1,8 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.stubbing.Prime;
+import com.datastax.simulacron.common.stubbing.PrimeDsl;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -138,6 +140,14 @@ public class AdminServer extends ExternalResource {
 
   public HttpTestResponse delete(String endpoint) throws Exception {
     return request(HttpMethod.DELETE, endpoint, null);
+  }
+
+  public HttpTestResponse prime(PrimeDsl.PrimeBuilder primeBuilder) throws Exception {
+    return prime(primeBuilder.build());
+  }
+
+  public HttpTestResponse prime(Prime prime) throws Exception {
+    return prime(prime.getPrimedRequest());
   }
 
   public HttpTestResponse prime(RequestPrime prime) throws Exception {

@@ -1,4 +1,4 @@
-package com.datastax.simulacron.http.server;
+package com.datastax.simulacron.common.stubbing;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Prepare;
@@ -8,12 +8,10 @@ import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.cluster.RequestPrime;
+import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.SuccessResult;
-import com.datastax.simulacron.common.stubbing.Action;
-import com.datastax.simulacron.common.stubbing.MessageResponseAction;
-import com.datastax.simulacron.common.stubbing.StubMapping;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -22,11 +20,16 @@ import java.util.List;
 
 import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecBuilder;
 
-public class RequestHandler extends StubMapping {
-  RequestPrime primedRequest;
+public class Prime extends StubMapping {
+  private final RequestPrime primedRequest;
 
-  public RequestHandler(RequestPrime primedQuery) {
+  public Prime(RequestPrime primedQuery, Scope scope) {
+    this.setScope(scope);
     this.primedRequest = primedQuery;
+  }
+
+  public RequestPrime getPrimedRequest() {
+    return primedRequest;
   }
 
   @Override
@@ -37,9 +40,11 @@ public class RequestHandler extends StubMapping {
   private RowsMetadata fetchRowMetadataForParams(Query query) {
     CodecUtils.ColumnSpecBuilder columnBuilder = columnSpecBuilder();
     List<ColumnSpec> columnMetadata = new LinkedList<ColumnSpec>();
-    for (String key : query.paramTypes.keySet()) {
-      RawType type = CodecUtils.getTypeFromName(query.paramTypes.get(key));
-      columnMetadata.add(columnBuilder.apply(key, type));
+    if (query.paramTypes != null) {
+      for (String key : query.paramTypes.keySet()) {
+        RawType type = CodecUtils.getTypeFromName(query.paramTypes.get(key));
+        columnMetadata.add(columnBuilder.apply(key, type));
+      }
     }
     return new RowsMetadata(columnMetadata, columnMetadata.size(), null, new int[] {0});
   }
@@ -57,13 +62,21 @@ public class RequestHandler extends StubMapping {
     return null;
   }
 
-  public List<Action> toPreparedAction(Node node, Frame frame, Query query, SuccessResult result) {
+  public Prepared toPrepared() {
+    if (this.primedRequest.when instanceof Query
+        && this.primedRequest.then instanceof SuccessResult) {
+      Query query = (Query) this.primedRequest.when;
+      SuccessResult result = (SuccessResult) this.primedRequest.then;
+      ByteBuffer b = ByteBuffer.allocate(4);
+      b.putInt(query.getQueryId());
+      return new Prepared(
+          b.array(), fetchRowMetadataForParams(query), fetchRowMetadataForResults(result));
+    }
+    return null;
+  }
 
-    ByteBuffer b = ByteBuffer.allocate(4);
-    b.putInt(query.getQueryId());
-    Prepared preparedResponse =
-        new Prepared(
-            b.array(), fetchRowMetadataForParams(query), fetchRowMetadataForResults(result));
+  public List<Action> toPreparedAction() {
+    Prepared preparedResponse = toPrepared();
     MessageResponseAction action = new MessageResponseAction(preparedResponse);
     return Collections.singletonList(action);
   }
@@ -72,8 +85,7 @@ public class RequestHandler extends StubMapping {
   public List<Action> getActions(Node node, Frame frame) {
     if (frame.message instanceof Prepare) {
       if (primedRequest.when instanceof Query && primedRequest.then instanceof SuccessResult) {
-        return this.toPreparedAction(
-            node, frame, (Query) primedRequest.when, (SuccessResult) primedRequest.then);
+        return this.toPreparedAction();
       }
     }
     return primedRequest.then.toActions(node, frame);

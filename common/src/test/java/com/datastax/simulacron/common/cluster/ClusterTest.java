@@ -90,6 +90,26 @@ public class ClusterTest {
   }
 
   @Test
+  public void testLookupDCAndNode() {
+    Cluster cluster = Cluster.builder().withId(0L).withNodes(5, 5).build();
+
+    // Lookup dc by id
+    assertThat(cluster.dc(2)).isNull();
+    assertThat(cluster.dc(0).getId()).isEqualTo(0);
+    assertThat(cluster.dc(1).getId()).isEqualTo(1);
+
+    // Lookup node by id
+    assertThat(cluster.node(0, 1).resolveId()).isEqualTo("0:0:1");
+    assertThat(cluster.node(0, 4).resolveId()).isEqualTo("0:0:4");
+    assertThat(cluster.node(1, 4).resolveId()).isEqualTo("0:1:4");
+    assertThat(cluster.node(1, 5)).isNull(); // no node in dc.
+    assertThat(cluster.node(3, 1)).isNull(); // no dc in cluster.
+
+    // dc then node
+    assertThat(cluster.dc(0).node(1).resolveId()).isEqualTo("0:0:1");
+  }
+
+  @Test
   public void testCopy() {
     Cluster cluster =
         Cluster.builder()

@@ -1,9 +1,12 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.oss.protocol.internal.response.result.RawType;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
+import com.datastax.simulacron.common.cluster.RequestPrime;
+import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.result.SuccessResult;
+import com.datastax.simulacron.common.stubbing.Prime;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
@@ -12,9 +15,6 @@ import io.vertx.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
-
-import static com.datastax.simulacron.http.server.HttpUtils.handleError;
 import static com.datastax.simulacron.http.server.HttpUtils.handleMessage;
 
 public class QueryManager implements HttpListener {
@@ -76,10 +76,9 @@ public class QueryManager implements HttpListener {
                     }
                   }
                 }
-                RequestHandler requestHandler = new RequestHandler(query);
-                requestHandler.setScope(scope);
+                Prime prime = new Prime(query, scope);
 
-                server.registerStub(requestHandler);
+                server.prime(prime);
               } catch (Exception e) {
                 handleQueryError(e, "prime query", context);
               }
@@ -123,7 +122,7 @@ public class QueryManager implements HttpListener {
 
               int cleared = 0;
               try {
-                server.clear(scope, RequestHandler.class);
+                server.clear(scope, Prime.class);
               } catch (Exception e) {
                 handleQueryError(e, "clear primed queries", context);
               }

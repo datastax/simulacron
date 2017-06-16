@@ -16,6 +16,9 @@ public class QueryLog {
   @JsonProperty("consistency_level")
   private String consistency;
 
+  @JsonProperty("serial_consistency_level")
+  private String serialConsistency;
+
   @JsonProperty("connection")
   private String connection;
 
@@ -31,6 +34,7 @@ public class QueryLog {
       @JsonProperty("node_id") long nodeId,
       @JsonProperty("query") String query,
       @JsonProperty("consistency_level") String consistency,
+      @JsonProperty("serial_consistency_level") String serialConsistency,
       @JsonProperty("connection") String connection,
       @JsonProperty("timestamp") long timestamp,
       @JsonProperty("primed") boolean primed) {
@@ -38,6 +42,7 @@ public class QueryLog {
     this.nodeId = nodeId;
     this.query = query;
     this.consistency = consistency;
+    this.serialConsistency = serialConsistency;
     this.connection = connection;
     this.timestamp = timestamp;
     this.primed = primed;
@@ -53,6 +58,10 @@ public class QueryLog {
 
   public String getConsistency() {
     return consistency;
+  }
+
+  public String getSerialConsistency() {
+    return serialConsistency;
   }
 
   public long getDatacenterId() {

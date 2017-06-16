@@ -3,16 +3,12 @@ package com.datastax.simulacron.server;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.ProtocolConstants;
-import com.datastax.oss.protocol.internal.request.Options;
-import com.datastax.oss.protocol.internal.request.Prepare;
-import com.datastax.oss.protocol.internal.request.Query;
-import com.datastax.oss.protocol.internal.request.Startup;
+import com.datastax.oss.protocol.internal.request.*;
 import com.datastax.oss.protocol.internal.request.query.QueryOptions;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
-import com.datastax.oss.protocol.internal.response.result.Prepared;
-import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
-import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
+import com.datastax.oss.protocol.internal.response.error.Unprepared;
+import com.datastax.oss.protocol.internal.response.result.*;
 import com.datastax.oss.protocol.internal.response.result.Void;
 import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
@@ -106,11 +102,61 @@ public class BoundNodeTest {
   }
 
   @Test
-  public void shouldResponseWithVoidWhenNoQueryMatch() {
+  public void shouldRespondWithVoidWhenNoQueryMatch() {
     channel.writeInbound(FrameUtils.wrapRequest(new Query("select * from foo")));
     Frame frame = channel.readOutbound();
 
     assertThat(frame.message).isSameAs(Void.INSTANCE);
+  }
+
+  private QueryOptions options =
+      new QueryOptions(1, Collections.emptyList(), Collections.emptyMap(), true, 0, null, 8, 0L);
+
+  @Test
+  public void shouldRespondWithUnpreparedToExecute() {
+    byte[] queryId = new byte[] {0x8, 0x6, 0x7, 0x5};
+    channel.writeInbound(FrameUtils.wrapRequest(new Execute(queryId, options)));
+    Frame frame = channel.readOutbound();
+
+    assertThat(frame.message).isInstanceOf(Unprepared.class);
+
+    Unprepared unprepared = (Unprepared) frame.message;
+    assertThat(unprepared.id).isEqualTo(queryId);
+  }
+
+  @Test
+  public void shouldPrepareAndCreateInternalPrime() {
+    String query = "select * from unprimed";
+    Prepare prepare = new Prepare(query);
+    loggedChannel.writeInbound(FrameUtils.wrapRequest(prepare));
+    Frame frame = loggedChannel.readOutbound();
+
+    // Should get a prepared response back.
+    assertThat(frame.message).isInstanceOf(Prepared.class);
+
+    Prepared prepared = (Prepared) frame.message;
+
+    // Execute should succeed since bound node creates an internal prime.
+    Execute execute = new Execute(prepared.preparedQueryId, options);
+    loggedChannel.writeInbound(FrameUtils.wrapRequest(execute));
+    frame = loggedChannel.readOutbound();
+
+    // Should get a no rows response back.
+    assertThat(frame.message).isInstanceOf(Rows.class);
+
+    // Should be recorded in activity log
+    try {
+      assertThat(
+              loggedNode
+                  .getActivityLog()
+                  .getLogs()
+                  .stream()
+                  .filter(ql -> ql.getQuery().equals(query))
+                  .findFirst())
+          .isPresent();
+    } finally {
+      loggedNode.getActivityLog().clearAll();
+    }
   }
 
   @Test
@@ -211,7 +257,7 @@ public class BoundNodeTest {
     loggedChannel.writeInbound(request2);
     loggedChannel.readOutbound();
 
-    ActivityLog activityLog = loggedNode.getCluster().getActivityLog();
+    ActivityLog activityLog = loggedNode.getActivityLog();
     assertThat(activityLog.getSize()).isEqualTo(2);
     QueryLog log1 = activityLog.getLogs().get(0);
     assertThat(log1.getQuery()).isEqualTo("use myks");
@@ -232,7 +278,7 @@ public class BoundNodeTest {
     channel.writeInbound(request2);
     channel.readOutbound();
 
-    ActivityLog activityLog = node.getCluster().getActivityLog();
+    ActivityLog activityLog = node.getActivityLog();
     assertThat(activityLog.getSize()).isEqualTo(0);
   }
 }

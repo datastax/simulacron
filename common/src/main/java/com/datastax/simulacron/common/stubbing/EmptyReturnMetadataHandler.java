@@ -14,7 +14,7 @@ import java.util.*;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INT;
 import static com.datastax.simulacron.common.codec.CodecUtils.*;
 
-public class EmptyReturnMetadataHandler extends InternalStubMapping {
+public class EmptyReturnMetadataHandler extends StubMapping implements InternalStubMapping {
 
   private List<String> queries = new ArrayList<>();
 
@@ -34,10 +34,6 @@ public class EmptyReturnMetadataHandler extends InternalStubMapping {
 
   @Override
   public List<Action> getActions(Node node, Frame frame) {
-    /*
-    MessageResponseAction action = new MessageResponseAction(INSTANCE);
-    return Collections.singletonList(action);
-    */
     if (frame.message instanceof Query) {
       Queue<List<ByteBuffer>> peerRows = new ArrayDeque<>();
       Rows rows = new Rows(buildEmptyRowsMetadata(node), peerRows);
