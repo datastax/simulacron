@@ -239,7 +239,8 @@ class BoundNode extends Node {
 
     //store the frame in history
     if (activityLogging) {
-      getActivityLog()
+      getCluster()
+          .getActivityLog()
           .addLog(
               this, frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
     }

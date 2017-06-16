@@ -241,7 +241,7 @@ paths:
             $ref: '#/definitions/PrimeQuerySuccess'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single/{clusterId}/{datacenterId}':
+  '/prime-query-single/{clusterId}/{dataCenterId}':
     post:
       tags:
         - prime-query-single
@@ -257,7 +257,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
-        - name: datacenterId
+        - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
@@ -277,7 +277,7 @@ paths:
             $ref: '#/definitions/PrimeQuerySuccess'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single/{clusterId}/{datacenterId}/{nodeId}':
+  '/prime-query-single/{clusterId}/{dataCenterId}/{nodeId}':
     post:
       tags:
         - prime-query-single
@@ -293,7 +293,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
-        - name: datacenterId
+        - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
@@ -878,7 +878,7 @@ paths:
           description: Log deleted
         '404':
           description: Cluster not found
-  '/log/{clusterId}/{datacenterId}':
+  '/log/{clusterId}/{dataCenterId}':
     get:
       tags:
         - log
@@ -894,7 +894,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
-        - name: datacenterId
+        - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
@@ -932,7 +932,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
-        - name: datacenterId
+        - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
@@ -942,7 +942,7 @@ paths:
           description: Log deleted
         '404':
           description: Cluster/Datacenter not found
-  '/log/{clusterId}/{datacenterId}/{nodeId}':
+  '/log/{clusterId}/{dataCenterId}/{nodeId}':
     get:
       tags:
         - log
@@ -958,7 +958,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
-        - name: datacenterId
+        - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
@@ -1001,7 +1001,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
-        - name: datacenterId
+        - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true

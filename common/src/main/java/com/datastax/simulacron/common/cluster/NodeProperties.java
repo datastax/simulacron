@@ -1,5 +1,6 @@
 package com.datastax.simulacron.common.cluster;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -140,4 +141,13 @@ public interface NodeProperties {
   default Object resolvePeerInfo(String key, Object defaultValue) {
     return resolvePeerInfo(key).orElseGet(() -> defaultValue);
   }
+
+  /** @return the scope for this object, useful for looking things up. */
+  Scope getScope();
+
+  /** @return recorded query logs for this. */
+  List<QueryLog> getLogs();
+
+  /** clears the query logs for this. */
+  void clearLogs();
 }

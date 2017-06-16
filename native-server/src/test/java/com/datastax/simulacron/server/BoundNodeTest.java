@@ -10,7 +10,10 @@ import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.error.Unprepared;
 import com.datastax.oss.protocol.internal.response.result.*;
 import com.datastax.oss.protocol.internal.response.result.Void;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.QueryLog;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
@@ -147,15 +150,10 @@ public class BoundNodeTest {
     // Should be recorded in activity log
     try {
       assertThat(
-              loggedNode
-                  .getActivityLog()
-                  .getLogs()
-                  .stream()
-                  .filter(ql -> ql.getQuery().equals(query))
-                  .findFirst())
+              loggedNode.getLogs().stream().filter(ql -> ql.getQuery().equals(query)).findFirst())
           .isPresent();
     } finally {
-      loggedNode.getActivityLog().clearAll();
+      loggedNode.clearLogs();
     }
   }
 
@@ -257,12 +255,12 @@ public class BoundNodeTest {
     loggedChannel.writeInbound(request2);
     loggedChannel.readOutbound();
 
-    ActivityLog activityLog = loggedNode.getActivityLog();
-    assertThat(activityLog.getSize()).isEqualTo(2);
-    QueryLog log1 = activityLog.getLogs().get(0);
+    List<QueryLog> logs = loggedNode.getLogs();
+    assertThat(logs.size()).isEqualTo(2);
+    QueryLog log1 = logs.get(0);
     assertThat(log1.getQuery()).isEqualTo("use myks");
     assertThat(ConsistencyLevel.fromString(log1.getConsistency())).isEqualTo(ConsistencyLevel.ONE);
-    QueryLog log2 = activityLog.getLogs().get(1);
+    QueryLog log2 = logs.get(1);
     assertThat(log2.getQuery()).isEqualTo("select * from table1");
     assertThat(ConsistencyLevel.fromString(log2.getConsistency()))
         .isEqualTo(ConsistencyLevel.QUORUM);
@@ -278,7 +276,6 @@ public class BoundNodeTest {
     channel.writeInbound(request2);
     channel.readOutbound();
 
-    ActivityLog activityLog = node.getActivityLog();
-    assertThat(activityLog.getSize()).isEqualTo(0);
+    assertThat(node.getLogs()).hasSize(0);
   }
 }

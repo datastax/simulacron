@@ -40,6 +40,12 @@ public class Cluster extends AbstractNodeProperties {
     return dataCenters.stream().mapToLong(NodeProperties::getActiveConnections).sum();
   }
 
+  @Override
+  @JsonIgnore
+  public Cluster getCluster() {
+    return this;
+  }
+
   /** @return The {@link DataCenter}s belonging to this cluster. */
   public Collection<DataCenter> getDataCenters() {
     return dataCenters;
@@ -155,6 +161,7 @@ public class Cluster extends AbstractNodeProperties {
     }
   }
 
+  @JsonIgnore
   public ActivityLog getActivityLog() {
     return this.activityLog;
   }

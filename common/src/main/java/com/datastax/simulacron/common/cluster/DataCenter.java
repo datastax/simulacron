@@ -49,6 +49,7 @@ public class DataCenter extends AbstractNodeProperties {
 
   /** @return The {@link Cluster} associated this belongs to otherwise null. */
   @JsonIgnore
+  @Override
   public Cluster getCluster() {
     return parent;
   }

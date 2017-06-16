@@ -76,6 +76,7 @@ public class Node extends AbstractNodeProperties {
    *     belong to one.
    */
   @JsonIgnore
+  @Override
   public Cluster getCluster() {
     return Optional.ofNullable(parent).map(DataCenter::getCluster).orElse(null);
   }
@@ -105,16 +106,6 @@ public class Node extends AbstractNodeProperties {
     // In the case of a concrete 'Node' instance, active connections will always be 0 since there is no actual
     // connection state here.  We expect specialized implementations of Node to override this.
     return 0L;
-  }
-
-  /**
-   * Convenience to get access to the node's cluster's {@link ActivityLog}
-   *
-   * @return activity log for this node's cluster.
-   */
-  @JsonIgnore
-  public ActivityLog getActivityLog() {
-    return this.getCluster().getActivityLog();
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, DataCenter> {

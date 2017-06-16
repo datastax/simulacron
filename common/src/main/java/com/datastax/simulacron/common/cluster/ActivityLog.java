@@ -85,11 +85,19 @@ public class ActivityLog {
     return queryLog;
   }
 
+  public List<QueryLog> getLogs(NodeProperties topic) {
+    return getLogs(new QueryLogScope(topic.getScope()));
+  }
+
   public List<QueryLog> getLogs(QueryLogScope scope) {
     return queryLog
         .stream()
         .filter(log -> scope.isQueryLogInScope(log))
         .collect(Collectors.toList());
+  }
+
+  public void clearLogs(NodeProperties topic) {
+    clearLogs(new QueryLogScope(topic.getScope()));
   }
 
   public void clearLogs(QueryLogScope scope) {

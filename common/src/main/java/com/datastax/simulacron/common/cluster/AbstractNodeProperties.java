@@ -1,9 +1,12 @@
 package com.datastax.simulacron.common.cluster;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Implementation of {@link NodeProperties} that provides a constructor a implementations for
@@ -18,6 +21,8 @@ public abstract class AbstractNodeProperties implements NodeProperties {
 
   private final String name;
   private final Long id;
+
+  private final transient AtomicReference<Scope> scope = new AtomicReference<Scope>(null);
 
   @JsonProperty("cassandra_version")
   private final String cassandraVersion;
@@ -70,6 +75,29 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   @Override
   @JsonProperty("active_connections")
   public abstract Long getActiveConnections();
+
+  @JsonIgnore
+  public abstract Cluster getCluster();
+
+  @Override
+  @JsonIgnore
+  public Scope getScope() {
+    if (scope.get() == null) {
+      scope.compareAndSet(null, Scope.scope(this));
+    }
+    return scope.get();
+  }
+
+  @Override
+  @JsonIgnore
+  public List<QueryLog> getLogs() {
+    return getCluster().getActivityLog().getLogs(this);
+  }
+
+  @Override
+  public void clearLogs() {
+    getCluster().getActivityLog().clearLogs(this);
+  }
 
   String toStringWith(String extras) {
     StringBuilder str = new StringBuilder(this.getClass().getSimpleName());

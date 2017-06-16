@@ -4,6 +4,10 @@ public class QueryLogScope {
   private Scope scope;
   private Boolean primed;
 
+  public QueryLogScope(Scope scope) {
+    this(scope, null);
+  }
+
   public QueryLogScope(Scope scope, Boolean primed) {
     this.scope = scope;
     this.primed = primed;
@@ -11,7 +15,7 @@ public class QueryLogScope {
 
   boolean isQueryLogInScope(QueryLog queryLog) {
     if ((this.scope.getNodeId() == null)
-        && (this.scope.getDatacenterId() == null)
+        && (this.scope.getDataCenterId() == null)
         && primed == null) {
       return true;
     }
@@ -21,11 +25,11 @@ public class QueryLogScope {
       primeFilter = queryLog.isPrimed() == primed;
     }
 
-    if (scope.getDatacenterId() == null) {
+    if (scope.getDataCenterId() == null) {
       return primeFilter;
     }
 
-    boolean sameDatacenter = queryLog.getDatacenterId() == scope.getDatacenterId();
+    boolean sameDatacenter = queryLog.getDatacenterId() == scope.getDataCenterId();
     if (this.scope.getNodeId() == null) {
       return primeFilter && sameDatacenter;
     }
