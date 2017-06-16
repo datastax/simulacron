@@ -568,6 +568,16 @@ public final class Server {
         stubStore.register(
             new EmptyReturnMetadataHandler("SELECT * FROM system_schema.aggregates"));
         stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.views"));
+
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system.schema_keyspaces"));
+        stubStore.register(
+            new EmptyReturnMetadataHandler("SELECT * FROM system.schema_columnfamilies"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system.schema_columns"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system.schema_triggers"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system.schema_usertypes"));
+        stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system.schema_functions"));
+        stubStore.register(
+            new EmptyReturnMetadataHandler("SELECT * FROM system.schema_aggregates"));
       }
       if (timer == null) {
         this.timer = new HashedWheelTimer();
