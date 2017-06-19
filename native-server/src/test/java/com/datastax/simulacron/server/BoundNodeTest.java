@@ -160,7 +160,7 @@ public class BoundNodeTest {
   @Test
   public void shouldRespondWithStubActionsWhenMatched() throws Exception {
     String query = "select * from foo where bar = ?";
-    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), 0, null, new int[0]);
+    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0]);
     Prepared response = new Prepared(new byte[] {1, 7, 9}, rowsMetadata, rowsMetadata);
     stubStore.register(
         new StubMapping() {
@@ -192,7 +192,7 @@ public class BoundNodeTest {
   @Test
   public void shouldRespondWithDelay() throws Exception {
     String query = "select * from foo where bar = ?";
-    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), 0, null, new int[0]);
+    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0]);
     Prepared response = new Prepared(new byte[] {1, 7, 9}, rowsMetadata, rowsMetadata);
     stubStore.register(
         new StubMapping() {

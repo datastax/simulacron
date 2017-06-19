@@ -46,7 +46,7 @@ public class Prime extends StubMapping {
         columnMetadata.add(columnBuilder.apply(key, type));
       }
     }
-    return new RowsMetadata(columnMetadata, columnMetadata.size(), null, new int[] {0});
+    return new RowsMetadata(columnMetadata, null, new int[] {0});
   }
 
   private RowsMetadata fetchRowMetadataForResults(SuccessResult result) {
@@ -57,7 +57,7 @@ public class Prime extends StubMapping {
         RawType type = CodecUtils.getTypeFromName(result.columnTypes.get(key));
         columnMetadata.add(columnBuilder.apply(key, type));
       }
-      return new RowsMetadata(columnMetadata, columnMetadata.size(), null, new int[] {0});
+      return new RowsMetadata(columnMetadata, null, new int[] {0});
     }
     return null;
   }
