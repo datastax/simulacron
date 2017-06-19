@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -15,7 +16,7 @@ public class Cluster extends AbstractNodeProperties {
   // (datacenters) in a json tree.  This tells the jackson mapping to tie child DCs to this cluster on deserialization.
   @JsonManagedReference
   @JsonProperty("data_centers")
-  private final List<DataCenter> dataCenters = new ArrayList<>();
+  private final Collection<DataCenter> dataCenters = new ConcurrentSkipListSet<>();
 
   @JsonIgnore private final transient AtomicLong dcCounter = new AtomicLong(0);
 

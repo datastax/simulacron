@@ -8,7 +8,7 @@ import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.Queue;
 import java.util.UUID;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -41,7 +41,30 @@ public interface AddressResolver extends Supplier<SocketAddress> {
     private final AtomicReference<byte[]> ipParts;
     private final int port;
 
-    Queue<InetSocketAddress> releasedAddresses = new LinkedBlockingQueue<>();
+    // Use priority queue so released addresses are sorted by ip address.
+    Queue<InetSocketAddress> releasedAddresses =
+        new PriorityBlockingQueue<>(
+            10,
+            (o1, o2) -> {
+              // Compare ip addresses byte wise, i.e. 127.0.0.1 should come before 127.0.1.2
+              byte[] o1Bytes = o1.getAddress().getAddress();
+              byte[] o2Bytes = o2.getAddress().getAddress();
+
+              // If comparing ipv6 and ipv4 addresses, consider ipv6 greater, this in practice shouldn't happen.
+              if (o1Bytes.length != o2Bytes.length) {
+                return o1Bytes.length - o2Bytes.length;
+              }
+
+              // compare byte wise.
+              for (int i = 0; i < o1Bytes.length; i++) {
+                if (o1Bytes[i] != o2Bytes[i]) {
+                  return o1Bytes[i] - o2Bytes[i];
+                }
+              }
+
+              // addresses are the same.
+              return 0;
+            });
 
     public Inet4Resolver(byte[] startingAddress) {
       this(startingAddress, defaultStartingPort);

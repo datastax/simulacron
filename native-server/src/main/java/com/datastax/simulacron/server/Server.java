@@ -176,7 +176,10 @@ public final class Server {
           long nodeOffset = nPos * nodeBase;
           tokenStr = "" + (nodeOffset + dcOffset);
         }
-        bindFutures.add(bindInternal(node, dc, tokenStr, activityLogging));
+        // Use node's address if set, otherwise generate a new one.
+        SocketAddress address =
+            node.getAddress() != null ? node.getAddress() : addressResolver.get();
+        bindFutures.add(bindInternal(node, dc, tokenStr, address, activityLogging));
         nPos++;
       }
       dcPos++;
@@ -356,10 +359,13 @@ public final class Server {
         serverOptions.isActivityLoggingEnabled() != null
             ? serverOptions.isActivityLoggingEnabled()
             : this.activityLogging;
+    // Use node's address if set, otherwise generate a new one.
+    SocketAddress address = node.getAddress() != null ? node.getAddress() : addressResolver.get();
     return bindInternal(
         node,
         dummyDataCenter,
         node.resolvePeerInfo("token").orElse("0").toString(),
+        address,
         activityLogging);
   }
 
@@ -421,23 +427,21 @@ public final class Server {
   }
 
   private CompletableFuture<Node> bindInternal(
-      Node refNode, DataCenter parent, String token, boolean activityLogging) {
+      Node refNode,
+      DataCenter parent,
+      String token,
+      SocketAddress address,
+      boolean activityLogging) {
     // derive a token for this node. This is done here as the ordering of nodes under a
     // data center is changed when it is bound.
     Map<String, Object> newPeerInfo = new HashMap<>(refNode.getPeerInfo());
     newPeerInfo.put("token", token);
-    // Use node's address if set, otherwise generate a new one.
-    SocketAddress address =
-        refNode.getAddress() != null ? refNode.getAddress() : addressResolver.get();
     CompletableFuture<Node> f = new CompletableFuture<>();
     ChannelFuture bindFuture = this.serverBootstrap.bind(address);
     bindFuture.addListener(
         (ChannelFutureListener)
             channelFuture -> {
               if (channelFuture.isSuccess()) {
-                // TODO: Since nodes may be added in a different order when binding than when defined, we need some
-                // way of ensuring nodes are added to the new DataCenter in the same order as they were originally
-                // defined.
                 BoundNode node =
                     new BoundNode(
                         address,

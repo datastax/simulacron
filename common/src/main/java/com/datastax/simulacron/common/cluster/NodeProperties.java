@@ -17,7 +17,7 @@ import static java.util.Optional.ofNullable;
  * #resolveCassandraVersion()} on the node will return the cassandraVersion defined at the node
  * level if defined, otherwise data center, otherwise cluster, otherwise some default value.
  */
-public interface NodeProperties {
+public interface NodeProperties extends Comparable<NodeProperties> {
 
   /**
    * Convenience utility such that for a given method reference of an instance method of {@link
@@ -150,4 +150,11 @@ public interface NodeProperties {
 
   /** clears the query logs for this. */
   void clearLogs();
+
+  @Override
+  default int compareTo(NodeProperties other) {
+    // by default compare by id, this is not perfect if comparing cross-dc or comparing different types but in the
+    // general case this should only be used for comparing for things in same group.
+    return (int) (this.getId() - other.getId());
+  }
 }

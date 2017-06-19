@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -20,7 +20,7 @@ public class DataCenter extends AbstractNodeProperties {
 
   // json managed reference is used to indicate a two way linking between the 'parent' (datacenter) and 'children'
   // (nodes) in a json tree.  This tells the jackson mapping to tie child nodes to this dc on deserialization.
-  @JsonManagedReference private final Collection<Node> nodes = new ConcurrentLinkedQueue<>();
+  @JsonManagedReference private final Collection<Node> nodes = new ConcurrentSkipListSet<>();
 
   // back reference is used to indicate the parent of this node while deserializing should be tied to this field.
   @JsonBackReference private final Cluster parent;

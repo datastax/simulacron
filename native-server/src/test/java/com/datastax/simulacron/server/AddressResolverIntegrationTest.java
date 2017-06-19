@@ -45,4 +45,27 @@ public class AddressResolverIntegrationTest {
 
     assertThat(cluster1Addrs).hasSameElementsAs(cluster0Addrs);
   }
+
+  @Test
+  public void testAddressesReassignedInSameOrder() throws Exception {
+    // Validate that when a Cluster is unregistered, the ip addresses used can be reassigned to subsequently
+    // created clusters.
+    // Also affirms that the order of nodes and data centers within clusters is consistent.
+    List<SocketAddress> lastAddresses = null;
+
+    for (int i = 0; i < 10; i++) {
+      Cluster cluster = Cluster.builder().withNodes(3, 3, 3).build();
+      Cluster boundCluster = server.register(cluster).get(5, TimeUnit.SECONDS);
+
+      List<SocketAddress> clusterAddrs =
+          boundCluster.getNodes().stream().map(Node::getAddress).collect(Collectors.toList());
+
+      server.unregister(boundCluster.getId()).get(5, TimeUnit.SECONDS);
+
+      if (lastAddresses != null) {
+        assertThat(clusterAddrs).isEqualTo(lastAddresses);
+      }
+      lastAddresses = clusterAddrs;
+    }
+  }
 }
