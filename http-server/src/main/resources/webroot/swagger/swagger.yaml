@@ -1210,8 +1210,21 @@ definitions:
         example: "SELECT * FROM tbl"
       consistency_level:
         $ref: '#/definitions/Consistency'
-    example:
-      query: "SELECT * FROM TBL"
+      params:
+        type: object
+        description: |
+          Each property is a mapping of parameter name to paramter value. The value can be of any type as simulacron will attempt to map the json value to it's native binary format"
+        example:
+          param_name_1: value1
+          param_name_2: 2
+      param_types:
+        type: object
+        description: "Each property is a mapping of parameter name to parameter type"
+        additionalProperties:
+          $ref: "#/definitions/DataType"
+        example:
+          param_name_1: ascii
+          param_name_2: bigint
   Options:
       type: object
       required:
