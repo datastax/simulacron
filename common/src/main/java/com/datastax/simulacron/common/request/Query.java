@@ -79,11 +79,7 @@ public final class Query extends Request {
         //NOTE: Absent CL level means it will match all CL levels
         if (this.consistencyEnum.contains(level) || this.consistencyEnum.size() == 0) {
           //Id any parameters are present we must make sure they match those in the primed queries
-          if ((query.options.namedValues.size() != 0 || query.options.positionalValues.size() != 0)
-              && this.params.size() != 0) {
-            return checkParamsMatch(query.options, frame);
-          }
-          return true;
+          return checkParamsMatch(query.options, frame);
         }
       }
     }
@@ -98,6 +94,15 @@ public final class Query extends Request {
    * @return True if the parameters match;
    */
   private boolean checkParamsMatch(QueryOptions options, Frame frame) {
+    // I don't like this, but I can't see a way to simplify it.
+    if (params == null) {
+      if (options.namedValues.size() == 0 && options.positionalValues.size() == 0) return true;
+      else return false;
+    }
+    if (options.namedValues.size() != params.size()
+        && options.positionalValues.size() != params.size()) {
+      return false;
+    }
     if ((options.namedValues.size() != 0 || options.positionalValues.size() != 0)
         && params.size() != 0) {
 

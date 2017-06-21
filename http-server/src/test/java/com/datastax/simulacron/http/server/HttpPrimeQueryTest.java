@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-public class HttpPrimeQueryTests {
+public class HttpPrimeQueryTest {
 
   @Rule public AdminServer server = new AdminServer(Cluster.builder().withNodes(1).build());
 
@@ -78,11 +78,26 @@ public class HttpPrimeQueryTests {
       assertThat(column1).isEqualTo("column1");
       Long column2 = row1.getLong("column2");
       assertThat(column2).isEqualTo(new Long(2));
+
+      // Try with the wrong values
       values = ImmutableMap.<String, Object>of("id", new Long(2), "id2", new Long(2));
       set =
           HttpTestUtil.makeNativeQueryWithNameParams(
               "SELECT * FROM users WHERE id = :id and id2 = :id2", contactPoint, values);
       assertThat(set.all().size()).isEqualTo(0);
+      // Try with the wrong number of values
+      values = ImmutableMap.<String, Object>of("id", new Long(2));
+      set =
+          HttpTestUtil.makeNativeQueryWithNameParams(
+              "SELECT * FROM users WHERE id = :id and id2 = :id2", contactPoint, values);
+      assertThat(set.all().size()).isEqualTo(0);
+      // No values
+      values = ImmutableMap.<String, Object>of();
+      set =
+          HttpTestUtil.makeNativeQueryWithNameParams(
+              "SELECT * FROM users WHERE id = :id and id2 = :id2", contactPoint, values);
+      assertThat(set.all().size()).isEqualTo(0);
+
     } catch (Exception e) {
       fail("error encountered");
     }
@@ -104,7 +119,7 @@ public class HttpPrimeQueryTests {
       assertThat(responseQuery).isEqualTo(prime);
       String contactPoint = HttpTestUtil.getContactPointString(server.getCluster(), 0);
       ResultSet set =
-          HttpTestUtil.makeNativeQueryWithPositionalParam(
+          HttpTestUtil.makeNativeQueryWithPositionalParams(
               "SELECT table FROM foo WHERE c1=?", contactPoint, "c1");
       List<Row> results = set.all();
       assertThat(1).isEqualTo(results.size());
@@ -112,8 +127,14 @@ public class HttpPrimeQueryTests {
       String column1 = row1.getString("column1");
       assertThat(column1).isEqualTo("column1");
       Long column2 = row1.getLong("column2");
+      // Extra Param
       set =
-          HttpTestUtil.makeNativeQueryWithPositionalParam(
+          HttpTestUtil.makeNativeQueryWithPositionalParams(
+              "SELECT table FROM foo WHERE c1=?", contactPoint, "c1", "extraParam");
+      assertThat(set.all().size()).isEqualTo(0);
+      // Wrong Param
+      set =
+          HttpTestUtil.makeNativeQueryWithPositionalParams(
               "SELECT table FROM foo WHERE c1=?", contactPoint, "d1");
       assertThat(set.all().size()).isEqualTo(0);
     } catch (Exception e) {
@@ -145,10 +166,6 @@ public class HttpPrimeQueryTests {
       String column1 = row1.getString("column1");
       assertThat(column1).isEqualTo("column1");
       Long column2 = row1.getLong("column2");
-      set =
-          HttpTestUtil.makeNativeBoundQueryWithPositionalParam(
-              "SELECT table FROM foo WHERE c1=?", contactPoint, "d1");
-      assertThat(set.all().size()).isEqualTo(0);
     } catch (Exception e) {
       fail("error encountered");
     }
@@ -184,11 +201,6 @@ public class HttpPrimeQueryTests {
       assertThat(column1).isEqualTo("column1");
       Long column2 = row1.getLong("column2");
       assertThat(column2).isEqualTo(new Long(2));
-      values = ImmutableMap.<String, Long>of("id", new Long(2), "id2", new Long(2));
-      set =
-          HttpTestUtil.makeNativeBoundQueryWithNameParams(
-              "SELECT * FROM users WHERE id = :id and id2 = :id2", contactPoint, values);
-      assertThat(set.all().size()).isEqualTo(0);
     } catch (Exception e) {
       e.printStackTrace();
       fail("error encountered");

@@ -37,9 +37,9 @@ public class HttpTestUtil {
     return executeQueryWithFreshSession(bound, contactPoint, session, cluster);
   }
 
-  public static ResultSet makeNativeQueryWithPositionalParam(
-      String query, String contactPoint, Object param) {
-    SimpleStatement statement = new SimpleStatement(query, param);
+  public static ResultSet makeNativeQueryWithPositionalParams(
+      String query, String contactPoint, Object... values) {
+    SimpleStatement statement = new SimpleStatement(query, values);
     return executeQueryWithFreshSession(statement, contactPoint);
   }
 
