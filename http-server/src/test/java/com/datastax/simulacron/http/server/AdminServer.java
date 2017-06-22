@@ -74,7 +74,7 @@ public class AdminServer extends ExternalResource {
     logManager.registerWithRouter(httpContainer.getRouter());
     EndpointManager endpointManager = new EndpointManager(nativeServer);
     endpointManager.registerWithRouter(httpContainer.getRouter());
-    httpContainer.start();
+    httpContainer.start().get(10, TimeUnit.SECONDS);
     client = vertx.createHttpClient();
   }
 

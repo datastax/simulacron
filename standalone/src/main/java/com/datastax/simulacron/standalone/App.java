@@ -10,13 +10,16 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class App {
 
   private static final Logger logger = (Logger) LoggerFactory.getLogger(App.class);
 
   public static synchronized void main(String args[]) {
-
+    logger.info("Starting Simulacron.");
     CommandLineArguments cli = new CommandLineArguments();
     JCommander commander = new JCommander(cli, args);
     if (cli.help) {
@@ -81,21 +84,29 @@ public class App {
               context.response().putHeader("location", "/doc").setStatusCode(302).end();
             });
 
-    httpServer.start();
-    logger.info(
-        "Started HTTP server interface @ http://{}:{}.  Created nodes will start with ip {}.",
-        cli.httpInterface,
-        cli.httpPort,
-        ipAddress);
-    logger.info(
-        "New to simulacron?  Visit http://{}:{}/doc for interactive API documentation.",
-        cli.httpInterface,
-        cli.httpPort);
-
     try {
+      httpServer.start().get(10, TimeUnit.SECONDS);
+      logger.info(
+          "Started HTTP server interface @ http://{}:{}.  Created nodes will start with ip {}.",
+          cli.httpInterface,
+          cli.httpPort,
+          ipAddress);
+      logger.info(
+          "New to simulacron?  Visit http://{}:{}/doc for interactive API documentation.",
+          cli.httpInterface,
+          cli.httpPort);
       App.class.wait();
+    } catch (ExecutionException e) {
+      logger.error(
+          "Failed to start HTTP server @ http://{}:{}, exiting.",
+          cli.httpInterface,
+          cli.httpPort,
+          e.getCause());
+      System.exit(-3);
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.error("Interrupted while running HTTP server, exiting.", e);
+    } catch (TimeoutException e) {
+      logger.error("HTTP server did not start within 10 seconds, exiting.");
     }
   }
 }

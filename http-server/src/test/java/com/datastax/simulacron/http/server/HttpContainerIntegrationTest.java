@@ -7,8 +7,6 @@ import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
-import com.datastax.simulacron.test.IntegrationUtils;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
@@ -19,12 +17,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
@@ -38,7 +34,7 @@ public class HttpContainerIntegrationTest {
   Logger logger = LoggerFactory.getLogger(HttpContainerIntegrationTest.class);
 
   @Before
-  public void setup() {
+  public void setup() throws Exception {
     vertx = Vertx.vertx();
     httpContainer = new HttpContainer(portNum, true);
     nativeServer = Server.builder().build();
@@ -50,7 +46,7 @@ public class HttpContainerIntegrationTest {
     logManager.registerWithRouter(httpContainer.getRouter());
     EndpointManager endpointManager = new EndpointManager(nativeServer);
     endpointManager.registerWithRouter(httpContainer.getRouter());
-    httpContainer.start();
+    httpContainer.start().get(10, TimeUnit.SECONDS);
   }
 
   @After

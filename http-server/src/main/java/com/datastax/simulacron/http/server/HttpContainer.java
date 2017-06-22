@@ -41,21 +41,21 @@ public class HttpContainer {
     router = Router.router(vertx);
   }
 
-  public void start() {
-
+  public CompletableFuture<Void> start() {
     server.requestHandler(router::accept);
     CompletableFuture<Void> future = new CompletableFuture<>();
     server.listen(
         port,
         host,
         res -> {
-          future.complete(null);
+          if (res.failed()) {
+            future.completeExceptionally(res.cause());
+          } else {
+            future.complete(null);
+          }
         });
-    try {
-      future.get();
-    } catch (Exception e) {
-      logger.error("Error encountered during Start", e);
-    }
+
+    return future;
   }
 
   public void stop() {
