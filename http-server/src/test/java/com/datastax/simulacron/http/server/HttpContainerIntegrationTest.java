@@ -379,8 +379,7 @@ public class HttpContainerIntegrationTest {
 
     RequestPrime prime = createSimplePrimedQuery(query);
     HttpTestResponse response =
-        this.primeSimpleRequest(
-            client, prime, "/prime-query-single" + "/" + f.apply(clusterQueried));
+        this.primeSimpleRequest(client, prime, "/prime" + "/" + f.apply(clusterQueried));
 
     Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
     Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
@@ -545,19 +544,18 @@ public class HttpContainerIntegrationTest {
   }
 
   private HttpTestResponse primeSimpleRequest(HttpClient client, RequestPrime query) {
-    return this.primeSimpleRequest(client, query, "/prime-query-single");
+    return this.primeSimpleRequest(client, query, "/prime");
   }
 
   private HttpTestResponse primeSimpleRequest(
       HttpClient client, RequestPrime query, String ClusterID, String DatacenterID) {
-    return this.primeSimpleRequest(
-        client, query, "/prime-query-single" + "/" + ClusterID + "/" + DatacenterID);
+    return this.primeSimpleRequest(client, query, "/prime" + "/" + ClusterID + "/" + DatacenterID);
   }
 
   private HttpTestResponse primeSimpleRequest(
       HttpClient client, RequestPrime query, String ClusterID, String DatacenterID, String nodeID) {
     return this.primeSimpleRequest(
-        client, query, "/prime-query-single" + "/" + ClusterID + "/" + DatacenterID + "/" + nodeID);
+        client, query, "/prime" + "/" + ClusterID + "/" + DatacenterID + "/" + nodeID);
   }
 
   private HttpTestResponse clearQueries(HttpClient client, Scope scope) {
@@ -568,7 +566,7 @@ public class HttpContainerIntegrationTest {
               HttpMethod.DELETE,
               portNum,
               "127.0.0.1",
-              "/prime-query-single/" + scope.toString(),
+              "/prime/" + scope.toString(),
               response -> {
                 response.bodyHandler(
                     totalBuffer -> {

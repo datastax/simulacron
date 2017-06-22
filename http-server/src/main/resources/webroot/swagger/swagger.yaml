@@ -172,10 +172,10 @@ paths:
           description: Unexpected error
         '404':
           description: Not found
-  '/prime-query-single':
+  '/prime':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a 'rows' response for a given query
       operationId: primeQuerySingle
       consumes:
@@ -200,7 +200,7 @@ paths:
           description: Unable to parse provided query
     delete:
       tags:
-        - prime-query-single
+        - prime
       summary: Deletes all primed queries
       operationId: deletePrimedQueries
       consumes:
@@ -210,10 +210,10 @@ paths:
       responses:
         '200':
           description: Primes deleted
-  '/prime-query-single/{clusterId}':
+  '/prime/{clusterId}':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a response for a given query for all nodes in a cluster
       operationId: primeQuerySingleByCluster
       consumes:
@@ -241,10 +241,10 @@ paths:
             $ref: '#/definitions/PrimeQuerySuccess'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single/{clusterId}/{dataCenterId}':
+  '/prime/{clusterId}/{dataCenterId}':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a response for a given query for all nodes in a data center
       operationId: primeQuerySingleByDataCenter
       consumes:
@@ -277,10 +277,10 @@ paths:
             $ref: '#/definitions/PrimeQuerySuccess'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single/{clusterId}/{dataCenterId}/{nodeId}':
+  '/prime/{clusterId}/{dataCenterId}/{nodeId}':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a response for a given query for a particular node
       operationId: primeQuerySingleByNode
       consumes:
@@ -318,10 +318,10 @@ paths:
             $ref: '#/definitions/PrimeQuerySuccess'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (no_result)':
+  '/prime (no_result)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a query that will not return a response
       operationId: primeQuerySingleNoResult
       consumes:
@@ -342,10 +342,10 @@ paths:
             $ref: '#/definitions/PrimeQueryNoResult'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (already_exists)':
+  '/prime (already_exists)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes an already exists error response
       operationId: primeQuerySingleAlreadyExists
       consumes:
@@ -366,10 +366,10 @@ paths:
             $ref: '#/definitions/PrimeQueryAlreadyExists'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (authentication_error)':
+  '/prime (authentication_error)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes an authentication error response
       operationId: primeQuerySingleAuthenticationError
       consumes:
@@ -390,10 +390,10 @@ paths:
             $ref: '#/definitions/PrimeQueryAuthenticationError'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (config_error)':
+  '/prime (config_error)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a config error response
       operationId: primeQuerySingleConfigError
       consumes:
@@ -414,10 +414,10 @@ paths:
             $ref: '#/definitions/PrimeQueryConfigError'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (function_failure)':
+  '/prime (function_failure)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a function failure response
       operationId: primeQuerySimpleFunctionFailure
       consumes:
@@ -438,10 +438,10 @@ paths:
             $ref: '#/definitions/PrimeQueryFunctionFailure'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (invalid)':
+  '/prime (invalid)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a invalid error response
       operationId: primeQuerySingleInvalid
       consumes:
@@ -462,10 +462,10 @@ paths:
             $ref: '#/definitions/PrimeQueryInvalid'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (is_bootstrapping)':
+  '/prime (is_bootstrapping)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes an is bootstraping response
       operationId: primeQuerySingleIsBootstrapping
       consumes:
@@ -486,10 +486,10 @@ paths:
             $ref: '#/definitions/PrimeQueryIsBootstrapping'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (overloaded)':
+  '/prime (overloaded)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes an overloaded response
       operationId: primeQuerySingleOverloaded
       consumes:
@@ -510,10 +510,10 @@ paths:
             $ref: '#/definitions/PrimeQueryOverloaded'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (protocol_error)':
+  '/prime (protocol_error)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a protocol error response
       operationId: primeQuerySingleProtocolError
       consumes:
@@ -534,10 +534,10 @@ paths:
             $ref: '#/definitions/PrimeQueryProtocolError'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (read_failure)':
+  '/prime (read_failure)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a read failure response
       operationId: primeQuerySingleReadFailure
       consumes:
@@ -558,10 +558,10 @@ paths:
             $ref: '#/definitions/PrimeQueryReadFailure'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (read_timeout)':
+  '/prime (read_timeout)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a read timeout response
       operationId: primeQuerySingleReadTimeout
       consumes:
@@ -582,10 +582,10 @@ paths:
             $ref: '#/definitions/PrimeQueryReadTimeout'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (server_error)':
+  '/prime (server_error)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a server error response
       operationId: primeQuerySingleServerError
       consumes:
@@ -606,10 +606,10 @@ paths:
             $ref: '#/definitions/PrimeQueryServerError'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (syntax_error)':
+  '/prime (syntax_error)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a syntax error response
       operationId: primeQuerySingleSyntaxError
       consumes:
@@ -630,10 +630,10 @@ paths:
             $ref: '#/definitions/PrimeQuerySyntaxError'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (truncate_error)':
+  '/prime (truncate_error)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a syntax error response
       operationId: primeQuerySingleTruncateError
       consumes:
@@ -654,10 +654,10 @@ paths:
             $ref: '#/definitions/PrimeQueryTruncateError'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (unauthorized)':
+  '/prime (unauthorized)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes an unauthorized response
       operationId: primeQuerySingleUnauthorized
       consumes:
@@ -678,10 +678,10 @@ paths:
             $ref: '#/definitions/PrimeQueryUnauthorized'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (unavailable)':
+  '/prime (unavailable)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes an unavailable response
       operationId: primeQuerySingleUnavailable
       consumes:
@@ -702,10 +702,10 @@ paths:
             $ref: '#/definitions/PrimeQueryUnavailable'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (unprepared)':
+  '/prime (unprepared)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes an unprepared response
       operationId: primeQuerySingleUnprepared
       consumes:
@@ -726,10 +726,10 @@ paths:
             $ref: '#/definitions/PrimeQueryUnprepared'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (write_failure)':
+  '/prime (write_failure)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a write failure response
       operationId: primeQuerySingleWriteFailure
       consumes:
@@ -750,10 +750,10 @@ paths:
             $ref: '#/definitions/PrimeQueryWriteFailure'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (write_timeout)':
+  '/prime (write_timeout)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a write timeout response
       operationId: primeQuerySingleWriteTimeout
       consumes:
@@ -774,10 +774,10 @@ paths:
             $ref: '#/definitions/PrimeQueryWriteFailure'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (close_connection)':
+  '/prime (close_connection)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a scenario such that when a query is received closes client connections
       operationId: primeQuerySingleCloseConnection
       consumes:
@@ -798,10 +798,10 @@ paths:
             $ref: '#/definitions/PrimeQueryCloseConnection'
         '400':
           description: Unable to parse provided query
-  '/prime-query-single (fail heartbeats, options request with no response)':
+  '/prime (fail heartbeats, options request with no response)':
     post:
       tags:
-        - prime-query-single
+        - prime
       summary: Primes a scenario such that when an options request is made, no response is received.
       operationId: primeQuerySingleOptionsRequest
       consumes:
@@ -1771,7 +1771,9 @@ definitions:
         type: string
         example: "SELECT * FROM tbl"
       consistency_level:
-        $ref: '#/definitions/Consistency'
+        type: array
+        items:
+          $ref: '#/definitions/Consistency'
       params:
         type: object
         description: |

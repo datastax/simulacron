@@ -32,9 +32,9 @@ public class QueryManager implements HttpListener {
    *
    * <p>Example Supported HTTP Requests
    *
-   * <p>POST http://iphere:porthere/prime-query-single with json body of {@code { "when": { "query":
-   * "SELECT * FROM table" }, "then": { "rows": [ { "row1": "sample1", "row2": "1" } ], "result":
-   * "success", "column_types": { "row1": "ascii", "row2": "bigint" } } }}
+   * <p>POST http://iphere:porthere/prime with json body of {@code { "when": { "query": "SELECT *
+   * FROM table" }, "then": { "rows": [ { "row1": "sample1", "row2": "1" } ], "result": "success",
+   * "column_types": { "row1": "ascii", "row2": "bigint" } } }}
    *
    * <p>This will return a row containing two columns when a SELECT * FROM table. The row will
    * contain two fields row1, and row2, that are of type ascii and bigint respectively
@@ -145,29 +145,23 @@ public class QueryManager implements HttpListener {
 
   public void registerWithRouter(Router router) {
     // Priming queries
-    router.route(HttpMethod.POST, "/prime-query-single/:clusterIdOrName").handler(this::primeQuery);
+    router.route(HttpMethod.POST, "/prime/:clusterIdOrName").handler(this::primeQuery);
     router
-        .route(HttpMethod.POST, "/prime-query-single/:clusterIdOrName/:datacenterIdOrName")
+        .route(HttpMethod.POST, "/prime/:clusterIdOrName/:datacenterIdOrName")
         .handler(this::primeQuery);
     router
-        .route(
-            HttpMethod.POST,
-            "/prime-query-single/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
+        .route(HttpMethod.POST, "/prime/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::primeQuery);
 
     router.route(HttpMethod.POST, "/prime*").handler(this::primeQuery);
 
     //Deleting primed queries
+    router.route(HttpMethod.DELETE, "/prime/:clusterIdOrName").handler(this::clearPrimedQueries);
     router
-        .route(HttpMethod.DELETE, "/prime-query-single/:clusterIdOrName")
+        .route(HttpMethod.DELETE, "/prime/:clusterIdOrName/:datacenterIdOrName")
         .handler(this::clearPrimedQueries);
     router
-        .route(HttpMethod.DELETE, "/prime-query-single/:clusterIdOrName/:datacenterIdOrName")
-        .handler(this::clearPrimedQueries);
-    router
-        .route(
-            HttpMethod.DELETE,
-            "/prime-query-single/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
+        .route(HttpMethod.DELETE, "/prime/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::primeQuery);
     router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
   }

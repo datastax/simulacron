@@ -158,7 +158,7 @@ public class AdminServer extends ExternalResource {
 
   public HttpTestResponse prime(RequestPrime prime) throws Exception {
     String jsonPrime = om.writerWithDefaultPrettyPrinter().writeValueAsString(prime);
-    return post("/prime-query-single", jsonPrime);
+    return post("/prime", jsonPrime);
   }
 
   public <T> T mapTo(HttpTestResponse response, Class<T> clazz) throws IOException {

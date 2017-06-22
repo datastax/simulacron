@@ -18,7 +18,7 @@ import java.util.*;
 
 public final class Query extends Request {
   public final String query;
-  public final List<ConsistencyLevel> consistencyEnum;
+  public final transient List<ConsistencyLevel> consistencyEnum;
   public final Map<String, String> paramTypes;
   public final Map<String, Object> params;
 
@@ -29,9 +29,9 @@ public final class Query extends Request {
   @JsonCreator
   public Query(
       @JsonProperty("query") String query,
-      @JsonProperty("consistency") String[] consistency,
+      @JsonProperty("consistency_level") String[] consistency,
       @JsonProperty("params") Map<String, Object> params,
-      @JsonProperty("paramTypes") Map<String, String> paramTypes) {
+      @JsonProperty("param_types") Map<String, String> paramTypes) {
     this(query, createEnumFromConsistency(consistency), params, paramTypes);
   }
 
@@ -46,7 +46,7 @@ public final class Query extends Request {
     this.paramTypes = paramTypes;
   }
 
-  @JsonProperty("consistency")
+  @JsonProperty("consistency_level")
   public String[] getConsistency() {
     String[] consistency = new String[consistencyEnum.size()];
     for (int i = 0; i < consistencyEnum.size(); i++) {
