@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-public class HttpPrimeQueryTest {
+public class HttpPrimeQueryIntegrationTest {
 
   @Rule public AdminServer server = new AdminServer(Cluster.builder().withNodes(1).build());
 
