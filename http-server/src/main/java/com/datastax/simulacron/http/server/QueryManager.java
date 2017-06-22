@@ -51,13 +51,7 @@ public class QueryManager implements HttpListener {
               try {
                 logger.info("Full body received, length = " + totalBuffer.length());
 
-                String idToFetchS = context.request().getParam("clusterIdOrName");
-                String dcIdToFetchS = context.request().getParam("datacenterIdOrName");
-                String nodeIdToFetchS = context.request().getParam("nodeIdOrName");
-
-                Scope scope =
-                    HttpUtils.parseQueryParameters(
-                        idToFetchS, dcIdToFetchS, nodeIdToFetchS, context, server);
+                Scope scope = HttpUtils.getScope(context, server);
                 if (scope == null) {
                   return;
                 }
@@ -109,13 +103,7 @@ public class QueryManager implements HttpListener {
             totalBuffer -> {
               String jsonBody = "";
 
-              String idToFetchS = context.request().getParam("clusterId");
-              String dcIdToFetchS = context.request().getParam("datacenterId");
-              String nodeIdToFetchS = context.request().getParam("nodeId");
-
-              Scope scope =
-                  HttpUtils.parseQueryParameters(
-                      idToFetchS, dcIdToFetchS, nodeIdToFetchS, context, server);
+              Scope scope = HttpUtils.getScope(context, server);
               if (scope == null) {
                 return;
               }

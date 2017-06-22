@@ -2,7 +2,6 @@ package com.datastax.simulacron.common.stubbing;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import static com.datastax.simulacron.common.stubbing.DisconnectAction.CloseType.DISCONNECT;
 import static com.datastax.simulacron.common.stubbing.DisconnectAction.Scope.CONNECTION;
 
 public class DisconnectAction implements Action {
@@ -16,15 +15,6 @@ public class DisconnectAction implements Action {
     DATA_CENTER,
     @JsonProperty("cluster")
     CLUSTER
-  }
-
-  public enum CloseType {
-    @JsonProperty("disconnect")
-    DISCONNECT,
-    @JsonProperty("shutdown_read")
-    SHUTDOWN_READ,
-    @JsonProperty("shutdown_write")
-    SHUTDOWN_WRITE
   }
 
   private final Scope scope;
@@ -63,7 +53,7 @@ public class DisconnectAction implements Action {
 
   public static class Builder {
     private Scope scope = CONNECTION;
-    private CloseType closeType = DISCONNECT;
+    private CloseType closeType = CloseType.DISCONNECT;
     long delayInMs = 0L;
 
     public Builder withScope(Scope scope) {

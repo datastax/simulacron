@@ -312,9 +312,7 @@ public class ServerTest {
       Frame response = client.next();
       assertThat(response.message).isInstanceOf(Ready.class);
 
-      boundNode
-          .rejectNewConnections(-1, BoundNode.RejectScope.REJECT_STARTUP)
-          .get(5, TimeUnit.SECONDS);
+      boundNode.rejectNewConnections(-1, RejectScope.REJECT_STARTUP).get(5, TimeUnit.SECONDS);
 
       // client should remain connected.
       assertThat(client.channel.isOpen()).isTrue();
@@ -358,10 +356,54 @@ public class ServerTest {
       Frame response = client.next();
       assertThat(response.message).isInstanceOf(Ready.class);
 
-      boundNode.rejectNewConnections(-1, BoundNode.RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
+      boundNode.rejectNewConnections(-1, RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
 
       // client should remain connected.
       assertThat(client.channel.isOpen()).isTrue();
+
+      // New client should not be able to open connection
+      try (MockClient client2 = new MockClient(eventLoop)) {
+        try {
+          client2.connect(boundNode.getAddress());
+          fail("Did not expect to be able to connect");
+        } catch (ConnectException ce) { // Expected
+        }
+      }
+
+      // Start accepting new connections again.
+      boundNode.acceptNewConnections().get(5, TimeUnit.SECONDS);
+
+      // New client should open connection and receive 'Ready' to 'Startup' request.
+      try (MockClient client3 = new MockClient(eventLoop)) {
+        client3.connect(boundNode.getAddress());
+        client3.write(new Startup());
+        // Expect a Ready response.
+        response = client3.next();
+        assertThat(response.message).isInstanceOf(Ready.class);
+      }
+    }
+  }
+
+  @Test
+  public void testShouldCloseExistingConnectionsAndAcceptAgain() throws Exception {
+    Node node = Node.builder().build();
+    BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
+
+    // Should be wrapped and registered in a dummy cluster.
+    assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+        .isSameAs(boundNode.getCluster());
+
+    try (MockClient client = new MockClient(eventLoop)) {
+      client.connect(boundNode.getAddress());
+      client.write(new Startup());
+      // Expect a Ready response.
+      Frame response = client.next();
+      assertThat(response.message).isInstanceOf(Ready.class);
+
+      boundNode.rejectNewConnections(-1, RejectScope.STOP).get(5, TimeUnit.SECONDS);
+
+      // client should not remain connected.
+      assertThat(client.channel.isOpen()).isFalse();
 
       // New client should not be able to open connection
       try (MockClient client2 = new MockClient(eventLoop)) {
@@ -402,7 +444,7 @@ public class ServerTest {
       Frame response = client.next();
       assertThat(response.message).isInstanceOf(Ready.class);
 
-      boundNode.rejectNewConnections(5, BoundNode.RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
+      boundNode.rejectNewConnections(5, RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
 
       // client should remain connected.
       assertThat(client.channel.isOpen()).isTrue();

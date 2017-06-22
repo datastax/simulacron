@@ -8,6 +8,7 @@ import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.datastax.simulacron.common.codec.WriteType;
+import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -275,10 +276,7 @@ public class ErrorResultIntegrationTest {
   @Test
   public void testShouldReturnTransportException() throws Exception {
     server.prime(
-        when(query)
-            .then(
-                closeConnection(
-                    DisconnectAction.Scope.CONNECTION, DisconnectAction.CloseType.DISCONNECT)));
+        when(query).then(closeConnection(DisconnectAction.Scope.CONNECTION, CloseType.DISCONNECT)));
 
     // expect a transport exception as the connection should have been closed.
     thrown.expect(TransportException.class);

@@ -131,7 +131,7 @@ public class Scope {
       return "";
     }
     if (dataCenterId == null) {
-      return nodeId.toString();
+      return clusterId.toString();
     }
     if (nodeId == null) {
       return clusterId.toString() + "/" + dataCenterId.toString();

@@ -1,0 +1,291 @@
+package com.datastax.simulacron.http.server;
+
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
+import com.datastax.simulacron.common.cluster.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.Rule;
+import org.junit.Test;
+
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Set;
+
+import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class EndpointIntegrationTest {
+  ObjectMapper om = ObjectMapperHolder.getMapper();
+
+  @Rule public AdminServer server = new AdminServer(Cluster.builder().withNodes(3, 3).build());
+
+  @Test
+  public void testGetConnections() throws Exception {
+    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
+    DataCenter dc = datacenters.iterator().next();
+    Iterator<Node> nodeIterator = dc.getNodes().iterator();
+    Node node = nodeIterator.next();
+
+    com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+    driverCluster.init();
+
+    assertThat(driverCluster.getMetadata().getAllHosts()).hasSize(6);
+    Session session = driverCluster.connect();
+
+    ArrayList<Scope> list = new ArrayList<>();
+    list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
+    list.add(new Scope(server.getCluster().getId(), dc.getId(), null));
+    list.add(new Scope(server.getCluster().getId(), null, null));
+    list.add(new Scope(null, null, null));
+
+    for (Scope scope : list) {
+
+      HttpTestResponse responseToValidate = server.get("/connections/" + scope.toString());
+      assertThat(responseToValidate.response.statusCode()).isEqualTo(200);
+      TypeReference<Set<ClusterConnectionReport>> setReportType =
+          new TypeReference<Set<ClusterConnectionReport>>() {};
+      Set<ClusterConnectionReport> responseReport =
+          om.readValue(responseToValidate.body, setReportType);
+      System.out.println(responseToValidate.body);
+      this.verifyClusterConnectionReport(
+          responseReport.iterator().next(), scope, dc.getId(), node.getId());
+    }
+  }
+
+  @Test
+  public void testDeleteConnections() throws Exception {
+
+    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
+    DataCenter dc = datacenters.iterator().next();
+    Iterator<Node> nodeIterator = dc.getNodes().iterator();
+    Node node = nodeIterator.next();
+
+    ArrayList<Scope> list = new ArrayList<>();
+    list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
+    list.add(new Scope(server.getCluster().getId(), dc.getId(), null));
+    list.add(new Scope(server.getCluster().getId(), null, null));
+    list.add(new Scope(null, null, null));
+
+    for (Scope scope : list) {
+      com.datastax.driver.core.Cluster driverCluster =
+          defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+      driverCluster.init();
+      HttpTestResponse responseDelete =
+          server.delete("/connections/" + scope.toString() + "?type=disconnect");
+
+      System.out.print(responseDelete.body);
+
+      TypeReference<Set<ClusterConnectionReport>> setReportType =
+          new TypeReference<Set<ClusterConnectionReport>>() {};
+      Set<ClusterConnectionReport> responseReport =
+          om.readValue(responseDelete.body, setReportType);
+      Collection<NodeConnectionReport> nodes =
+          getNodeConnectionReports(responseReport.iterator().next(), dc.getId());
+
+      assertThat(responseDelete.response.statusCode()).isEqualTo(200);
+
+      HttpTestResponse responseNewConnections = server.get("/connections/" + scope.toString());
+      assertThat(responseNewConnections.body).isNotEqualTo(responseDelete.body);
+      for (NodeConnectionReport nodeReport : nodes) {
+        for (SocketAddress sA : nodeReport.getConnections()) {
+          String sAString = sA.toString();
+          assertThat(responseDelete.body).contains(sAString.substring(1, sAString.length()));
+          assertThat(responseNewConnections.body)
+              .doesNotContain(sAString.substring(1, sAString.length()));
+        }
+      }
+      driverCluster.close();
+    }
+  }
+
+  @Test
+  public void testDeleteParticularConnection() throws Exception {
+
+    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
+    DataCenter dc = datacenters.iterator().next();
+    Iterator<Node> nodeIterator = dc.getNodes().iterator();
+    Node node = nodeIterator.next();
+
+    com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+    driverCluster.init();
+
+    assertThat(driverCluster.getMetadata().getAllHosts()).hasSize(6);
+    driverCluster.connect();
+
+    Scope scope = new Scope(server.getCluster().getId(), dc.getId(), node.getId());
+    HttpTestResponse response = server.get("/connections/" + scope.toString());
+
+    TypeReference<Set<ClusterConnectionReport>> setReportType =
+        new TypeReference<Set<ClusterConnectionReport>>() {};
+    Set<ClusterConnectionReport> responseReport = om.readValue(response.body, setReportType);
+    ClusterConnectionReport clusterReport = responseReport.iterator().next();
+    NodeConnectionReport connectionNode =
+        clusterReport
+            .getDataCenters()
+            .stream()
+            .filter(dce -> dce.getId().equals(dc.getId()))
+            .flatMap(d -> d.getNodes().stream())
+            .filter(n -> n.getId().equals(node.getId()))
+            .findAny()
+            .get();
+    InetSocketAddress connection = (InetSocketAddress) connectionNode.getConnections().get(0);
+
+    HttpTestResponse deleteReponse =
+        server.delete("/connection" + connection.getAddress() + "/" + connection.getPort());
+    assertThat(deleteReponse.response.statusCode()).isEqualTo(200);
+
+    HttpTestResponse responseAfter = server.get("/connections/" + scope.toString());
+
+    String sAString = connection.getAddress() + ":" + connection.getPort();
+    String sAtrimmed = sAString.substring(1, sAString.length());
+    assertThat(responseAfter.body).isNotEqualTo(response.body);
+    assertThat(responseAfter.body).doesNotContain(sAtrimmed);
+    assertThat(deleteReponse.body).contains(sAtrimmed);
+    driverCluster.close();
+  }
+
+  @Test
+  public void testDeleteParticularConnectionNotFound() throws Exception {
+    // 888 would be root reserved port so unused.
+    HttpTestResponse deleteResponse = server.delete("/connection/127.0.0.1/888");
+    assertThat(deleteResponse.response.statusCode()).isEqualTo(404);
+  }
+
+  @Test
+  public void testDeleteParticularConnectionBadPort() throws Exception {
+    // Invalid port should return bad request.
+    HttpTestResponse deleteResponse = server.delete("/connection/127.0.0.1/8888888");
+    assertThat(deleteResponse.response.statusCode()).isEqualTo(400);
+  }
+
+  @Test
+  public void testRejectAndAcceptConnections() throws Exception {
+    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
+    Iterator<DataCenter> dcI = datacenters.iterator();
+    DataCenter dc = dcI.next();
+    DataCenter dc2 = dcI.next();
+    Node node = dc.getNodes().iterator().next();
+    Node node2 = dc2.getNodes().iterator().next();
+
+    ArrayList<Scope> list = new ArrayList<>();
+    list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
+    list.add(new Scope(server.getCluster().getId(), dc.getId(), null));
+    list.add(new Scope(server.getCluster().getId(), null, null));
+    list.add(new Scope(null, null, null));
+
+    for (Scope scope : list) {
+      HttpTestResponse delete =
+          server.delete("/listener/" + scope + "?after=" + 0 + "&type=" + "unbind");
+      assertThat(delete.response.statusCode()).isEqualTo(200);
+
+      try {
+        com.datastax.driver.core.Cluster driverCluster;
+        if (scope.getClusterId() == null) {
+          driverCluster =
+              defaultBuilder()
+                  .addContactPointsWithPorts((InetSocketAddress) node.getAddress())
+                  .build();
+        } else {
+          driverCluster =
+              defaultBuilder()
+                  .addContactPointsWithPorts((InetSocketAddress) node2.getAddress())
+                  .build();
+        }
+        driverCluster.init();
+      } catch (NoHostAvailableException e) {
+      }
+
+      HttpTestResponse accept = server.put("/listener/" + scope);
+      assertThat(accept.response.statusCode()).isEqualTo(200);
+
+      com.datastax.driver.core.Cluster driverCluster =
+          defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+      driverCluster.init();
+      driverCluster.close();
+    }
+  }
+
+  @Test
+  public void testRejectAndAccepAfter() throws Exception {
+    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
+    DataCenter dc = datacenters.iterator().next();
+    Iterator<Node> nodeIterator = dc.getNodes().iterator();
+    Node node = nodeIterator.next();
+
+    Scope scope = new Scope(server.getCluster().getId(), dc.getId(), node.getId());
+    HttpTestResponse delete =
+        server.delete("/listener/" + scope + "?after=" + 3 + "&type=" + "unbind");
+    assertThat(delete.response.statusCode()).isEqualTo(200);
+
+    // First try
+    com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+    driverCluster.init();
+    driverCluster.close();
+
+    //Second try
+    driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+    driverCluster.init();
+    driverCluster.close();
+
+    // Now it should be rejected
+    try {
+      driverCluster =
+          defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+      driverCluster.init();
+    } catch (NoHostAvailableException e) {
+    }
+
+    HttpTestResponse accept = server.put("/listener/" + scope);
+    assertThat(accept.response.statusCode()).isEqualTo(200);
+
+    // Now it should go back to normal
+    driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+    driverCluster.init();
+    driverCluster.close();
+  }
+
+  private Collection<NodeConnectionReport> getNodeConnectionReports(
+      ClusterConnectionReport report, Long contactPointDcId) {
+    DataCenterConnectionReport dc =
+        report
+            .getDataCenters()
+            .stream()
+            .filter(p -> p.getId().equals(contactPointDcId))
+            .findAny()
+            .get();
+    return dc.getNodes();
+  }
+
+  private void verifyClusterConnectionReport(
+      ClusterConnectionReport report, Scope scope, Long contactPointDcId, Long contactPointNodeId) {
+    assertThat(report.getDataCenters().size()).isEqualTo(1);
+    DataCenterConnectionReport dc =
+        report
+            .getDataCenters()
+            .stream()
+            .filter(p -> p.getId().equals(contactPointDcId))
+            .findAny()
+            .get();
+    if (scope.getNodeId() != null) {
+      assertThat(dc.getNodes().size()).isEqualTo(1);
+    } else {
+      assertThat(dc.getNodes().size()).isEqualTo(3);
+    }
+    for (NodeConnectionReport node : dc.getNodes()) {
+      if (node.getId().equals(contactPointNodeId)) {
+        assertThat(node.getConnections().size()).isEqualTo(2);
+      } else {
+        assertThat(node.getConnections().size()).isEqualTo(1);
+      }
+    }
+  }
+}

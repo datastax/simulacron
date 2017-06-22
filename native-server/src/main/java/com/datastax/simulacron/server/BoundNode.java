@@ -10,7 +10,6 @@ import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.*;
-import com.datastax.simulacron.common.stubbing.DisconnectAction.CloseType;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -39,7 +38,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.datastax.oss.protocol.internal.response.result.Void.INSTANCE;
-import static com.datastax.simulacron.common.stubbing.DisconnectAction.CloseType.SHUTDOWN_READ;
 import static com.datastax.simulacron.common.stubbing.DisconnectAction.Scope.CLUSTER;
 import static com.datastax.simulacron.common.stubbing.DisconnectAction.Scope.NODE;
 import static com.datastax.simulacron.common.stubbing.PrimeDsl.noRows;
@@ -72,11 +70,6 @@ class BoundNode extends Node {
   private final transient StubStore stubStore;
 
   private final boolean activityLogging;
-
-  enum RejectScope {
-    UNBIND, // unbind the channel so can't establish TCP connection
-    REJECT_STARTUP // keep channel bound so can establish TCP connection, but doesn't reply to startup.
-  }
 
   private static class RejectState {
     private final RejectScope scope;
@@ -119,6 +112,10 @@ class BoundNode extends Node {
   public Long getActiveConnections() {
     // Filter only active channels as some may be in process of closing.
     return clientChannelGroup.stream().filter(Channel::isActive).count();
+  }
+
+  public ChannelGroup getClientChannelGroup() {
+    return clientChannelGroup;
   }
 
   /**
@@ -218,8 +215,14 @@ class BoundNode extends Node {
       state = new RejectState(true, after, scope);
     }
     rejectState.set(state);
-    if (after <= 0 && scope == RejectScope.UNBIND) {
-      return unbind();
+    if (after <= 0 && scope != RejectScope.REJECT_STARTUP) {
+      CompletableFuture<Node> unbindFuture = unbind();
+      // if scope is STOP, disconnect existing connections after unbinding.
+      if (scope == RejectScope.STOP) {
+        return unbindFuture.thenCompose(n -> disconnectConnections());
+      } else {
+        return unbindFuture;
+      }
     } else {
       return CompletableFuture.completedFuture(this);
     }
@@ -381,7 +384,7 @@ class BoundNode extends Node {
                 break;
               default:
                 Function<SocketChannel, ChannelFuture> shutdownMethod =
-                    cAction.getCloseType() == SHUTDOWN_READ
+                    cAction.getCloseType() == CloseType.SHUTDOWN_READ
                         ? SocketChannel::shutdownInput
                         : SocketChannel::shutdownOutput;
 
@@ -428,25 +431,23 @@ class BoundNode extends Node {
     }
   }
 
-  private CompletableFuture<Void> closeNodes(Stream<Node> nodes, CloseType closeType) {
+  public static CompletableFuture<Void> closeChannelGroups(
+      Stream<ChannelGroup> channels, CloseType closeType) {
     List<CompletableFuture<Void>> futures = null;
     switch (closeType) {
       case DISCONNECT:
-        futures =
-            nodes
-                .map(n -> completable(((BoundNode) n).clientChannelGroup.disconnect()))
-                .collect(Collectors.toList());
+        futures = channels.map(chs -> completable(chs.disconnect())).collect(Collectors.toList());
         break;
       case SHUTDOWN_READ:
       case SHUTDOWN_WRITE:
         futures =
-            nodes
-                .flatMap(n -> ((BoundNode) n).clientChannelGroup.stream())
+            channels
+                .flatMap(Collection::stream)
                 .map(
                     c -> {
                       CompletableFuture<Void> f;
                       Function<SocketChannel, ChannelFuture> shutdownMethod =
-                          closeType == SHUTDOWN_READ
+                          closeType == CloseType.SHUTDOWN_READ
                               ? SocketChannel::shutdownInput
                               : SocketChannel::shutdownOutput;
                       if (c instanceof SocketChannel) {
@@ -464,6 +465,10 @@ class BoundNode extends Node {
         break;
     }
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
+  }
+
+  public static CompletableFuture<Void> closeNodes(Stream<Node> nodes, CloseType closeType) {
+    return closeChannelGroups(nodes.map(n -> ((BoundNode) n).getClientChannelGroup()), closeType);
   }
 
   private ChannelFuture sendMessage(

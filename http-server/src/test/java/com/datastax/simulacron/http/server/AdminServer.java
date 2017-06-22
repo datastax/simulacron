@@ -72,6 +72,8 @@ public class AdminServer extends ExternalResource {
     qManager.registerWithRouter(httpContainer.getRouter());
     ActivityLogManager logManager = new ActivityLogManager(nativeServer);
     logManager.registerWithRouter(httpContainer.getRouter());
+    EndpointManager endpointManager = new EndpointManager(nativeServer);
+    endpointManager.registerWithRouter(httpContainer.getRouter());
     httpContainer.start();
     client = vertx.createHttpClient();
   }
@@ -140,6 +142,10 @@ public class AdminServer extends ExternalResource {
 
   public HttpTestResponse delete(String endpoint) throws Exception {
     return request(HttpMethod.DELETE, endpoint, null);
+  }
+
+  public HttpTestResponse put(String endpoint) throws Exception {
+    return request(HttpMethod.PUT, endpoint, null);
   }
 
   public HttpTestResponse prime(PrimeDsl.PrimeBuilder primeBuilder) throws Exception {

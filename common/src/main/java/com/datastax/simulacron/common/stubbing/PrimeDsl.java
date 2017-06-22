@@ -157,7 +157,7 @@ public class PrimeDsl {
    * @return the generated result.
    */
   public static CloseConnectionResult closeConnection(
-      DisconnectAction.Scope scope, DisconnectAction.CloseType closeType) {
+      DisconnectAction.Scope scope, CloseType closeType) {
     return new CloseConnectionResult(scope, closeType, 0);
   }
 

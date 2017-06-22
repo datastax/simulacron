@@ -853,9 +853,9 @@ paths:
         '200':
           description: Queries executed
           schema:
-            type : array
-            items :
-              $ref : '#/definitions/QueryLog'
+            type: array
+            items:
+              $ref: '#/definitions/QueryLog'
         '404':
           description: Cluster not found
     delete:
@@ -912,9 +912,9 @@ paths:
         '200':
           description: Queries executed
           schema:
-            type : array
-            items :
-              $ref : '#/definitions/QueryLog'
+            type: array
+            items:
+              $ref: '#/definitions/QueryLog'
         '404':
           description: Cluster/Datacenter not found
     delete:
@@ -981,9 +981,9 @@ paths:
         '200':
           description: Queries executed
           schema:
-            type : array
-            items :
-              $ref : '#/definitions/QueryLog'
+            type: array
+            items:
+              $ref: '#/definitions/QueryLog'
         '404':
           description: Cluster/Datacenter/Node not found
     delete:
@@ -1016,6 +1016,568 @@ paths:
           description: Log deleted
         '404':
           description: Cluster/Datacenter/Node not found
+  '/connections':
+    get:
+      tags:
+        - connections
+      summary: retrieve all the connections of all clusters
+      operationId: getAllConnections
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: created connections
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '500':
+          description: Internal server error
+
+    delete:
+      tags:
+        - connections
+      summary: closes all the connections of all clusters
+      operationId: closeAllConnections
+      produces:
+        - application/json
+      parameters:
+        - name: type
+          type: string
+          in: query
+          description: |
+            The way to close the connection.
+
+            * *disconnect* - Simply disconnects the connection.
+            * *shutdown_read* - Prevents the socket from being able to read any inbound data.  Good for testing things like heartbeat failures.
+            * *shutdown_write* - Prevents the socket from being able to write any outbound data.  This will typically close the connection so does not have much use over disconnect.
+
+            Defaults to *disconnect*.
+          enum:
+            - disconnect
+            - shutdown_read
+            - shutdown_write
+      responses:
+        '200':
+          description: closed connections
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '500':
+          description: Internal server error
+
+  '/connections/{clusterId}':
+    get:
+      tags:
+        - connections
+      summary: retrieve the connections to the cluster
+      operationId: getConnectionsByCluster
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+      responses:
+        '200':
+          description: connections
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - connections
+      summary: close the connections to the cluster
+      operationId: closeConnectionsByCluster
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: type
+          type: string
+          in: query
+          description: |
+            The way to close the connection.
+
+            * *disconnect* - Simply disconnects the connection.
+            * *shutdown_read* - Prevents the socket from being able to read any inbound data.  Good for testing things like heartbeat failures.
+            * *shutdown_write* - Prevents the socket from being able to write any outbound data.  This will typically close the connection so does not have much use over disconnect.
+
+            Defaults to *disconnect*.
+          enum:
+            - disconnect
+            - shutdown_read
+            - shutdown_write
+      responses:
+        '200':
+          description: closed connections
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+  '/connections/{clusterId}/{dataCenterId}':
+    get:
+      tags:
+        - connections
+      summary: retrieve the connections to the datacenter
+      operationId: getConnectionsByDatacenter
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+      responses:
+        '200':
+          description: connections
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Datacenter not found
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - connections
+      summary: close the connections to the datacenter
+      operationId: closeConnectionsByDatacenter
+      produces:
+              - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+        - name: type
+          type: string
+          in: query
+          description: |
+            The way to close the connection.
+
+            * *disconnect* - Simply disconnects the connection.
+            * *shutdown_read* - Prevents the socket from being able to read any inbound data.  Good for testing things like heartbeat failures.
+            * *shutdown_write* - Prevents the socket from being able to write any outbound data.  This will typically close the connection so does not have much use over disconnect.
+
+            Defaults to *disconnect*.
+          enum:
+            - disconnect
+            - shutdown_read
+            - shutdown_write
+      responses:
+        '200':
+          description: closed connections
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Datacenter not found
+        '500':
+          description: Internal server error
+  '/connections/{clusterId}/{dataCenterId}/{nodeId}':
+    get:
+      tags:
+        - connections
+      summary: retrieve the connections to the node
+      operationId: getConnectionsByNode
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+        - name: nodeId
+          in: path
+          description: Id or name of the node
+          required: true
+          type: string
+      responses:
+        '200':
+          description: connections
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Node not found
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - connections
+      summary: close the connections to the node
+      operationId: closeConnectionsByNode
+      produces:
+              - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+        - name: nodeId
+          in: path
+          description: Id or name of the node
+          required: true
+          type: string
+        - name: type
+          type: string
+          in: query
+          description: |
+            The way to close the connection.
+
+            * *disconnect* - Simply disconnects the connection.
+            * *shutdown_read* - Prevents the socket from being able to read any inbound data.  Good for testing things like heartbeat failures.
+            * *shutdown_write* - Prevents the socket from being able to write any outbound data.  This will typically close the connection so does not have much use over disconnect.
+
+            Defaults to *disconnect*.
+          enum:
+            - disconnect
+            - shutdown_read
+            - shutdown_write
+      responses:
+        '200':
+          description: closed connections
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Node not found
+        '500':
+          description: Internal server error
+
+  '/connection/{ip}/{port}':
+    delete:
+      tags:
+        - connection
+      summary: close one specific connection
+      operationId: closeOneConnection
+      produces:
+              - application/json
+      parameters:
+        - name: ip
+          in: path
+          description: source ip of the connection
+          required: true
+          type: string
+        - name: port
+          in: path
+          description: source port of the connection
+          required: true
+          type: string
+        - name: type
+          type: string
+          in: query
+          description: |
+            The way to close the connection.
+
+            * *disconnect* - Simply disconnects the connection.
+            * *shutdown_read* - Prevents the socket from being able to read any inbound data.  Good for testing things like heartbeat failures.
+            * *shutdown_write* - Prevents the socket from being able to write any outbound data.  This will typically close the connection so does not have much use over disconnect.
+
+            Defaults to *disconnect*.
+          enum:
+            - disconnect
+            - shutdown_read
+            - shutdown_write
+      responses:
+        '200':
+          description: closed connection
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Connection not found
+        '500':
+          description: Internal server error
+
+  '/listener':
+    put:
+      tags:
+        - listener
+      summary: accept connections to all nodes
+      operationId: acceptAllConnections
+      responses:
+        '200':
+          description: connections will be accepted
+        '400':
+          description: Internal server error
+    delete:
+      tags:
+        - listener
+      summary: stop accepting connections to all nodes
+      operationId: rejectAllConnections
+      parameters:
+        - name: after
+          in: query
+          description: Number of attempts after which to start rejecting connections (defaults to 0, (immediate))
+          type:
+            type: integer
+        - name: type
+          in: query
+          description: |
+            The way to reject connections.
+
+            * *unbind* - Stops listening for new connections.  Existing connections stay connected.
+            * *stop* - Meant to simulate the behavior of stopping a node.  Closes existing connections and then unbinds to stop listening for new ones.
+            * *reject_startup* - Accepts new connections, but does not respond to 'startup' response.  Existing connections stay connected.  Meant to simulate behavior of when a cassandra process becomes unresponsive, but the host OS is still able to read off the socket.
+
+            Defaults to *unbind*.
+          type: string
+          enum:
+            - unbind
+            - stop
+            - reject_startup
+      responses:
+        '200':
+          description: connections will be rejected
+        '500':
+          description: Internal server error
+
+  '/listener/{clusterId}':
+    put:
+      tags:
+        - listener
+      summary: accept connections to the cluster
+      operationId: acceptConnectionsByCluster
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+      responses:
+        '200':
+          description: connections will be accepted
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - listener
+      summary: stop accepting connections to the cluster
+      operationId: rejectConnectionsByCluster
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: after
+          in: query
+          description: Number of attempts after which to start rejecting connections (defaults to 0, (immediate))
+          type:
+            type: integer
+        - name: type
+          in: query
+          description: |
+            The way to reject connections.
+
+            * *unbind* - Stops listening for new connections.  Existing connections stay connected.
+            * *stop* - Meant to simulate the behavior of stopping a node.  Closes existing connections and then unbinds to stop listening for new ones.
+            * *reject_startup* - Accepts new connections, but does not respond to 'startup' response.  Existing connections stay connected.  Meant to simulate behavior of when a cassandra process becomes unresponsive, but the host OS is still able to read off the socket.
+
+            Defaults to *unbind*.
+          type: string
+          enum:
+            - unbind
+            - stop
+            - reject_startup
+      responses:
+        '200':
+          description: connections will be rejected
+        '500':
+          description: Internal server error
+
+  '/listener/{clusterId}/{dataCenterId}':
+    put:
+      tags:
+        - listener
+      summary: accept connections to the datacenter
+      operationId: acceptConnectionsByDatacenter
+      produces:
+              - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+      responses:
+        '200':
+          description: connections will be accepted
+        '400':
+          description: Internal server error
+    delete:
+      tags:
+        - listener
+      summary: stop accepting connections to the datacenter
+      operationId: rejectConnectionsByDatacenter
+      produces:
+              - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+        - name: after
+          in: query
+          description: Number of attempts after which to start rejecting connections (defaults to 0, (immediate))
+          type:
+            type: integer
+        - name: type
+          in: query
+          description: |
+            The way to reject connections.
+
+            * *unbind* - Stops listening for new connections.  Existing connections stay connected.
+            * *stop* - Meant to simulate the behavior of stopping a node.  Closes existing connections and then unbinds to stop listening for new ones.
+            * *reject_startup* - Accepts new connections, but does not respond to 'startup' response.  Existing connections stay connected.  Meant to simulate behavior of when a cassandra process becomes unresponsive, but the host OS is still able to read off the socket.
+
+            Defaults to *unbind*.
+          type: string
+          enum:
+            - unbind
+            - stop
+            - reject_startup
+      responses:
+        '200':
+          description: connections will be rejected
+        '500':
+          description: Internal server error
+
+  '/listener/{clusterId}/{dataCenterId}/{nodeId}':
+    put:
+      tags:
+        - listener
+      summary: accept connections to the node
+      operationId: acceptConnectionsByNode
+      produces:
+              - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+        - name: nodeId
+          in: path
+          description: Id or name of the node
+          required: true
+          type: string
+      responses:
+        '200':
+          description: connections will be accepted
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - listener
+      summary: stop accepting connections to the node
+      operationId: rejectConnectionsByNode
+      produces:
+              - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+        - name: nodeId
+          in: path
+          description: Id or name of the node
+          required: true
+          type: string
+        - name: after
+          in: query
+          description: Number of attempts after which to start rejecting connections (defaults to 0, (immediate))
+          type:
+            type: integer
+        - name: type
+          in: query
+          description: |
+            The way to reject connections.
+
+            * *unbind* - Stops listening for new connections.  Existing connections stay connected.
+            * *stop* - Meant to simulate the behavior of stopping a node.  Closes existing connections and then unbinds to stop listening for new ones.
+            * *reject_startup* - Accepts new connections, but does not respond to 'startup' response.  Existing connections stay connected.  Meant to simulate behavior of when a cassandra process becomes unresponsive, but the host OS is still able to read off the socket.
+
+            Defaults to *unbind*.
+          type: string
+          enum:
+            - unbind
+            - stop
+            - reject_startup
+      responses:
+        '200':
+          description: connections will be rejected
+        '500':
+          description: Internal server error
 definitions:
   DataType:
     type: string
@@ -1850,7 +2412,6 @@ definitions:
       serial_consistency_level: "SERIAL"
       connection: "/127.0.0.1:34662"
       timestamp: 1496955368551
-
   Error:
     type: object
     required:
@@ -1863,3 +2424,70 @@ definitions:
       status_code:
         type: string
         example: 400
+  NodeConnectionReport:
+      type: object
+      required:
+        - address
+        - connections
+        - id
+      properties:
+        id:
+          type: integer
+          format: int64
+        connections:
+          type: array
+          items: string
+          example: "127.0.0.1:5468"
+        address:
+          type: string
+          example: "127.0.0.1:9042"
+  DataCenterConnectionReport:
+    type: object
+    required:
+      - nodes
+      - id
+    properties:
+      id:
+        type: integer
+        format: int64
+      nodes:
+        type: array
+        items:
+          $ref: '#/definitions/NodeConnectionReport'
+  ClusterConnectionReport:
+    type: object
+    required:
+      - data_centers
+      - id
+    properties:
+      id:
+        type: integer
+        format: int64
+    example:
+      id: "0"
+      data_centers:
+        - id: "0"
+          nodes:
+          - id: "0"
+            connections:
+              - "127.0.0.1:38850"
+              - "127.0.0.1:38852"
+            address: "127.0.0.1:38472"
+          - id: "1"
+            connections:
+              - "127.0.0.1:38472"
+            address: "127.0.0.2:38472"
+          - id: "2"
+            connections:
+              - "127.0.0.1:54282"
+            address: "127.0.0.3:38472"
+        - id: "1"
+          nodes:
+          - id: "0"
+            connections:
+              - "127.0.0.1:18432"
+            address: "127.0.1.1:9042"
+          - id: "1"
+            connections:
+              - "127.0.0.1:7426"
+            address: "127.0.1.2:9042"

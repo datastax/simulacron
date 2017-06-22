@@ -10,15 +10,19 @@ import io.netty.channel.*;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.AttributeKey;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The main point of entry for registering and binding Clusters to the network. Provides methods for
@@ -379,6 +384,188 @@ public final class Server {
     return this.stubStore;
   }
 
+  /**
+   * Return the set of nodes in the scope scope
+   *
+   * @param scope the scope in which the nodes are
+   * @return set of nodes
+   */
+  public Set<Node> getNodesInScope(Scope scope) {
+    //Apply to all the clusters
+    if (scope.isScopeUnSet()) {
+      return this.getClusterRegistry()
+          .entrySet()
+          .stream()
+          .flatMap(entry -> getNodesInScope(new Scope(entry.getKey(), null, null)).stream())
+          .collect(Collectors.toSet());
+    }
+    Cluster cluster = this.getClusterRegistry().get(scope.getClusterId());
+    if (scope.getDataCenterId() == null) {
+      return cluster
+          .getDataCenters()
+          .stream()
+          .flatMap(dc -> dc.getNodes().stream())
+          .collect(Collectors.toSet());
+    }
+    DataCenter dc =
+        cluster
+            .getDataCenters()
+            .stream()
+            .filter(n -> n.getId().equals(scope.getDataCenterId()))
+            .findAny()
+            .get();
+    if (scope.getNodeId() == null) {
+      return dc.getNodes().stream().collect(Collectors.toSet());
+    } else {
+      Node node =
+          dc.getNodes().stream().filter(n -> n.getId().equals(scope.getNodeId())).findAny().get();
+      return Collections.singleton(node);
+    }
+  }
+
+  /**
+   * Return a set connections in a particular scope
+   *
+   * @param scope scope in which the connection are
+   * @return set of ClusterConnectionReport describing the connections in scope
+   */
+  public Set<ClusterConnectionReport> getConnections(Scope scope) {
+    if (scope.isScopeUnSet()) {
+      return this.getClusterRegistry()
+          .entrySet()
+          .stream()
+          .flatMap(p -> this.getConnections(new Scope(p.getKey(), null, null)).stream())
+          .collect(Collectors.toSet());
+    } else {
+      // There will only be connections from one cluster
+      Set<Node> nodes = getNodesInScope(scope);
+      if (nodes.isEmpty()) {
+        return Collections.emptySet();
+      }
+      ClusterConnectionReport clusterReport =
+          new ClusterConnectionReport(nodes.iterator().next().getCluster().getId());
+      for (Node node : nodes) {
+        clusterReport.addNode(
+            node,
+            ((BoundNode) node)
+                .getClientChannelGroup()
+                .stream()
+                .map(Channel::remoteAddress)
+                .collect(Collectors.toList()),
+            node.getAddress());
+      }
+      return Collections.singleton(clusterReport);
+    }
+  }
+
+  /**
+   * Closes all the connections in a particular scope
+   *
+   * @param scope scope in which the connections to close are
+   * @param closeType way of closing the connection
+   * @return set with the closed connections
+   */
+  public CompletableFuture<Set<ClusterConnectionReport>> closeConnections(
+      Scope scope, CloseType closeType) {
+
+    Set<Node> nodes = getNodesInScope(scope);
+
+    // Is this the correct way to do this, or we should get the closed node
+    Set<ClusterConnectionReport> clusterReport = getConnections(scope);
+    CompletableFuture<Void> futures = BoundNode.closeNodes(nodes.stream(), closeType);
+    return futures.thenApply(p -> clusterReport);
+  }
+
+  /**
+   * Closes a particular connection
+   *
+   * @param connection connection to close
+   * @param type way of closing the connection
+   * @return set with the closed connections which should contain only the closed connection
+   */
+  public CompletableFuture<Set<ClusterConnectionReport>> closeConnection(
+      InetSocketAddress connection, CloseType type) {
+    Set<Node> nodes = getNodesInScope(new Scope(null, null, null));
+    Optional<Node> toCloseNode =
+        nodes
+            .stream()
+            .filter(
+                p ->
+                    ((BoundNode) p)
+                        .getClientChannelGroup()
+                        .stream()
+                        .map(Channel::remoteAddress)
+                        .collect(Collectors.toSet())
+                        .contains(connection))
+            .findAny();
+
+    if (!toCloseNode.isPresent()) {
+      CompletableFuture<Set<ClusterConnectionReport>> failedFuture = new CompletableFuture<>();
+      failedFuture.completeExceptionally(new IllegalArgumentException("Not found"));
+      return failedFuture;
+    }
+
+    ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    channelGroup.add(
+        ((BoundNode) toCloseNode.get())
+            .getClientChannelGroup()
+            .stream()
+            .filter(c -> c.remoteAddress().equals(connection))
+            .findAny()
+            .get());
+    CompletableFuture<Void> future = BoundNode.closeChannelGroups(Stream.of(channelGroup), type);
+
+    // Is this the correct way to do this, or we should get the closed node
+    ClusterConnectionReport clusterReport =
+        new ClusterConnectionReport(nodes.iterator().next().getCluster().getId());
+    clusterReport.addNode(
+        toCloseNode.get(), Collections.singletonList(connection), toCloseNode.get().getAddress());
+
+    return future.thenApply(f -> Collections.singleton(clusterReport));
+  }
+
+  /**
+   * Method to configure the nodes so they reject future connections
+   *
+   * @param scope scope in which the nodes that will be configured are
+   * @param after number of connection attemps after which the rejection will be applied
+   * @param rejectScope type of the rejection
+   */
+  public CompletableFuture<Void> rejectConnections(
+      Scope scope, Integer after, RejectScope rejectScope) {
+    Set<Node> nodes = getNodesInScope(scope);
+    List<CompletableFuture<Node>> futures;
+    futures =
+        nodes
+            .stream()
+            .map(n -> ((BoundNode) n).rejectNewConnections(after, rejectScope))
+            .collect(Collectors.toList());
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
+  }
+
+  /**
+   * Method to configure the nodes so they accept future connections Usually called after {@link
+   * #rejectConnections(Scope, Integer, RejectScope)}
+   *
+   * @param scope scope in which the nodes that will be configured are
+   */
+  public CompletableFuture<Void> acceptConnections(Scope scope) {
+    Set<Node> nodes = getNodesInScope(scope);
+    List<CompletableFuture<Node>> futures;
+    futures =
+        nodes
+            .stream()
+            .map(n -> ((BoundNode) n).acceptNewConnections())
+            .collect(Collectors.toList());
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
+  }
+
+  /**
+   * Convenience method for retrieving the id of a cluster given the id or the name of the cluster
+   *
+   * @param idOrName string which could be the id or the name of the cluster
+   * @return Id of the cluster
+   */
   public Optional<Long> getClusterIdFromIdOrName(String idOrName) {
     try {
       long id = Long.parseLong(idOrName);
@@ -398,6 +585,14 @@ public final class Server {
     }
   }
 
+  /**
+   * Convenience method for retrieving the id of a datacenter given the id or the name of the
+   * datacenter, and the id of the cluster it belongs to
+   *
+   * @param clusterId id of the cluster the datacenter belongs to
+   * @param idOrName string which could be the id or the name of the DataCenter
+   * @return id of the datacenter
+   */
   public Optional<Long> getDatacenterIdFromIdOrName(Long clusterId, String idOrName) {
     return this.getClusterRegistry()
         .get(clusterId)
@@ -408,6 +603,15 @@ public final class Server {
         .map(AbstractNodeProperties::getId);
   }
 
+  /**
+   * Convenience method for retrieving the id of a Node given the id or the name of the node, and
+   * the id of the cluster and the datacenter it belongs to
+   *
+   * @param clusterId id of the cluster the DataCenter belongs to
+   * @param datacenterId id of the datacenter the DataCenter belongs to
+   * @param idOrName string which could be the id or the name of the Node
+   * @return id of the cluster
+   */
   public Optional<Long> getNodeIdFromIdOrName(Long clusterId, Long datacenterId, String idOrName) {
     Optional<DataCenter> dc =
         this.getClusterRegistry()
@@ -499,6 +703,7 @@ public final class Server {
       return builder(new NioEventLoopGroup(), NioServerSocketChannel.class);
     }
   }
+
   /**
    * Constructs a {@link Builder} that uses the given {@link EventLoopGroup} and {@link
    * ServerChannel} to construct a {@link ServerBootstrap} to be used by this {@link Server}.

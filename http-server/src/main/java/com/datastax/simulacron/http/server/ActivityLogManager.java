@@ -51,9 +51,6 @@ public class ActivityLogManager implements HttpListener {
                 Map<Long, Cluster> clusters = this.server.getClusterRegistry();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
-                String idToFetch = context.request().getParam("clusterIdOrName");
-                String dcIdToFetch = context.request().getParam("datacenterIdOrName");
-                String nodeIdToFetch = context.request().getParam("nodeIdOrName");
                 String filterStr = context.request().getParam("filter");
 
                 Boolean filter = null;
@@ -65,9 +62,7 @@ public class ActivityLogManager implements HttpListener {
                   }
                 }
 
-                Scope scope =
-                    HttpUtils.parseQueryParameters(
-                        idToFetch, dcIdToFetch, nodeIdToFetch, context, server);
+                Scope scope = HttpUtils.getScope(context, server);
                 if (scope == null) {
                   return;
                 }
@@ -119,16 +114,10 @@ public class ActivityLogManager implements HttpListener {
                 Map<Long, Cluster> clusters = this.server.getClusterRegistry();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
-                String idToFetch = context.request().getParam("clusterIdOrName");
-                String dcIdToFetch = context.request().getParam("datacenterIdOrName");
-                String nodeIdToFetch = context.request().getParam("nodeIdOrName");
-                Scope scope =
-                    HttpUtils.parseQueryParameters(
-                        idToFetch, dcIdToFetch, nodeIdToFetch, context, server);
+                Scope scope = HttpUtils.getScope(context, server);
                 if (scope == null) {
                   return;
                 }
-
                 QueryLogScope queryLogScope = new QueryLogScope(scope, null);
                 if (scope.getClusterId() != null) {
                   Cluster cluster = clusters.get(scope.getClusterId());

@@ -63,6 +63,9 @@ public class App {
     QueryManager queryManager = new QueryManager(nativeServer);
     queryManager.registerWithRouter(httpServer.getRouter());
 
+    EndpointManager endpointManager = new EndpointManager(nativeServer);
+    endpointManager.registerWithRouter(httpServer.getRouter());
+
     ActivityLogManager logManager = new ActivityLogManager(nativeServer);
     logManager.registerWithRouter(httpServer.getRouter());
 

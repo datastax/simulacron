@@ -3,6 +3,7 @@ package com.datastax.simulacron.common.result;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
+import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -15,11 +16,11 @@ public class CloseConnectionResult extends Result {
   private final DisconnectAction.Scope scope;
 
   @JsonProperty("close_type")
-  private final DisconnectAction.CloseType closeType;
+  private final CloseType closeType;
 
   public CloseConnectionResult(
       @JsonProperty("scope") DisconnectAction.Scope scope,
-      @JsonProperty("close_type") DisconnectAction.CloseType closeType,
+      @JsonProperty("close_type") CloseType closeType,
       @JsonProperty("delay_in_ms") long delayInMs) {
     super(delayInMs);
     this.scope = scope;

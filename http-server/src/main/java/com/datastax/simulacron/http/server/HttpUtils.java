@@ -96,4 +96,12 @@ public class HttpUtils {
     }
     return new Scope(idToFetch, dcIdToFetch, nodeIdToFetch);
   }
+
+  public static Scope getScope(RoutingContext context, Server server) {
+    String idToFetchS = context.request().getParam("clusterIdOrName");
+    String dcIdToFetchS = context.request().getParam("datacenterIdOrName");
+    String nodeIdToFetchS = context.request().getParam("nodeIdOrName");
+    return HttpUtils.parseQueryParameters(
+        idToFetchS, dcIdToFetchS, nodeIdToFetchS, context, server);
+  }
 }
