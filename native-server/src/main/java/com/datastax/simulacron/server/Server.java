@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -38,7 +39,7 @@ import java.util.stream.Stream;
  * registering and unregistering Clusters. When a Cluster is registered, all applicable nodes are
  * bound to their respective network interfaces and are ready to handle native protocol traffic.
  */
-public final class Server {
+public final class Server<C extends Cluster> {
 
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
 
@@ -72,10 +73,13 @@ public final class Server {
   private final AtomicLong clusterCounter = new AtomicLong();
 
   /** Mapping of registered {@link Cluster} instances to their identifier. */
-  private final Map<Long, Cluster> clusters = new ConcurrentHashMap<>();
+  private final Map<Long, C> clusters = new ConcurrentHashMap<>();
 
   /** Whether or not activity logging is enabled. */
   private final boolean activityLogging;
+
+  /** Used to build Cluster instances of the desired type * */
+  private final Supplier<ClusterBuilderBase<?, C>> builder;
 
   private Server(
       AddressResolver addressResolver,
@@ -83,13 +87,15 @@ public final class Server {
       Timer timer,
       long bindTimeoutInNanos,
       StubStore stubStore,
-      boolean activityLogging) {
+      boolean activityLogging,
+      Supplier<ClusterBuilderBase<?, C>> builder) {
     this.serverBootstrap = serverBootstrap;
     this.addressResolver = addressResolver;
     this.timer = timer;
     this.bindTimeoutInNanos = bindTimeoutInNanos;
     this.stubStore = stubStore;
     this.activityLogging = activityLogging;
+    this.builder = builder;
   }
 
   /**
@@ -135,7 +141,12 @@ public final class Server {
   }
 
   /** see {@link #register(Cluster, ServerOptions)} */
-  public CompletableFuture<Cluster> register(Cluster cluster) {
+  public CompletableFuture<C> register(ClusterBuilderBase<?, C> builder) {
+    return register(builder.build(), ServerOptions.DEFAULT);
+  }
+
+  /** see {@link #register(Cluster, ServerOptions)} */
+  public CompletableFuture<C> register(C cluster) {
     return register(cluster, ServerOptions.DEFAULT);
   }
 
@@ -153,9 +164,9 @@ public final class Server {
    * @return A future that when it completes provides an updated {@link Cluster} with ids and
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
-  public CompletableFuture<Cluster> register(Cluster cluster, ServerOptions serverOptions) {
+  public CompletableFuture<C> register(C cluster, ServerOptions serverOptions) {
     long clusterId = clusterCounter.getAndIncrement();
-    Cluster c = Cluster.builder().copy(cluster).withId(clusterId).build();
+    C c = builder.get().copy(cluster).withId(clusterId).build();
 
     List<CompletableFuture<Node>> bindFutures = new ArrayList<>();
 
@@ -171,10 +182,10 @@ public final class Server {
       DataCenter dc = c.addDataCenter().copy(dataCenter).build();
 
       for (Node node : dataCenter.getNodes()) {
-        Optional<Object> token = node.resolvePeerInfo("token");
+        Optional<String> token = node.resolvePeerInfo("token", String.class);
         String tokenStr;
         if (token.isPresent()) {
-          tokenStr = token.get().toString();
+          tokenStr = token.get();
         } else if (node.getCluster() == null) {
           tokenStr = "0";
         } else {
@@ -226,7 +237,7 @@ public final class Server {
       List<CompletableFuture<Node>> futures =
           nodes.stream().map(this::close).collect(Collectors.toList());
 
-      CompletableFuture<Cluster> future = new CompletableFuture<>();
+      CompletableFuture<C> future = new CompletableFuture<>();
       // On completion of unbinding all nodes, fail the returned future.
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
           .handle(
@@ -251,9 +262,9 @@ public final class Server {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<Cluster> unregister(Node node) {
+  public CompletableFuture<C> unregister(Node node) {
     if (node.getCluster() == null) {
-      CompletableFuture<Cluster> future = new CompletableFuture<>();
+      CompletableFuture<C> future = new CompletableFuture<>();
       future.completeExceptionally(new IllegalArgumentException("Node has no parent Cluster"));
       return future;
     }
@@ -268,7 +279,7 @@ public final class Server {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<Cluster> unregister(Cluster cluster) {
+  public CompletableFuture<C> unregister(Cluster cluster) {
     return unregister(cluster.getId());
   }
 
@@ -282,12 +293,12 @@ public final class Server {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<Cluster> unregister(Long clusterId) {
-    CompletableFuture<Cluster> future = new CompletableFuture<>();
+  public CompletableFuture<C> unregister(Long clusterId) {
+    CompletableFuture<C> future = new CompletableFuture<>();
     if (clusterId == null) {
       future.completeExceptionally(new IllegalArgumentException("Null id provided"));
     } else {
-      Cluster foundCluster = clusters.get(clusterId);
+      C foundCluster = clusters.get(clusterId);
       List<CompletableFuture<Node>> closeFutures = new ArrayList<>();
       if (foundCluster != null) {
         // Close socket on each node.
@@ -322,11 +333,16 @@ public final class Server {
    * @return future that is completed when all clusters are unregistered.
    */
   public CompletableFuture<Integer> unregisterAll() {
-    List<CompletableFuture<Cluster>> futures =
+    List<CompletableFuture<C>> futures =
         clusters.keySet().stream().map(this::unregister).collect(Collectors.toList());
 
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
         .thenApply(__ -> futures.size());
+  }
+
+  /** see {@link #register(Node, ServerOptions)} */
+  public CompletableFuture<Node> register(Node.Builder builder) {
+    return register(builder.build());
   }
 
   /** see {@link #register(Node, ServerOptions)} */
@@ -355,7 +371,7 @@ public final class Server {
     }
     // Wrap node in dummy cluster
     Long clusterId = clusterCounter.getAndIncrement();
-    Cluster dummyCluster = Cluster.builder().withId(clusterId).withName("dummy").build();
+    C dummyCluster = builder.get().withId(clusterId).withName("dummy").build();
     DataCenter dummyDataCenter = dummyCluster.addDataCenter().withName("dummy").build();
 
     clusters.put(clusterId, dummyCluster);
@@ -369,13 +385,13 @@ public final class Server {
     return bindInternal(
         node,
         dummyDataCenter,
-        node.resolvePeerInfo("token").orElse("0").toString(),
+        node.resolvePeerInfo("token", String.class).orElse("0"),
         address,
         activityLogging);
   }
 
   /** @return a map of registered {@link Cluster} instances keyed by their identifier. */
-  public Map<Long, Cluster> getClusterRegistry() {
+  public Map<Long, C> getClusterRegistry() {
     return this.clusters;
   }
 
@@ -424,6 +440,39 @@ public final class Server {
   }
 
   /**
+   * Retrieves report of all connections in input cluster.
+   *
+   * @param cluster input cluster
+   * @return connection report.
+   */
+  public ClusterConnectionReport getConnections(Cluster cluster) {
+    return getConnections(cluster.getScope()).iterator().next();
+  }
+
+  /**
+   * Retrieves report of all connections in input dc.
+   *
+   * @param dc input dc.
+   * @return connection report.
+   */
+  public DataCenterConnectionReport getConnections(DataCenter dc) {
+    ClusterConnectionReport report = getConnections(dc.getScope()).iterator().next();
+    return report.getDataCenters().iterator().next();
+  }
+
+  /**
+   * Retrieves report of all connections for input node.
+   *
+   * @param node input node.
+   * @return connection report.
+   */
+  public NodeConnectionReport getConnections(Node node) {
+    ClusterConnectionReport clusterReport = getConnections(node.getScope()).iterator().next();
+    DataCenterConnectionReport dcReport = clusterReport.getDataCenters().iterator().next();
+    return dcReport.getNodes().iterator().next();
+  }
+
+  /**
    * Return a set connections in a particular scope
    *
    * @param scope scope in which the connection are
@@ -459,10 +508,56 @@ public final class Server {
   }
 
   /**
+   * Closes all connections in input cluster
+   *
+   * @param cluster Cluster to close connections for
+   * @param closeType way of closing the connection
+   * @return the closed connections
+   */
+  public CompletableFuture<ClusterConnectionReport> closeConnections(
+      Cluster cluster, CloseType closeType) {
+    return closeConnections(cluster.getScope(), closeType).thenApply(s -> s.iterator().next());
+  }
+
+  /**
+   * Closes all connections in input datacenter
+   *
+   * @param dc DataCenter to close connections for
+   * @param closeType way of closing connection
+   * @return the closed connections
+   */
+  public CompletableFuture<DataCenterConnectionReport> closeConnections(
+      DataCenter dc, CloseType closeType) {
+    return closeConnections(dc.getScope(), closeType)
+        .thenApply(s -> s.iterator().next().getDataCenters().iterator().next());
+  }
+
+  /**
+   * Closes all connections for input node
+   *
+   * @param node Node to close connections for
+   * @param closeType way of closing connection
+   * @return the closed connections
+   */
+  public CompletableFuture<NodeConnectionReport> closeConnections(Node node, CloseType closeType) {
+    return closeConnections(node.getScope(), closeType)
+        .thenApply(
+            s ->
+                s.iterator()
+                    .next()
+                    .getDataCenters()
+                    .iterator()
+                    .next()
+                    .getNodes()
+                    .iterator()
+                    .next());
+  }
+
+  /**
    * Closes all the connections in a particular scope
    *
    * @param scope scope in which the connections to close are
-   * @param closeType way of closing the connection
+   * @param closeType way of closing connection
    * @return set with the closed connections
    */
   public CompletableFuture<Set<ClusterConnectionReport>> closeConnections(
@@ -525,11 +620,37 @@ public final class Server {
   }
 
   /**
+   * Convenience method for 'stopping' a cluster, dc, or node. Shortcut for rejectConnections with
+   * STOP reject scope.
+   *
+   * @param topic cluster, dc, or node to stop
+   * @return future that completes when stop completes.
+   */
+  public CompletableFuture<Void> stop(NodeProperties topic) {
+    return rejectConnections(topic, 0, RejectScope.STOP);
+  }
+
+  /**
+   * Rejects connections for a cluster, dc, or node. Shortcut for reject connections with {@link
+   * NodeProperties#getScope()}.
+   *
+   * @param topic cluster, dc, or node to reject connections for
+   * @param after number of connection attempts after which the rejection will be applied
+   * @param rejectScope type of the rejection
+   * @return future that completes when reject completes
+   */
+  public CompletableFuture<Void> rejectConnections(
+      NodeProperties topic, Integer after, RejectScope rejectScope) {
+    return rejectConnections(topic.getScope(), after, rejectScope);
+  }
+
+  /**
    * Method to configure the nodes so they reject future connections
    *
    * @param scope scope in which the nodes that will be configured are
-   * @param after number of connection attemps after which the rejection will be applied
+   * @param after number of connection attempts after which the rejection will be applied
    * @param rejectScope type of the rejection
+   * @return future that completes when reject completes
    */
   public CompletableFuture<Void> rejectConnections(
       Scope scope, Integer after, RejectScope rejectScope) {
@@ -544,10 +665,33 @@ public final class Server {
   }
 
   /**
-   * Method to configure the nodes so they accept future connections Usually called after {@link
+   * Convenience method for 'starting' a previous stopped/rejected cluster, dc, or node. Shortcut
+   * for {@link #acceptConnections}.
+   *
+   * @param topic cluster, dc, or node to start
+   * @return future that completes when start completes
+   */
+  public CompletableFuture<Void> start(NodeProperties topic) {
+    return acceptConnections(topic);
+  }
+
+  /**
+   * Method to configure a cluster, dc, or node so they accept future connections. Usually called
+   * after {@link #rejectConnections(Scope, Integer, RejectScope)}.
+   *
+   * @param topic cluster, dc, or node to accept connections for
+   * @return future that completes when accept compeltes
+   */
+  public CompletableFuture<Void> acceptConnections(NodeProperties topic) {
+    return acceptConnections(topic.getScope());
+  }
+
+  /**
+   * Method to configure the nodes so they accept future connections. Usually called after {@link
    * #rejectConnections(Scope, Integer, RejectScope)}
    *
    * @param scope scope in which the nodes that will be configured are
+   * @return future that completes when accept compeltes
    */
   public CompletableFuture<Void> acceptConnections(Scope scope) {
     Set<Node> nodes = getNodesInScope(scope);
@@ -694,7 +838,7 @@ public final class Server {
    * @return Builder that is set up with {@link NioEventLoopGroup} and {@link
    *     NioServerSocketChannel}.
    */
-  public static Builder builder() {
+  public static Builder<Cluster> builder() {
     if (Epoll.isAvailable()) {
       logger.debug("Detected epoll support, using EpollEventLoopGroup");
       return builder(new EpollEventLoopGroup(), EpollServerSocketChannel.class);
@@ -712,17 +856,33 @@ public final class Server {
    * @param channelClass channel class to use, should be compatible with the event loop.
    * @return Builder that is set up with a {@link ServerBootstrap}.
    */
-  public static Builder builder(
+  public static Builder<Cluster> builder(
       EventLoopGroup eventLoopGroup, Class<? extends ServerChannel> channelClass) {
+    return builder(eventLoopGroup, channelClass, Cluster::builder);
+  }
+
+  /**
+   * Constructs a {@link Builder} that uses the given {@link EventLoopGroup} and {@link
+   * ServerChannel} to construct a {@link ServerBootstrap} to be used by this {@link Server}.
+   *
+   * @param eventLoopGroup event loop group to use.
+   * @param channelClass channel class to use, should be compatible with the event loop.
+   * @param clusterBuilder builder for constructing clusters.
+   * @return Builder that is set up with a {@link ServerBootstrap}.
+   */
+  public static <C extends Cluster> Builder<C> builder(
+      EventLoopGroup eventLoopGroup,
+      Class<? extends ServerChannel> channelClass,
+      Supplier<ClusterBuilderBase<?, C>> clusterBuilder) {
     ServerBootstrap serverBootstrap =
         new ServerBootstrap()
             .group(eventLoopGroup)
             .channel(channelClass)
             .childHandler(new Initializer());
-    return new Builder(serverBootstrap);
+    return new Builder<>(serverBootstrap, clusterBuilder);
   }
 
-  public static class Builder {
+  public static class Builder<C extends Cluster> {
     private ServerBootstrap serverBootstrap;
 
     private AddressResolver addressResolver = AddressResolver.defaultResolver;
@@ -738,8 +898,11 @@ public final class Server {
 
     private boolean activityLogging = true;
 
-    Builder(ServerBootstrap initialBootstrap) {
+    private final Supplier<ClusterBuilderBase<?, C>> clusterBuilder;
+
+    Builder(ServerBootstrap initialBootstrap, Supplier<ClusterBuilderBase<?, C>> clusterBuilder) {
       this.serverBootstrap = initialBootstrap;
+      this.clusterBuilder = clusterBuilder;
     }
 
     /**
@@ -750,7 +913,7 @@ public final class Server {
      * @param timeUnit The unit of time to wait in.
      * @return This builder.
      */
-    public Builder withBindTimeout(long time, TimeUnit timeUnit) {
+    public Builder<C> withBindTimeout(long time, TimeUnit timeUnit) {
       this.bindTimeoutInNanos = TimeUnit.NANOSECONDS.convert(time, timeUnit);
       return this;
     }
@@ -762,7 +925,7 @@ public final class Server {
      * @param addressResolver resolver to use.
      * @return This builder.
      */
-    public Builder withAddressResolver(AddressResolver addressResolver) {
+    public Builder<C> withAddressResolver(AddressResolver addressResolver) {
       this.addressResolver = addressResolver;
       return this;
     }
@@ -774,7 +937,7 @@ public final class Server {
      * @param timer timer to use.
      * @return This builder.
      */
-    public Builder withTimer(Timer timer) {
+    public Builder<C> withTimer(Timer timer) {
       this.timer = timer;
       return this;
     }
@@ -787,7 +950,7 @@ public final class Server {
      * @param stubStore stub store to use.
      * @return This builder.
      */
-    public Builder withStubStore(StubStore stubStore) {
+    public Builder<C> withStubStore(StubStore stubStore) {
       this.stubStore = stubStore;
       return this;
     }
@@ -798,13 +961,13 @@ public final class Server {
      * @param enabled enablement flag.
      * @return This builder.
      */
-    public Builder withActivityLoggingEnabled(boolean enabled) {
+    public Builder<C> withActivityLoggingEnabled(boolean enabled) {
       this.activityLogging = enabled;
       return this;
     }
 
     /** @return a {@link Server} instance based on this builder's configuration. */
-    public Server build() {
+    public Server<C> build() {
       if (stubStore == null) {
         stubStore = new StubStore();
         stubStore.register(new PeerMetadataHandler());
@@ -834,8 +997,14 @@ public final class Server {
       if (timer == null) {
         this.timer = new HashedWheelTimer();
       }
-      return new Server(
-          addressResolver, serverBootstrap, timer, bindTimeoutInNanos, stubStore, activityLogging);
+      return new Server<>(
+          addressResolver,
+          serverBootstrap,
+          timer,
+          bindTimeoutInNanos,
+          stubStore,
+          activityLogging,
+          clusterBuilder);
     }
   }
 

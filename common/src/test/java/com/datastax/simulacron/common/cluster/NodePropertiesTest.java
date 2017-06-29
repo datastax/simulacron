@@ -25,6 +25,7 @@ public class NodePropertiesTest {
             .withName("dc0")
             .withCassandraVersion("2.0.17")
             .withPeerInfo("goodbye", "sun")
+            .withPeerInfo("nothing", "something")
             .build();
 
     Node node =
@@ -33,14 +34,18 @@ public class NodePropertiesTest {
             .withId(7L)
             .withCassandraVersion("3.0.11")
             .withPeerInfo("hola", "mundo")
+            .withPeerInfo("nothing", null)
             .build();
 
     assertThat(node.resolveCassandraVersion()).isEqualTo("3.0.11");
     assertThat(node.resolveId()).isEqualTo("1:0:7");
     assertThat(node.resolveName()).isEqualTo("cluster0:dc0:node0");
-    assertThat(node.resolvePeerInfo("hola")).isEqualTo(Optional.of("mundo"));
+    assertThat(node.resolvePeerInfo("hola", String.class)).isEqualTo(Optional.of("mundo"));
     assertThat(node.resolvePeerInfo("hola", "no")).isEqualTo("mundo");
     assertThat(node.resolvePeerInfo("yo", "hi")).isEqualTo("hi");
+
+    // setting null explicitly on node should resolve it to null.
+    assertThat(node.resolvePeerInfo("nothing", "defaultvalue")).isNull();
   }
 
   @Test
@@ -62,8 +67,8 @@ public class NodePropertiesTest {
     // Node id/name should be resolved to 0 since first node in dc.
     assertThat(node.resolveId()).isEqualTo("1:0:0");
     assertThat(node.resolveName()).isEqualTo("cluster0:dc0:0");
-    assertThat(node.resolvePeerInfo("hello")).isEqualTo(Optional.of("world"));
-    assertThat(node.resolvePeerInfo("goodbye")).isEqualTo(Optional.of("sun"));
+    assertThat(node.resolvePeerInfo("hello", String.class)).isEqualTo(Optional.of("world"));
+    assertThat(node.resolvePeerInfo("goodbye", String.class)).isEqualTo(Optional.of("sun"));
     assertThat(node.resolvePeerInfo("yo", "hi")).isEqualTo("hi");
   }
 

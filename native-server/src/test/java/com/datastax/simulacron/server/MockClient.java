@@ -55,9 +55,7 @@ public class MockClient implements Closeable {
   }
 
   MockClient connect(SocketAddress address) throws Exception {
-    if (channel == null) {
-      this.channel = cb.connect(address).sync().channel();
-    }
+    this.channel = cb.connect(address).sync().channel();
     return this;
   }
 

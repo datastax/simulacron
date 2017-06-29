@@ -29,7 +29,7 @@ public class HttpContainerIntegrationTest {
   private HttpContainer httpContainer;
   private Vertx vertx = null;
   private int portNum = 8187;
-  private Server nativeServer;
+  private Server<Cluster> nativeServer;
   ObjectMapper om = ObjectMapperHolder.getMapper();
   Logger logger = LoggerFactory.getLogger(HttpContainerIntegrationTest.class);
 

@@ -10,10 +10,7 @@ import com.datastax.simulacron.common.request.Request;
 import com.datastax.simulacron.common.result.*;
 
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -75,6 +72,28 @@ public class PrimeDsl {
       Map<String, Object> params,
       Map<String, String> paramTypes) {
     return new Query(query, consistencies, params, paramTypes);
+  }
+
+  /**
+   * Provides a 'Query' request instance.
+   *
+   * @param query The query string.
+   * @param consistencies The consistency to match on, or empty list to match on all.
+   * @return a query instance.
+   */
+  public static Query query(String query, List<ConsistencyLevel> consistencies) {
+    return query(query, consistencies, null, null);
+  }
+
+  /**
+   * Provides a 'Query' request instance.
+   *
+   * @param query The query string.
+   * @param consistency The consistency to match on, or empty list to match on all.
+   * @return a query instance.
+   */
+  public static Query query(String query, ConsistencyLevel consistency) {
+    return query(query, Collections.singletonList(consistency));
   }
 
   /**
@@ -360,6 +379,18 @@ public class PrimeDsl {
       return this;
     }
 
+    /**
+     * Convenience for passing a row builder directly to then so one doesn't have to call build()
+     * themselves.
+     *
+     * @param rowBuilder The rowBuilder to use build() to make a then.
+     * @return this builder
+     */
+    public PrimeBuilder then(RowBuilder rowBuilder) {
+      this.then = rowBuilder.build();
+      return this;
+    }
+
     public PrimeBuilder delay(long delay, TimeUnit delayUnit) {
       if (then == null) {
         throw new RuntimeException("then must be called before delay.");
@@ -459,6 +490,10 @@ public class PrimeDsl {
     }
 
     public SuccessResult build() {
+      // If no columnTypes are found, provide empty list which assumes varchar.
+      if (columnTypes == null) {
+        columnTypes = Collections.emptyMap();
+      }
       return new SuccessResult(rows, columnTypes);
     }
   }

@@ -4,9 +4,8 @@ import com.datastax.oss.protocol.internal.*;
 import com.datastax.oss.protocol.internal.request.*;
 import com.datastax.oss.protocol.internal.response.*;
 import com.datastax.oss.protocol.internal.response.Error;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -33,7 +32,7 @@ public class ServerTest {
 
   private final EventLoopGroup eventLoop = new DefaultEventLoopGroup();
 
-  private final Server localServer =
+  private final Server<Cluster> localServer =
       Server.builder(eventLoop, LocalServerChannel.class)
           .withAddressResolver(localAddressResolver)
           .build();
@@ -187,8 +186,8 @@ public class ServerTest {
             .childHandler(new Server.Initializer());
 
     // Define server with 500ms timeout, which should cause binding of slow address to timeout and fail register.
-    Server flakyServer =
-        new Server.Builder(serverBootstrap)
+    Server<Cluster> flakyServer =
+        new Server.Builder<>(serverBootstrap, Cluster::builder)
             .withAddressResolver(localAddressResolver)
             .withBindTimeout(500, TimeUnit.MILLISECONDS)
             .build();
@@ -293,6 +292,130 @@ public class ServerTest {
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
+    }
+  }
+
+  @Test
+  public void testShouldCloseNodeConnections() throws Exception {
+    Node boundNode = localServer.register(Node.builder()).get(5, TimeUnit.SECONDS);
+
+    try {
+      try (MockClient client = new MockClient(eventLoop)) {
+        client.connect(boundNode.getAddress());
+        client.write(new Startup());
+
+        // Retrieve active connection
+        NodeConnectionReport report = localServer.getConnections(boundNode);
+        assertThat(report.getConnections()).hasSize(1);
+
+        // Close connection
+        report =
+            localServer.closeConnections(boundNode, CloseType.DISCONNECT).get(5, TimeUnit.SECONDS);
+        assertThat(report.getActiveConnections()).isEqualTo(1);
+
+        report = localServer.getConnections(boundNode);
+        assertThat(report.getConnections()).hasSize(0);
+      }
+    } finally {
+      localServer.unregister(boundNode).get(5, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
+  public void testShouldCloseClusterConnections() throws Exception {
+    Cluster cluster = localServer.register(Cluster.builder().withNodes(3)).get(5, TimeUnit.SECONDS);
+
+    try {
+      try (MockClient client = new MockClient(eventLoop)) {
+        client.connect(cluster.node(0, 1).getAddress());
+        client.write(new Startup());
+
+        // Retrieve active connection
+        ClusterConnectionReport report = localServer.getConnections(cluster);
+        assertThat(report.getActiveConnections()).isEqualTo(1);
+
+        // Close connection
+        report =
+            localServer.closeConnections(cluster, CloseType.DISCONNECT).get(5, TimeUnit.SECONDS);
+        assertThat(report.getActiveConnections()).isEqualTo(1);
+
+        report = localServer.getConnections(cluster);
+        assertThat(report.getActiveConnections()).isEqualTo(0);
+      }
+    } finally {
+      localServer.unregister(cluster).get(5, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
+  public void testShouldCloseDataCenterConnections() throws Exception {
+    Cluster cluster =
+        localServer.register(Cluster.builder().withNodes(3, 1)).get(5, TimeUnit.SECONDS);
+
+    try {
+      try (MockClient client = new MockClient(eventLoop)) {
+        client.connect(cluster.node(1, 0).getAddress());
+        client.write(new Startup());
+
+        // Retrieve active connection - dc1 should have 1
+        DataCenterConnectionReport report = localServer.getConnections(cluster.dc(1));
+        assertThat(report.getActiveConnections()).isEqualTo(1);
+
+        // Retrieve active connections - dc0 should have 0
+        report = localServer.getConnections(cluster.dc(0));
+        assertThat(report.getActiveConnections()).isEqualTo(0);
+
+        // Close connection
+        report =
+            localServer
+                .closeConnections(cluster.dc(1), CloseType.DISCONNECT)
+                .get(5, TimeUnit.SECONDS);
+        assertThat(report.getActiveConnections()).isEqualTo(1);
+
+        report = localServer.getConnections(cluster.dc(1));
+        assertThat(report.getActiveConnections()).isEqualTo(0);
+      }
+    } finally {
+      localServer.unregister(cluster).get(5, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
+  public void testStopAndStart() throws Exception {
+    Node boundNode = localServer.register(Node.builder()).get(5, TimeUnit.SECONDS);
+
+    try {
+      try (MockClient client = new MockClient(eventLoop)) {
+        client.connect(boundNode.getAddress());
+        client.write(new Startup());
+
+        NodeConnectionReport report = localServer.getConnections(boundNode);
+        assertThat(report.getConnections()).hasSize(1);
+
+        // stop the node, connection should close.
+        localServer.stop(boundNode).get(5, TimeUnit.SECONDS);
+        report = localServer.getConnections(boundNode);
+        assertThat(report.getConnections()).hasSize(0);
+
+        // attempt to connect should fail
+        try {
+          client.connect(boundNode.getAddress());
+          fail("Should not have been able to connect");
+        } catch (ConnectException ce) {
+          // expected
+        }
+
+        // start the node
+        localServer.start(boundNode).get(5, TimeUnit.SECONDS);
+
+        // attempt to connect should succeed
+        client.connect(boundNode.getAddress());
+
+        report = localServer.getConnections(boundNode);
+        assertThat(report.getConnections()).hasSize(1);
+      }
+    } finally {
+      localServer.unregister(boundNode).get(5, TimeUnit.SECONDS);
     }
   }
 

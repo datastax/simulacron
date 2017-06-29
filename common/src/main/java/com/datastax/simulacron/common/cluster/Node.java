@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collections;
@@ -56,11 +57,39 @@ public class Node extends AbstractNodeProperties {
    *
    * @return address as an {@link InetSocketAddress}
    */
-  public InetSocketAddress inet() {
+  public InetSocketAddress inetSocketAddress() {
     if (address instanceof InetSocketAddress) {
       return (InetSocketAddress) address;
     }
     return null;
+  }
+
+  /**
+   * Convenience method to access the {@link InetAddress} part of {@link #getAddress()} if it is an
+   * {@link InetSocketAddress}.
+   *
+   * @return address as an {@link InetAddress}
+   */
+  public InetAddress inet() {
+    InetSocketAddress addr = inetSocketAddress();
+    if (addr != null) {
+      return addr.getAddress();
+    }
+    return null;
+  }
+
+  /**
+   * Convenience method to access the port part of {@link #getAddress()} if it is an {@link
+   * InetSocketAddress}.
+   *
+   * @return port
+   */
+  public int port() {
+    InetSocketAddress addr = inetSocketAddress();
+    if (addr != null) {
+      return addr.getPort();
+    }
+    return -1;
   }
 
   /**

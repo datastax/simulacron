@@ -19,8 +19,8 @@
     <modules>
         <module>common</module>
         <module>native-server</module>
+        <module>driver-3x</module>
         <module>http-server</module>
-        <module>test-utils</module>
         <module>standalone</module>
     </modules>
 

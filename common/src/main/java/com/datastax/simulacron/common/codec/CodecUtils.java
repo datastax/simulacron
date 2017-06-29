@@ -106,7 +106,7 @@ public class CodecUtils {
   public static <T> ByteBuffer encodePeerInfo(
       Node node, Encoder<T> encoder, String key, T defaultValue) {
     // TODO: Handle type conversions
-    return encoder.apply((T) node.resolvePeerInfo(key, defaultValue));
+    return encoder.apply(node.resolvePeerInfo(key, defaultValue));
   }
 
   /**
@@ -122,10 +122,13 @@ public class CodecUtils {
   /**
    * Resolves the {@link RawType} from the given name. If not found returns null.
    *
-   * @param name name to look up.
+   * @param name name to look up, if null assumes varchar.
    * @return The associated {@link RawType} for this name.
    */
   public static RawType getTypeFromName(String name) {
+    if (name == null) {
+      name = "varchar";
+    }
     RawType rawType = nativeTypeMap.get(name);
     if (rawType == null) {
       rawType = typeCache.get(name);

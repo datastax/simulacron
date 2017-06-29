@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class AddressResolverIntegrationTest {
 
-  private final Server server = Server.builder().build();
+  private final Server<Cluster> server = Server.builder().build();
 
   @After
   public void tearDown() throws Exception {

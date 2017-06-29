@@ -6,7 +6,10 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.net.SocketAddress;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.TreeSet;
 
 /**
  * Represent a class that contains the connections of a particular cluster. It's useful for encoding
@@ -36,10 +39,6 @@ public class ClusterConnectionReport extends AbstractNodeProperties {
    * @param serverAddress the address where this node is listening
    */
   public void addNode(Node node, List<SocketAddress> addressList, SocketAddress serverAddress) {
-    if (addressList.size() == 0) {
-      return;
-    }
-
     Long id = node.getParent().get().getId();
     Optional<DataCenterConnectionReport> optionalDatacenterReport =
         dataCenters.stream().filter(dc -> dc.getId().equals(id)).findFirst();
@@ -65,8 +64,12 @@ public class ClusterConnectionReport extends AbstractNodeProperties {
   }
 
   @Override
+  @JsonIgnore
   public Long getActiveConnections() {
-    return null;
+    return getDataCenters()
+        .stream()
+        .mapToLong(DataCenterConnectionReport::getActiveConnections)
+        .sum();
   }
 
   @Override

@@ -1,10 +1,12 @@
 package com.datastax.simulacron.common.cluster;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.net.SocketAddress;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +23,7 @@ public class NodeConnectionReport extends AbstractNodeProperties {
 
   NodeConnectionReport() {
     // Default constructor for jackson deserialization.
-    this(null, null, null, null);
+    this(null, Collections.emptyList(), null, null);
   }
 
   NodeConnectionReport(
@@ -44,8 +46,9 @@ public class NodeConnectionReport extends AbstractNodeProperties {
   }
 
   @Override
+  @JsonIgnore
   public Long getActiveConnections() {
-    return null;
+    return (long) connections.size();
   }
 
   @Override

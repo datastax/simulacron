@@ -182,15 +182,19 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
 
                       List<ByteBuffer> row =
                           row(
-                              mapper.inet.encode(address),
-                              mapper.inet.encode(address),
-                              mapper.varchar.encode(n.getDataCenter().getName()),
+                              mapper.inet.encode(n.resolvePeerInfo("peer", address)),
+                              mapper.inet.encode(n.resolvePeerInfo("rpc_address", address)),
+                              mapper.varchar.encode(
+                                  n.resolvePeerInfo("data_center", n.getDataCenter().getName())),
                               encodePeerInfo(n, mapper.varchar::encode, "rack", "rack1"),
-                              mapper.varchar.encode(n.resolveCassandraVersion()),
-                              tokenCodec.encode(resolveTokens(n)),
-                              mapper.inet.encode(address),
-                              mapper.uuid.encode(schemaVersion),
-                              mapper.uuid.encode(schemaVersion));
+                              mapper.varchar.encode(
+                                  n.resolvePeerInfo(
+                                      "release_version", n.resolveCassandraVersion())),
+                              tokenCodec.encode(n.resolvePeerInfo("tokens", resolveTokens(n))),
+                              mapper.inet.encode(n.resolvePeerInfo("listen_address", address)),
+                              mapper.uuid.encode(n.resolvePeerInfo("host_id", schemaVersion)),
+                              mapper.uuid.encode(
+                                  n.resolvePeerInfo("schema_version", schemaVersion)));
                       if (node.resolveDSEVersion() != null) {
                         row.add(mapper.ascii.encode(n.resolveDSEVersion()));
                         row.add(encodePeerInfo(n, mapper.bool::encode, "graph", false));

@@ -27,7 +27,7 @@ public class AdminServer extends ExternalResource {
 
   private Vertx vertx;
 
-  private Server nativeServer;
+  private Server<Cluster> nativeServer;
 
   private static int port = 8187;
 
@@ -39,7 +39,7 @@ public class AdminServer extends ExternalResource {
 
   private ObjectMapper om = ObjectMapperHolder.getMapper();
 
-  private final Server.Builder serverBuilder;
+  private final Server.Builder<Cluster> serverBuilder;
 
   Logger logger = LoggerFactory.getLogger(AdminServer.class);
 
@@ -51,7 +51,7 @@ public class AdminServer extends ExternalResource {
     this(cluster, Server.builder());
   }
 
-  public AdminServer(Cluster cluster, Server.Builder serverBuilder) {
+  public AdminServer(Cluster cluster, Server.Builder<Cluster> serverBuilder) {
     this.clusterRequest = cluster;
     this.serverBuilder = serverBuilder;
   }

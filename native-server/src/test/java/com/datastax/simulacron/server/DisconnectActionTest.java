@@ -31,7 +31,7 @@ public class DisconnectActionTest {
 
   private final EventLoopGroup eventLoop = new DefaultEventLoop();
 
-  private final Server localServer =
+  private final Server<Cluster> localServer =
       Server.builder(eventLoop, LocalServerChannel.class)
           .withAddressResolver(localAddressResolver)
           .build();

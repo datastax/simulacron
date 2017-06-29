@@ -7,20 +7,15 @@
         <version>0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>test-utils</artifactId>
+    <artifactId>driver-3x</artifactId>
     <packaging>jar</packaging>
 
-    <name>simulacron test utilities</name>
+    <name>simulacron java driver 3.x compatibility module</name>
 
     <dependencies>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.datastax.simulacron</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>native-server</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>

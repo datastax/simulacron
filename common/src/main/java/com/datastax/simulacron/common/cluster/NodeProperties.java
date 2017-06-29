@@ -123,12 +123,33 @@ public interface NodeProperties extends Comparable<NodeProperties> {
    * @return the value for this peer column for this if set, otherwise its parents. If it is not
    *     set, Optional.empty is returned.
    */
-  default Optional<Object> resolvePeerInfo(String key) {
+  default <T> Optional<T> resolvePeerInfo(String key, Class<T> clazz) {
     // if value is present, return it, otherwise try parent.
+    if (!getPeerInfo().containsKey(key)) {
+      return getParent().flatMap(p -> p.resolvePeerInfo(key, clazz));
+    }
     Object value = getPeerInfo().get(key);
-    return value != null
-        ? Optional.of(value)
-        : getParent().map(p -> p.resolvePeerInfo(key).orElse(null));
+    if (value == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(clazz.cast(value));
+    } catch (ClassCastException e) {
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * @param key peer column name
+   * @return Whether or not peer info is present for the given key. This is useful for explicit
+   *     values being set to null.
+   */
+  default boolean isPeerInfoPresent(String key) {
+    if (!getPeerInfo().containsKey(key)) {
+      return getParent().map(p -> p.isPeerInfoPresent(key)).orElse(false);
+    } else {
+      return true;
+    }
   }
 
   /**
@@ -138,8 +159,19 @@ public interface NodeProperties extends Comparable<NodeProperties> {
    * @return the value for this peer column for this if set, otherwise its parents. If it is not
    *     set, defaultValue is returned.
    */
-  default Object resolvePeerInfo(String key, Object defaultValue) {
-    return resolvePeerInfo(key).orElseGet(() -> defaultValue);
+  @SuppressWarnings("unchecked")
+  default <T> T resolvePeerInfo(String key, T defaultValue) {
+    Optional<T> val = resolvePeerInfo(key, (Class<T>) defaultValue.getClass());
+    if (val.isPresent()) {
+      return val.get();
+    } else {
+      // property is set, but it's null, return that.
+      if (isPeerInfoPresent(key)) {
+        return null;
+      } else {
+        return defaultValue;
+      }
+    }
   }
 
   /** @return the scope for this object, useful for looking things up. */

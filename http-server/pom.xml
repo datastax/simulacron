@@ -30,7 +30,7 @@
         </dependency>
         <dependency>
             <groupId>com.datastax.simulacron</groupId>
-            <artifactId>test-utils</artifactId>
+            <artifactId>driver-3x</artifactId>
             <version>${project.parent.version}</version>
             <scope>test</scope>
         </dependency>

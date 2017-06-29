@@ -10,7 +10,7 @@ import com.datastax.simulacron.common.result.SuccessResult;
 
 import java.util.*;
 
-import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
+import static com.datastax.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 
 public class HttpTestUtil {
 

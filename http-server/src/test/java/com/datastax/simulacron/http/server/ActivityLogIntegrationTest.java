@@ -16,7 +16,7 @@ import java.util.Optional;
 
 import static com.datastax.simulacron.common.stubbing.PrimeDsl.rows;
 import static com.datastax.simulacron.common.stubbing.PrimeDsl.when;
-import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
+import static com.datastax.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ActivityLogIntegrationTest {

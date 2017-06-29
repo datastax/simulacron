@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.Map;
 
 import static com.datastax.simulacron.common.stubbing.PrimeDsl.*;
-import static com.datastax.simulacron.test.FluentMatcher.match;
-import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
+import static com.datastax.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
+import static com.datastax.simulacron.http.server.FluentMatcher.match;
 import static org.hamcrest.CoreMatchers.*;
 
 public class ErrorResultIntegrationTest {

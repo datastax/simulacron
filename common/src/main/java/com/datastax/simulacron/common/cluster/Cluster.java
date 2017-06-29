@@ -27,7 +27,7 @@ public class Cluster extends AbstractNodeProperties {
     this(null, null, null, null, Collections.emptyMap());
   }
 
-  Cluster(
+  public Cluster(
       String name,
       Long id,
       String cassandraVersion,
@@ -89,6 +89,17 @@ public class Cluster extends AbstractNodeProperties {
   }
 
   /**
+   * Convenience method to find the Node in DataCenter 0 with the given id. This is a shortcut for
+   * <code>node(0, X)</code> as it is common for clusters to only have 1 dc.
+   *
+   * @param nodeId id of the node.
+   * @return the node if found in dc 0 or null
+   */
+  public Node node(long nodeId) {
+    return node(0, nodeId);
+  }
+
+  /**
    * Intended to be called in {@link DataCenter} construction to add the {@link DataCenter} to this
    * cluster.
    *
@@ -127,38 +138,20 @@ public class Cluster extends AbstractNodeProperties {
     return Optional.empty();
   }
 
-  public static class Builder extends NodePropertiesBuilder<Builder, Cluster> {
-
-    int[] nodes = null;
+  public static class Builder extends ClusterBuilderBase<Builder, Cluster> {
 
     Builder() {
       super(Builder.class);
     }
 
-    /**
-     * Convenience method to preprovision data centers and nodes with default settings, each element
-     * of nodeCount is a datacenter with the number of nodes as its value.
-     *
-     * @param nodeCount Array with each element respresenting a DataCenter with its node counts.
-     */
-    public Builder withNodes(int... nodeCount) {
-      this.nodes = nodeCount;
-      return this;
-    }
-
-    /** @return Constructs a {@link Cluster} from this builder. Can be called multiple times. */
-    public Cluster build() {
-      Cluster cluster = new Cluster(name, id, cassandraVersion, dseVersion, peerInfo);
-      if (nodes != null) {
-        for (int i = 1; i <= nodes.length; i++) {
-          int nodeCount = nodes[i - 1];
-          DataCenter dc = cluster.addDataCenter().withName("dc" + i).build();
-          for (int j = 1; j <= nodeCount; j++) {
-            dc.addNode().withName("node" + j).build();
-          }
-        }
-      }
-      return cluster;
+    @Override
+    public Cluster baseCluster(
+        String name,
+        Long id,
+        String cassandraVersion,
+        String dseVersion,
+        Map<String, Object> peerInfo) {
+      return new Cluster(name, id, cassandraVersion, dseVersion, peerInfo);
     }
   }
 

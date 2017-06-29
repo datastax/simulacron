@@ -1,4 +1,4 @@
-package com.datastax.simulacron.test;
+package com.datastax.simulacron.http.server;
 
 import org.hamcrest.CustomTypeSafeMatcher;
 import org.hamcrest.Matcher;

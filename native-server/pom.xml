@@ -35,12 +35,6 @@
             <!-- hard code classifier for 64 bit platforms as this will usually be the case -->
             <classifier>linux-x86_64</classifier>
         </dependency>
-        <dependency>
-            <groupId>com.datastax.simulacron</groupId>
-            <artifactId>test-utils</artifactId>
-            <version>${project.parent.version}</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
 </project>

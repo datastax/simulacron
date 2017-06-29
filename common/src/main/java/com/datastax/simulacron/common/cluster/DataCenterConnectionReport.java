@@ -1,10 +1,10 @@
 package com.datastax.simulacron.common.cluster;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.TreeSet;
@@ -39,8 +39,9 @@ public class DataCenterConnectionReport extends AbstractNodeProperties {
   }
 
   @Override
+  @JsonIgnore
   public Long getActiveConnections() {
-    return null;
+    return getNodes().stream().mapToLong(NodeConnectionReport::getActiveConnections).sum();
   }
 
   @Override

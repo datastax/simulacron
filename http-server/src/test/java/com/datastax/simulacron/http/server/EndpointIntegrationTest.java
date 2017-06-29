@@ -15,7 +15,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 
-import static com.datastax.simulacron.test.IntegrationUtils.defaultBuilder;
+import static com.datastax.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class EndpointIntegrationTest {
@@ -30,8 +30,7 @@ public class EndpointIntegrationTest {
     Iterator<Node> nodeIterator = dc.getNodes().iterator();
     Node node = nodeIterator.next();
 
-    com.datastax.driver.core.Cluster driverCluster =
-        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+    com.datastax.driver.core.Cluster driverCluster = defaultBuilder(server.getCluster()).build();
     driverCluster.init();
 
     assertThat(driverCluster.getMetadata().getAllHosts()).hasSize(6);
@@ -44,14 +43,12 @@ public class EndpointIntegrationTest {
     list.add(new Scope(null, null, null));
 
     for (Scope scope : list) {
-
       HttpTestResponse responseToValidate = server.get("/connections/" + scope.toString());
       assertThat(responseToValidate.response.statusCode()).isEqualTo(200);
       TypeReference<Set<ClusterConnectionReport>> setReportType =
           new TypeReference<Set<ClusterConnectionReport>>() {};
       Set<ClusterConnectionReport> responseReport =
           om.readValue(responseToValidate.body, setReportType);
-      System.out.println(responseToValidate.body);
       this.verifyClusterConnectionReport(
           responseReport.iterator().next(), scope, dc.getId(), node.getId());
     }
@@ -77,8 +74,6 @@ public class EndpointIntegrationTest {
       driverCluster.init();
       HttpTestResponse responseDelete =
           server.delete("/connections/" + scope.toString() + "?type=disconnect");
-
-      System.out.print(responseDelete.body);
 
       TypeReference<Set<ClusterConnectionReport>> setReportType =
           new TypeReference<Set<ClusterConnectionReport>>() {};
@@ -267,7 +262,6 @@ public class EndpointIntegrationTest {
 
   private void verifyClusterConnectionReport(
       ClusterConnectionReport report, Scope scope, Long contactPointDcId, Long contactPointNodeId) {
-    assertThat(report.getDataCenters().size()).isEqualTo(1);
     DataCenterConnectionReport dc =
         report
             .getDataCenters()
