@@ -10,6 +10,7 @@ import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.*;
+import com.datastax.simulacron.common.stubbing.PrimeDsl.PrimeBuilder;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -305,7 +306,8 @@ class BoundNode extends Node {
         Prepare prepare = (Prepare) frame.message;
         // TODO: Maybe attempt to identify bind parameters
         String query = prepare.cqlQuery;
-        Prime prime = when(query).then(noRows()).forCluster(this.getCluster()).build();
+        Prime prime =
+            whenWithInferedParams(query).then(noRows()).forCluster(this.getCluster()).build();
         this.stubStore.registerInternal(prime);
         response = prime.toPrepared();
       }
@@ -479,5 +481,41 @@ class BoundNode extends Node {
         responseFrame.streamId,
         responseFrame.message);
     return ctx.writeAndFlush(responseFrame);
+  }
+  /**
+   * Convenience fluent builder for constructing a prime with a query, where the parameters are
+   * inferred by the query
+   *
+   * @param query The query string to match against.
+   * @return builder for this prime.
+   */
+  private static PrimeBuilder whenWithInferedParams(String query) {
+    long posParamCount = query.chars().filter(num -> num == '?').count();
+
+    // Do basic param population for positional types
+    HashMap<String, String> paramTypes = new HashMap<>();
+    HashMap<String, Object> params = new HashMap<>();
+    if (posParamCount > 0) {
+      for (int i = 0; i < posParamCount; i++) {
+        params.put(Integer.toString(i), "*");
+        paramTypes.put(Integer.toString(i), "varchar");
+      }
+    }
+    // Do basic param population for named types
+    else {
+      List<String> allMatches = new ArrayList<String>();
+      Pattern p = Pattern.compile("([\\w']+)\\s=\\s:[\\w]+");
+      Matcher m = p.matcher(query);
+      while (m.find()) {
+        allMatches.add(m.group(1));
+      }
+      for (String match : allMatches) {
+        params.put(match, "*");
+        paramTypes.put(match, "varchar");
+      }
+    }
+    return when(
+        new com.datastax.simulacron.common.request.Query(
+            query, Collections.emptyList(), params, paramTypes));
   }
 }

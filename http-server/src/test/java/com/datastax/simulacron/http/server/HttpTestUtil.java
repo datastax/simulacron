@@ -37,6 +37,17 @@ public class HttpTestUtil {
     return executeQueryWithFreshSession(bound, contactPoint, session, cluster);
   }
 
+  public static ResultSet makeNativeBoundQueryWithNameParamsStrings(
+      String query, String contactPoint, Map<String, String> values) {
+    com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build();
+    Session session = cluster.connect();
+    com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+    BoundStatement bound = prepared.bind();
+    values.forEach((k, v) -> bound.setString(k, v));
+    return executeQueryWithFreshSession(bound, contactPoint, session, cluster);
+  }
+
   public static ResultSet makeNativeQueryWithPositionalParams(
       String query, String contactPoint, Object... values) {
     SimpleStatement statement = new SimpleStatement(query, values);

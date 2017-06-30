@@ -151,6 +151,7 @@ public final class Query extends Request {
    */
   private boolean checkParamsEqual(
       ByteBuffer buffer, Object primedParam, String stringType, CqlMapper mapper) {
+    if (primedParam.equals("*")) return true;
     RawType type = CodecUtils.getTypeFromName(stringType);
     Object nativeParamToCheck = mapper.codecFor(type).decode(buffer);
     Object primedParamToCheck = mapper.codecFor(type).toNativeType(primedParam);
@@ -194,7 +195,7 @@ public final class Query extends Request {
   }
 
   /**
-   * Convience method to retrieve the queryId which happesn to be the hashcode associated query
+   * Convenience method to retrieve the queryId which happens to be the hashcode associated query
    * string
    *
    * @return

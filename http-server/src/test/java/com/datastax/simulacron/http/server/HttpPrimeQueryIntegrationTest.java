@@ -135,7 +135,7 @@ public class HttpPrimeQueryIntegrationTest {
       // Wrong Param
       set =
           HttpTestUtil.makeNativeQueryWithPositionalParams(
-              "SELECT table FROM foo WHERE c1=?", contactPoint, "d1");
+              "SELECT table FROM foo WHERE ci1=?", contactPoint, "d1");
       assertThat(set.all().size()).isEqualTo(0);
     } catch (Exception e) {
       fail("error encountered");
@@ -172,6 +172,24 @@ public class HttpPrimeQueryIntegrationTest {
   }
 
   @Test
+  public void testBoundStatementPositionalAutoPrime() {
+    try {
+      HashMap<String, String> paramTypes = new HashMap<>();
+      paramTypes.put("c1", "ascii");
+      HashMap<String, Object> params = new HashMap<>();
+      params.put("c1", "c1");
+      String contactPoint = HttpTestUtil.getContactPointString(server.getCluster(), 0);
+      ResultSet set =
+          HttpTestUtil.makeNativeBoundQueryWithPositionalParam(
+              "SELECT table FROM foo2 WHERE c1=?", contactPoint, "d1");
+      assertThat(set.all().size()).isEqualTo(0);
+
+    } catch (Exception e) {
+      fail("error encountered");
+    }
+  }
+
+  @Test
   public void testBoundStatementNamed() {
     try {
       HashMap<String, String> paramTypes = new HashMap<>();
@@ -201,8 +219,28 @@ public class HttpPrimeQueryIntegrationTest {
       assertThat(column1).isEqualTo("column1");
       Long column2 = row1.getLong("column2");
       assertThat(column2).isEqualTo(new Long(2));
+      Map<String, String> values2 = ImmutableMap.<String, String>of("id", "1", "id2", "2");
     } catch (Exception e) {
-      e.printStackTrace();
+      fail("error encountered");
+    }
+  }
+
+  @Test
+  public void testBoundStatementNamedAutoPrime() {
+    try {
+      HashMap<String, String> paramTypes = new HashMap<>();
+      paramTypes.put("id", "bigint");
+      paramTypes.put("id2", "bigint");
+      HashMap<String, Object> params = new HashMap<>();
+      params.put("id", new Long(1));
+      params.put("id2", new Long(2));
+      Map<String, String> values2 = ImmutableMap.<String, String>of("id", "1", "id2", "2");
+      String contactPoint = HttpTestUtil.getContactPointString(server.getCluster(), 0);
+      ResultSet set =
+          HttpTestUtil.makeNativeBoundQueryWithNameParamsStrings(
+              "SELECT * FROM users2 WHERE id = :id and id2 = :id2", contactPoint, values2);
+      assertThat(set.all().size()).isEqualTo(0);
+    } catch (Exception e) {
       fail("error encountered");
     }
   }
