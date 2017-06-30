@@ -17,6 +17,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.AttributeKey;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +26,7 @@ import org.slf4j.MDC;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -832,20 +830,50 @@ public final class Server<C extends Cluster> {
   }
 
   /**
-   * Convenience method that provides a {@link Builder} that uses NIO for networking traffic, which
-   * should be the typical case.
+   * Creates a default event loop to use based on whether or not epoll is available. If epoll is not
+   * available, NIO is used.
+   *
+   * @return an {@link EventLoopGroup} to be used whose threads are prefixed with
+   *     'simulacron-io-worker'.
+   */
+  static EventLoopGroup createEventLoop() {
+    ThreadFactory f = new DefaultThreadFactory("simulacron-io-worker");
+    if (Epoll.isAvailable()) {
+      logger.debug("Detected epoll support, using EpollEventLoopGroup");
+      return new EpollEventLoopGroup(0, f);
+    } else {
+      logger.debug("Could not locate native transport (epoll), using NioEventLoopGroup");
+      return new NioEventLoopGroup(0, f);
+    }
+  }
+
+  /**
+   * Infers the {@link ServerChannel} implementaion based on whether or not epoll is available.
+   *
+   * @return {@link EpollServerSocketChannel} is available, otherwise {@link
+   *     NioServerSocketChannel}.
+   */
+  static Class<? extends ServerChannel> channelClass() {
+    if (Epoll.isAvailable()) {
+      return EpollServerSocketChannel.class;
+    } else {
+      return NioServerSocketChannel.class;
+    }
+  }
+
+  /**
+   * Convenience method that provides a {@link Builder} that uses NIO for networking traffic (or
+   * epoll if available), which should be the typical case.
+   *
+   * <p>Note that this creates an {@link EventLoopGroup} that has numberOfCores*2 threads and a
+   * naming format of 'simulacron-io-worker'. This is not directly asscessible or closable, if you
+   * need this capability use {@link #builder(EventLoopGroup, Class)}.
    *
    * @return Builder that is set up with {@link NioEventLoopGroup} and {@link
    *     NioServerSocketChannel}.
    */
   public static Builder<Cluster> builder() {
-    if (Epoll.isAvailable()) {
-      logger.debug("Detected epoll support, using EpollEventLoopGroup");
-      return builder(new EpollEventLoopGroup(), EpollServerSocketChannel.class);
-    } else {
-      logger.debug("Could not locate native transport (epoll), using NioEventLoopGroup");
-      return builder(new NioEventLoopGroup(), NioServerSocketChannel.class);
-    }
+    return builder(createEventLoop(), channelClass());
   }
 
   /**
@@ -870,7 +898,7 @@ public final class Server<C extends Cluster> {
    * @param clusterBuilder builder for constructing clusters.
    * @return Builder that is set up with a {@link ServerBootstrap}.
    */
-  public static <C extends Cluster> Builder<C> builder(
+  static <C extends Cluster> Builder<C> builder(
       EventLoopGroup eventLoopGroup,
       Class<? extends ServerChannel> channelClass,
       Supplier<ClusterBuilderBase<?, C>> clusterBuilder) {
@@ -932,7 +960,7 @@ public final class Server<C extends Cluster> {
 
     /**
      * Sets the timer to use for scheduling actions. If not set, a {@link HashedWheelTimer} is
-     * created.
+     * created with a naming format of 'simulacron-timer-X-Y'.
      *
      * @param timer timer to use.
      * @return This builder.
@@ -995,7 +1023,8 @@ public final class Server<C extends Cluster> {
             new EmptyReturnMetadataHandler("SELECT * FROM system.schema_aggregates"));
       }
       if (timer == null) {
-        this.timer = new HashedWheelTimer();
+        ThreadFactory f = new DefaultThreadFactory("simulacron-timer");
+        this.timer = new HashedWheelTimer(f);
       }
       return new Server<>(
           addressResolver,
