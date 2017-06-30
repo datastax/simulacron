@@ -26,6 +26,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.net.SocketAddress;
 import java.util.*;
@@ -72,6 +73,8 @@ class BoundNode extends Node {
 
   private final boolean activityLogging;
 
+  private final Server<?> server;
+
   private static class RejectState {
     private final RejectScope scope;
     private volatile int rejectAfter;
@@ -96,13 +99,15 @@ class BoundNode extends Node {
       String dseVersion,
       Map<String, Object> peerInfo,
       DataCenter parent,
-      ServerBootstrap bootstrap,
+      Server<?> server,
       Timer timer,
       Channel channel,
       StubStore stubStore,
       boolean activityLogging) {
     super(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
-    this.bootstrap = bootstrap;
+    this.server = server;
+    // for test purposes server may be null.
+    this.bootstrap = server != null ? server.serverBootstrap : null;
     this.timer = timer;
     this.channel = new AtomicReference<>(channel);
     this.stubStore = stubStore;
@@ -166,7 +171,7 @@ class BoundNode extends Node {
    *
    * @return future that completes when listening channel and client channels are all closed.
    */
-  CompletableFuture<Node> close() {
+  CompletableFuture<Node> unbindAndClose() {
     return unbind().thenCombine(disconnectConnections(), (n0, n1) -> this);
   }
 
@@ -482,6 +487,14 @@ class BoundNode extends Node {
         responseFrame.message);
     return ctx.writeAndFlush(responseFrame);
   }
+
+  @Override
+  public void close() throws IOException {
+    if (this.getCluster() != null) {
+      this.getCluster().close();
+    }
+  }
+
   /**
    * Convenience fluent builder for constructing a prime with a query, where the parameters are
    * inferred by the query

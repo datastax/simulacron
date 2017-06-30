@@ -18,29 +18,24 @@ public class Driver3xIntegrationTest {
 
   @Test
   public void testShouldCreateAndConnectToCluster() throws Exception {
-    SimulacronCluster sCluster = server.register(cluster().withNodes(3)).get(5, TimeUnit.SECONDS);
-
-    try (Cluster cluster = defaultBuilder(sCluster).build()) {
+    try (SimulacronCluster sCluster =
+            server.register(cluster().withNodes(3)).get(5, TimeUnit.SECONDS);
+        Cluster cluster = defaultBuilder(sCluster).build()) {
       cluster.connect();
 
       // 1 connection for each host + control connection
       assertThat(sCluster.getActiveConnections()).isEqualTo(4);
     }
-
-    server.unregister(sCluster).get(5, TimeUnit.SECONDS);
   }
 
   @Test
   public void testShouldCreateAndConnectToNode() throws Exception {
-    Node node = server.register(node()).get(5, TimeUnit.SECONDS);
-
-    try (Cluster cluster = defaultBuilder(node).build()) {
+    try (Node node = server.register(node()).get(5, TimeUnit.SECONDS);
+        Cluster cluster = defaultBuilder(node).build()) {
       cluster.connect();
 
       // 1 connection for each host + control connection
       assertThat(node.getActiveConnections()).isEqualTo(2);
     }
-
-    server.unregister(node).get(5, TimeUnit.SECONDS);
   }
 }

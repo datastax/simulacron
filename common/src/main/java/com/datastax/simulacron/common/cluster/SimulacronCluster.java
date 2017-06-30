@@ -8,7 +8,7 @@ import java.util.Map;
  */
 public class SimulacronCluster extends Cluster {
 
-  SimulacronCluster(
+  public SimulacronCluster(
       String name,
       Long id,
       String cassandraVersion,

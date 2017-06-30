@@ -47,7 +47,7 @@ public final class Server<C extends Cluster> {
       FrameCodec.defaultServer(new ByteBufCodec(), Compressor.none());
 
   /** The bootstrap responsible for binding new listening server channels. */
-  private final ServerBootstrap serverBootstrap;
+  final ServerBootstrap serverBootstrap;
 
   /**
    * A resolver for deriving the next {@link SocketAddress} to assign a {@link Node} if it does not
@@ -149,6 +149,26 @@ public final class Server<C extends Cluster> {
   }
 
   /**
+   * Wraps a Cluster in a {@link BoundCluster} which is a {@link java.io.Closeable} version of
+   * Cluster
+   *
+   * @param cluster
+   * @return
+   */
+  @SuppressWarnings("unchecked")
+  private C boundCluster(C cluster) {
+    long clusterId = cluster.getId() == null ? clusterCounter.getAndIncrement() : cluster.getId();
+    // This is a bit of a kludge to return the correct generic type.  Won't
+    // work for any other specialized Cluster in the future, but there shouldn't
+    // be more.
+    if (cluster instanceof SimulacronCluster) {
+      return (C) new BoundSimulacronCluster(cluster, clusterId, this);
+    } else {
+      return (C) new BoundCluster(cluster, clusterId, this);
+    }
+  }
+
+  /**
    * Registers a {@link Cluster} and binds it's {@link Node} instances to their respective
    * interfaces. If any members of the cluster lack an id, this will assign a random one for them.
    * If any nodes lack an address, this will assign one based on the configured {@link
@@ -162,9 +182,9 @@ public final class Server<C extends Cluster> {
    * @return A future that when it completes provides an updated {@link Cluster} with ids and
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
+  @SuppressWarnings("unchecked")
   public CompletableFuture<C> register(C cluster, ServerOptions serverOptions) {
-    long clusterId = clusterCounter.getAndIncrement();
-    C c = builder.get().copy(cluster).withId(clusterId).build();
+    C c = boundCluster(cluster);
 
     List<CompletableFuture<Node>> bindFutures = new ArrayList<>();
 
@@ -199,7 +219,7 @@ public final class Server<C extends Cluster> {
       dcPos++;
     }
 
-    clusters.put(clusterId, c);
+    clusters.put(c.getId(), c);
 
     List<BoundNode> nodes = new ArrayList<>(bindFutures.size());
     Throwable exception = null;
@@ -241,7 +261,7 @@ public final class Server<C extends Cluster> {
           .handle(
               (v, ex) -> {
                 // remove cluster from registry since it failed to completely register.
-                clusters.remove(clusterId);
+                clusters.remove(c.getId());
                 future.completeExceptionally(e);
                 return v;
               });
@@ -369,7 +389,7 @@ public final class Server<C extends Cluster> {
     }
     // Wrap node in dummy cluster
     Long clusterId = clusterCounter.getAndIncrement();
-    C dummyCluster = builder.get().withId(clusterId).withName("dummy").build();
+    C dummyCluster = boundCluster(builder.get().withId(clusterId).withName("dummy").build());
     DataCenter dummyDataCenter = dummyCluster.addDataCenter().withName("dummy").build();
 
     clusters.put(clusterId, dummyCluster);
@@ -799,7 +819,7 @@ public final class Server<C extends Cluster> {
                         refNode.getDSEVersion(),
                         newPeerInfo,
                         parent,
-                        serverBootstrap,
+                        this,
                         timer,
                         channelFuture.channel(),
                         stubStore,
@@ -819,7 +839,7 @@ public final class Server<C extends Cluster> {
 
   private CompletableFuture<Node> close(BoundNode node) {
     logger.debug("Closing {}.", node);
-    return node.close()
+    return node.unbindAndClose()
         .thenApply(
             n -> {
               logger.debug(

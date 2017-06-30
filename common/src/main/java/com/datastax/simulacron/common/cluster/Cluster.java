@@ -4,13 +4,15 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** Represents a cluster, which contains {@link DataCenter}s which contains {@link Node}s. */
-public class Cluster extends AbstractNodeProperties {
+public class Cluster extends AbstractNodeProperties implements Closeable {
 
   // json managed reference is used to indicate a two way linking between the 'parent' (cluster) and 'children'
   // (datacenters) in a json tree.  This tells the jackson mapping to tie child DCs to this cluster on deserialization.
@@ -136,6 +138,12 @@ public class Cluster extends AbstractNodeProperties {
   @JsonIgnore
   public Optional<NodeProperties> getParent() {
     return Optional.empty();
+  }
+
+  @Override
+  public void close() throws IOException {
+    // by default does nothing, the expectation is implementations that are bound to a Server
+    // will unregister the Cluster when done with it.
   }
 
   public static class Builder extends ClusterBuilderBase<Builder, Cluster> {
