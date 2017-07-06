@@ -104,6 +104,17 @@ public class BoundNodeTest {
   }
 
   @Test
+  public void shouldHandleUseKeyspaceQuoted() {
+    channel.writeInbound(FrameUtils.wrapRequest(new Query("use \"myKs2\"")));
+    Frame frame = channel.readOutbound();
+
+    assertThat(frame.message).isInstanceOf(SetKeyspace.class);
+    SetKeyspace setKs = (SetKeyspace) frame.message;
+    // should unquote in response as this is what client expects.
+    assertThat(setKs.keyspace).isEqualTo("myKs2");
+  }
+
+  @Test
   public void shouldRespondWithVoidWhenNoQueryMatch() {
     channel.writeInbound(FrameUtils.wrapRequest(new Query("select * from foo")));
     Frame frame = channel.readOutbound();

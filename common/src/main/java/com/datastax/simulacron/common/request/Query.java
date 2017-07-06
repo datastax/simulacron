@@ -95,10 +95,12 @@ public final class Query extends Request {
    */
   private boolean checkParamsMatch(QueryOptions options, Frame frame) {
     // I don't like this, but I can't see a way to simplify it.
-    if (params == null) {
-      if (options.namedValues.size() == 0 && options.positionalValues.size() == 0) return true;
-      else return false;
+
+    // No params match criteria was specified, simply return true.
+    if (params == null || params.size() == 0) {
+      return true;
     }
+
     if (options.namedValues.size() != params.size()
         && options.positionalValues.size() != params.size()) {
       return false;

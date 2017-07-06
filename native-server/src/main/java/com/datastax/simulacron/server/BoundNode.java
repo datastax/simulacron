@@ -314,7 +314,8 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
           // should always match.
           assert matcher.matches();
           if (matcher.matches()) {
-            String keyspace = matcher.group(1);
+            // unquote keyspace if quoted, cassandra doesn't expect keyspace to be quoted coming back
+            String keyspace = matcher.group(1).replaceAll("^\"|\"$", "");
             response = new SetKeyspace(keyspace);
           }
         } else {
