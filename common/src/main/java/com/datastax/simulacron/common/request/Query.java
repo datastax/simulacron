@@ -200,7 +200,7 @@ public final class Query extends Request {
    * Convenience method to retrieve the queryId which happens to be the hashcode associated query
    * string
    *
-   * @return
+   * @return the hashCode of the query text.
    */
   @JsonIgnore
   public int getQueryId() {

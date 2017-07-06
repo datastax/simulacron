@@ -37,6 +37,7 @@ public class ClusterConnectionReport extends ConnectionReport {
    * @param node Node to add
    * @param addressList client side of the connections this node has
    * @param serverAddress the address where this node is listening
+   * @return report for added node.
    */
   public NodeConnectionReport addNode(
       Node node, List<SocketAddress> addressList, SocketAddress serverAddress) {

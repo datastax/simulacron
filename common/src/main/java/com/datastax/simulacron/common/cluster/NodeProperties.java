@@ -24,16 +24,12 @@ public interface NodeProperties extends Comparable<NodeProperties> {
    * calls the parent instance. If the parent instance method returns null, it then returns the
    * default value.
    *
-   * <p>
-   *
    * <p>Example use case:
    *
-   * <p>
-   *
-   * <p>A cluster is defined with an ipPrefix of '127.0.0.', but this is not set at the datacenter
-   * or node level. If one were to call {@link NodeProperties::resolveIpPrefix()}, it would first
-   * check the node's ipPrefix, which returns null, then datacenter's ipPrefix, which returns null,
-   * and then finally cluster's ipPrefix, which returns a value.
+   * <p>A cluster is defined with an dseVersion of '5.0.4', but this is not set at the datacenter or
+   * node level. If one were to call {@link NodeProperties#resolveDSEVersion()}, it would first
+   * check the node's dseVersion, which returns null, then datacenter's dseVersion, which returns
+   * null, and then finally cluster's dseVersion, which returns a value.
    *
    * @param methodRef The instance method to inspect on this instance and potentially its parents.
    * @param defaultValue The default value to use if neither the instance or its parent's return a
@@ -119,8 +115,9 @@ public interface NodeProperties extends Comparable<NodeProperties> {
 
   /**
    * @param key peer column name
+   * @param clazz The class instance for the desired type
+   * @param <T> The type to resolve as
    * @return the value for this peer column for this if set, otherwise its parents. If it is not
-   *     set, Optional.empty is returned.
    */
   default <T> Optional<T> resolvePeerInfo(String key, Class<T> clazz) {
     // if value is present, return it, otherwise try parent.

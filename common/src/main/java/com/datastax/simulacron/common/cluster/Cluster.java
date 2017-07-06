@@ -150,6 +150,7 @@ public class Cluster extends AbstractNodeProperties {
      * of nodeCount is a datacenter with the number of nodes as its value.
      *
      * @param nodeCount Array with each element respresenting a DataCenter with its node counts.
+     * @return builder with dcs configured.
      */
     public Builder withNodes(int... nodeCount) {
       this.nodes = nodeCount;

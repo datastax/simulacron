@@ -9,13 +9,12 @@ import java.util.Map;
  * method for deriving {@link NodeProperties} values from an existing object.
  *
  * @param <S> The concrete type of the builder.
- * @param
- *     <p>The type of the parent object (if applicable).
+ * @param <N> The type of properties being created.
  */
 public abstract class NodePropertiesBuilder<
-    S extends NodePropertiesBuilder<S, P>, P extends NodeProperties> {
+    S extends NodePropertiesBuilder<S, N>, N extends NodeProperties> {
 
-  P parent;
+  N parent;
   private final S myself;
   String cassandraVersion;
   String dseVersion;
@@ -28,7 +27,7 @@ public abstract class NodePropertiesBuilder<
   }
 
   @SuppressWarnings("unchecked")
-  NodePropertiesBuilder(Class<?> selfType, P parent) {
+  NodePropertiesBuilder(Class<?> selfType, N parent) {
     this.myself = (S) selfType.cast(this);
     this.parent = parent;
   }
