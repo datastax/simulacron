@@ -1,37 +1,32 @@
 # Simulacron - An Apache Cassandra Native Protocol Server Simulator
 
-A native protocol server simulator that helps facilitate testing more difficult to reliably produce scenarios in driver
-clients and applications.
+A native protocol server simulator that helps facilitate the testing of scenarios that are difficult to reliably
+reproduce in driver clients and applications.
 
 Inspired by [Scassandra](https://scassandra.org), simulacron is a pure java implementation with increased
 emphasis on testing with many simulated native protocol endpoints.
 
 ## Features
 
-* **Java API** for creating and interacting with simulated Clusters.
-* **Standalone JAR** with an admin HTTP JSON API for creating and interacting with clusters.
-* **Interactive Documentation**provided with standalone jar for exploring APIs.  Uses [swagger](http://swagger.io).
-* **Lightweight implementation** that uses [netty](http://netty.io).  Can spawn many simulated nodes behind a listening
-  socket.  Simulating multi-thousand node clusters takes very little system resources.
-* **Peer Discovery support for Multiple Drivers**.  Responds to discovery queries made by DataStax java, csharp,
-  c++, php and python drivers with more to come.
-* **Protocol Version V3+ support**
-* **Activity Logging** logs requests by clients for each node.
-* **Stubbing Interface** configure node behaviors for handling certain requests.
+* **[Java API](doc/java_api)** - For creating and interacting with simulated Clusters.
+* **[Standalone JAR](#getting-started-with-the-standalone-jar)** - HTTP JSON API for creating and interacting with
+  clusters.
+* **Interactive Documentation** - [Swagger](http://swagger.io)-based doc for exploring and making API calls.
+* **Lightweight implementation** - Uses [netty](http://netty.io).  Can spawn many simulated nodes on local ip addresses.
+  Simulating multi-thousand node clusters is fast and takes very little system resources.
+* **Peer Discovery support for Multiple Drivers** - Responds to discovery queries made by DataStax java, csharp,
+  c++, php and python drivers with more to come.  Capability to add support for other drivers if needed.
+* **Protocol Version V3+ support** - Uses the [native-protocol][native-protocol] library for encoding/decoding.
+* **Activity Logging** - Logs requests by clients for each node.
+* **Priming Interface** - Configure node behaviors for handling certain requests.
+* **Connection API** - Programmatic accessing and closing of client sockets and simulation of starting, stopping
+  nodes in addition to making them unresponsive in various ways.
 
 ## Prerequisites
 
 0. Java 8+ - Simulacron is a Java-based application built on Java 8.
 1. [Apache Maven](https://maven.apache.org) 3.3+ - For building the project.
-2. [native-protocol](https://github.com/riptano/native-protocol) - Provides encoding/decoding of the native protocol.
-   As this project is not currently available on maven central it needs to be built and installed locally, to do so:
-
-   ```
-   git clone git@github.com:riptano/native-protocol.git
-   cd native-protocol
-   mvn clean install
-   ```
-4. **MacOS only**:  To be able to define more than a single node cluster, multiple loopback aliases should be added.
+2. **MacOS only**:  To be able to define more than a single node cluster, multiple loopback aliases should be added.
 
    This is not required on Linux or Windows since these are implicitly defined.  The following script will add
    127.0.0.0-127.0.4.255:
@@ -43,11 +38,19 @@ emphasis on testing with many simulated native protocol endpoints.
        for i in {0..255}; do sudo ifconfig lo0 alias 127.0.$sub.$i up; done
    done
    ```
+   
+   Note that this is known to cause temporary increased CPU usage in OS X initially while mDNSResponder acclimates
+   itself to the presence of added ip addresses.  This lasts several minutes.
+   
+   Also note that on reboot these ip addresses need to be re-added.
 
-## Getting Started
+## Getting Started with the Standalone Jar
+
+To use simulacron with its included HTTP server, one may use the standalone jar.
 
 To build and run simulacron follow these instructions:
 
+0. Set up your maven settings.xml to use artifactory ([see java-api doc](doc/java_api#getting-simulacron))
 1. `mvn package` - Compiles, Tests, and packages the project.  Produces standalone jar in `standalone/target/`
 2. `java -jar standalone/target/standalone-<VERSION>.jar` -  Runs the standalone app.
 3. Navigate to [http://localhost:8187/doc](http://localhost:8187/doc) to access the interactive documentation.
@@ -74,6 +77,12 @@ Usage:
       logging)
       Default: false
 ```
+
+## Using the Java API
+
+As simulacron is a java project, it includes a Java API that bypasses the need to use the HTTP interface all together.
+
+See the [Java API User's Guide](doc/java_api) for using this API.
 
 ## Contributing
 
@@ -107,3 +116,5 @@ For any change you make, please push your branch to this repository and create a
 We will try to review it quickly.
 
 There is an expectation that tests are added for any new functionality or if otherwise applicable.
+
+[native-protocol]: https://github.com/datastax/native-protocol
