@@ -12,8 +12,6 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class ActivityLog {
 
@@ -73,7 +71,7 @@ public class ActivityLog {
     }
   }
 
-  public void clearAll() {
+  public void clear() {
     queryLog.clear();
   }
 
@@ -83,26 +81,5 @@ public class ActivityLog {
 
   public List<QueryLog> getLogs() {
     return queryLog;
-  }
-
-  public List<QueryLog> getLogs(NodeProperties topic) {
-    return getLogs(new QueryLogScope(topic.getScope()));
-  }
-
-  public List<QueryLog> getLogs(QueryLogScope scope) {
-    return queryLog
-        .stream()
-        .filter(log -> scope.isQueryLogInScope(log))
-        .collect(Collectors.toList());
-  }
-
-  public void clearLogs(NodeProperties topic) {
-    clearLogs(new QueryLogScope(topic.getScope()));
-  }
-
-  public void clearLogs(QueryLogScope scope) {
-    Set<QueryLog> logsToClear =
-        queryLog.stream().filter(log -> scope.isQueryLogInScope(log)).collect(Collectors.toSet());
-    queryLog.removeAll(logsToClear);
   }
 }

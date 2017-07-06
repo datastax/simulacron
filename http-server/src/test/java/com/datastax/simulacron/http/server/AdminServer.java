@@ -3,6 +3,7 @@ package com.datastax.simulacron.http.server;
 import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.stubbing.Prime;
 import com.datastax.simulacron.common.stubbing.PrimeDsl;
+import com.datastax.simulacron.server.BoundCluster;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,19 +28,19 @@ public class AdminServer extends ExternalResource {
 
   private Vertx vertx;
 
-  private Server<Cluster> nativeServer;
+  private Server nativeServer;
 
   private static int port = 8187;
 
   private final Cluster clusterRequest;
 
-  private Cluster cluster;
+  private BoundCluster cluster;
 
   private HttpClient client;
 
   private ObjectMapper om = ObjectMapperHolder.getMapper();
 
-  private final Server.Builder<Cluster> serverBuilder;
+  private final Server.Builder serverBuilder;
 
   Logger logger = LoggerFactory.getLogger(AdminServer.class);
 
@@ -51,7 +52,7 @@ public class AdminServer extends ExternalResource {
     this(cluster, Server.builder());
   }
 
-  public AdminServer(Cluster cluster, Server.Builder<Cluster> serverBuilder) {
+  public AdminServer(Cluster cluster, Server.Builder serverBuilder) {
     this.clusterRequest = cluster;
     this.serverBuilder = serverBuilder;
   }
@@ -100,7 +101,7 @@ public class AdminServer extends ExternalResource {
     }
   }
 
-  public Cluster getCluster() {
+  public BoundCluster getCluster() {
     return cluster;
   }
 
@@ -158,7 +159,7 @@ public class AdminServer extends ExternalResource {
 
   public HttpTestResponse prime(RequestPrime prime) throws Exception {
     String jsonPrime = om.writerWithDefaultPrettyPrinter().writeValueAsString(prime);
-    return post("/prime", jsonPrime);
+    return post("/prime/" + cluster.getId(), jsonPrime);
   }
 
   public <T> T mapTo(HttpTestResponse response, Class<T> clazz) throws IOException {

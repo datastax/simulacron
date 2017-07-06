@@ -3,7 +3,6 @@ package com.datastax.simulacron.http.server;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.simulacron.common.cluster.RequestPrime;
-import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.common.stubbing.Prime;
@@ -18,8 +17,9 @@ import org.slf4j.LoggerFactory;
 import static com.datastax.simulacron.http.server.HttpUtils.handleMessage;
 
 public class QueryManager implements HttpListener {
-  Logger logger = LoggerFactory.getLogger(QueryManager.class);
-  Server server;
+  private static Logger logger = LoggerFactory.getLogger(QueryManager.class);
+
+  private final Server server;
 
   public QueryManager(Server server) {
     this.server = server;
@@ -41,7 +41,7 @@ public class QueryManager implements HttpListener {
    *
    * @param context RoutingContext provided by vertx
    */
-  public void primeQuery(RoutingContext context) {
+  private void primeQuery(RoutingContext context) {
 
     context
         .request()
@@ -70,9 +70,8 @@ public class QueryManager implements HttpListener {
                     }
                   }
                 }
-                Prime prime = new Prime(query, scope);
-
-                server.prime(prime);
+                Prime prime = new Prime(query);
+                HttpUtils.find(server, scope).prime(prime);
               } catch (Exception e) {
                 handleQueryError(e, "prime query", context);
               }
@@ -96,13 +95,11 @@ public class QueryManager implements HttpListener {
    *
    * @param context RoutingContext provided by vertx
    */
-  public void clearPrimedQueries(RoutingContext context) {
+  private void clearPrimedQueries(RoutingContext context) {
     context
         .request()
         .bodyHandler(
             totalBuffer -> {
-              String jsonBody = "";
-
               Scope scope = HttpUtils.getScope(context, server);
               if (scope == null) {
                 return;
@@ -110,7 +107,7 @@ public class QueryManager implements HttpListener {
 
               int cleared = 0;
               try {
-                server.clear(scope, Prime.class);
+                HttpUtils.find(server, scope).getStubStore().clear(Prime.class);
               } catch (Exception e) {
                 handleQueryError(e, "clear primed queries", context);
               }
@@ -153,8 +150,6 @@ public class QueryManager implements HttpListener {
         .route(HttpMethod.POST, "/prime/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::primeQuery);
 
-    router.route(HttpMethod.POST, "/prime*").handler(this::primeQuery);
-
     //Deleting primed queries
     router.route(HttpMethod.DELETE, "/prime/:clusterIdOrName").handler(this::clearPrimedQueries);
     router
@@ -163,6 +158,5 @@ public class QueryManager implements HttpListener {
     router
         .route(HttpMethod.DELETE, "/prime/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::primeQuery);
-    router.route(HttpMethod.DELETE, "/prime*").handler(this::clearPrimedQueries);
   }
 }

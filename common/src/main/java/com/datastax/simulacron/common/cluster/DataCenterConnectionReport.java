@@ -14,7 +14,7 @@ import java.util.TreeSet;
  * encoding the results with JSON.
  */
 @JsonIgnoreProperties(value = {"name"})
-public class DataCenterConnectionReport extends AbstractNodeProperties {
+public class DataCenterConnectionReport extends ConnectionReport {
   @JsonManagedReference private final Collection<NodeConnectionReport> nodes = new TreeSet<>();
 
   @JsonBackReference private final ClusterConnectionReport parent;
@@ -24,9 +24,12 @@ public class DataCenterConnectionReport extends AbstractNodeProperties {
     this(null, null);
   }
 
-  DataCenterConnectionReport(Long id, ClusterConnectionReport clusterReport) {
+  public DataCenterConnectionReport(Long id, ClusterConnectionReport clusterReport) {
     super(null, id, null, null, null);
     this.parent = clusterReport;
+    if (parent != null) {
+      parent.addDataCenter(this);
+    }
   }
 
   void addNode(NodeConnectionReport node) {
@@ -69,5 +72,10 @@ public class DataCenterConnectionReport extends AbstractNodeProperties {
   @Override
   public int hashCode() {
     return nodes != null ? nodes.hashCode() : 0;
+  }
+
+  @Override
+  public ClusterConnectionReport getRootReport() {
+    return parent;
   }
 }

@@ -15,7 +15,7 @@ import java.util.Optional;
  * the results with JSON.
  */
 @JsonIgnoreProperties(value = {"name"})
-public class NodeConnectionReport extends AbstractNodeProperties {
+public class NodeConnectionReport extends ConnectionReport {
   @JsonProperty private final List<SocketAddress> connections;
   @JsonProperty private final SocketAddress address;
 
@@ -26,7 +26,7 @@ public class NodeConnectionReport extends AbstractNodeProperties {
     this(null, Collections.emptyList(), null, null);
   }
 
-  NodeConnectionReport(
+  public NodeConnectionReport(
       Long id,
       List<SocketAddress> connections,
       SocketAddress address,
@@ -35,6 +35,9 @@ public class NodeConnectionReport extends AbstractNodeProperties {
     this.connections = connections;
     this.address = address;
     this.parent = parent;
+    if (parent != null) {
+      parent.addNode(this);
+    }
   }
 
   public List<SocketAddress> getConnections() {
@@ -76,5 +79,10 @@ public class NodeConnectionReport extends AbstractNodeProperties {
   @Override
   public int hashCode() {
     return connections != null ? connections.hashCode() : 0;
+  }
+
+  @Override
+  public ClusterConnectionReport getRootReport() {
+    return parent.getRootReport();
   }
 }

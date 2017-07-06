@@ -33,7 +33,7 @@ public class DataCenter extends AbstractNodeProperties {
     this(null, null, null, null, Collections.emptyMap(), null);
   }
 
-  DataCenter(
+  public DataCenter(
       String name,
       Long id,
       String cassandraVersion,

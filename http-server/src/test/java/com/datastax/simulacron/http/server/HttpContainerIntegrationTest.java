@@ -29,7 +29,7 @@ public class HttpContainerIntegrationTest {
   private HttpContainer httpContainer;
   private Vertx vertx = null;
   private int portNum = 8187;
-  private Server<Cluster> nativeServer;
+  private Server nativeServer;
   ObjectMapper om = ObjectMapperHolder.getMapper();
   Logger logger = LoggerFactory.getLogger(HttpContainerIntegrationTest.class);
 
@@ -228,9 +228,9 @@ public class HttpContainerIntegrationTest {
     assertThat(msg.getStatusCode()).isEqualTo(202);
 
     // Cluster should have been unregistered
-    assertThat(nativeServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
+    assertThat(nativeServer.getCluster(cluster.getId())).isNull();
     // Cluster2 should not have been unregistered
-    assertThat(nativeServer.getClusterRegistry()).containsKey(cluster2.getId());
+    assertThat(nativeServer.getCluster(cluster2.getId())).isNotNull();
   }
 
   @Test
@@ -295,7 +295,7 @@ public class HttpContainerIntegrationTest {
     assertThat(msg.getStatusCode()).isEqualTo(202);
 
     // Should be no more registered clusters
-    assertThat(nativeServer.getClusterRegistry()).isEmpty();
+    assertThat(nativeServer.getClusters()).isEmpty();
   }
 
   @Test
@@ -307,27 +307,6 @@ public class HttpContainerIntegrationTest {
     testVerifyQueryParticularNode(p -> p.getId().toString(), DataCenter::getName, Node::getName);
     testVerifyQueryParticularNode(
         p -> p.getId().toString(), DataCenter::getName, p -> p.getId().toString());
-  }
-
-  @Test
-  public void testQueryClearAll() {
-    try {
-      HttpClient client = vertx.createHttpClient();
-      Cluster clusterCreated = this.createSingleNodeCluster(client);
-
-      RequestPrime prime = createSimplePrimedQuery("Select * FROM TABLE2");
-      this.primeSimpleRequest(client, prime);
-      String contactPoint = HttpTestUtil.getContactPointString(clusterCreated);
-      ResultSet set = HttpTestUtil.makeNativeQuery("Select * FROM TABLE2", contactPoint);
-      assertThat(1).isEqualTo(set.all().size());
-
-      this.clearQueries(client);
-      set = HttpTestUtil.makeNativeQuery("Select * FROM TABLE2", contactPoint);
-      assertThat(0).isEqualTo(set.all().size());
-
-    } catch (Exception e) {
-      fail("error encountered");
-    }
   }
 
   @Test
@@ -539,10 +518,6 @@ public class HttpContainerIntegrationTest {
     return null;
   }
 
-  private HttpTestResponse primeSimpleRequest(HttpClient client, RequestPrime query) {
-    return this.primeSimpleRequest(client, query, "/prime");
-  }
-
   private HttpTestResponse primeSimpleRequest(
       HttpClient client, RequestPrime query, String ClusterID, String DatacenterID) {
     return this.primeSimpleRequest(client, query, "/prime" + "/" + ClusterID + "/" + DatacenterID);
@@ -644,7 +619,7 @@ public class HttpContainerIntegrationTest {
       Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
       return cluster;
     } catch (Exception e) {
-      fail("Exception encountered");
+      fail(e.getMessage());
       return null;
     }
   }

@@ -14,8 +14,8 @@ import java.util.List;
  */
 class InternalStubWrapper extends Prime implements InternalStubMapping {
 
-  public InternalStubWrapper(Prime wrapped) {
-    super(wrapped.getPrimedRequest(), wrapped.getScope());
+  InternalStubWrapper(Prime wrapped) {
+    super(wrapped.getPrimedRequest());
   }
 
   @Override

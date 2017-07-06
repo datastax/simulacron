@@ -31,7 +31,7 @@ public class DisconnectActionTest {
 
   private final EventLoopGroup eventLoop = new DefaultEventLoop();
 
-  private final Server<Cluster> localServer =
+  private final Server localServer =
       Server.builder(eventLoop, LocalServerChannel.class)
           .withAddressResolver(localAddressResolver)
           .build();
@@ -46,7 +46,7 @@ public class DisconnectActionTest {
     // Validate that when a stub dictates to close a connection it does so and does not close the Node's channel so it
     // can remain accepting traffic.
     Node node = Node.builder().build();
-    BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS);
+    BoundNode boundNode = localServer.register(node).get(5, TimeUnit.SECONDS);
 
     stubCloseOnStartup(Scope.CONNECTION);
 
@@ -76,23 +76,21 @@ public class DisconnectActionTest {
     Node node = Node.builder().build();
     Node boundNode = localServer.register(node).get(5, TimeUnit.SECONDS);
 
-    localServer
-        .getStubStore()
-        .register(
-            new StubMapping() {
-              @Override
-              public boolean matches(Frame frame) {
-                return frame.message instanceof Options;
-              }
+    localServer.stubStore.register(
+        new StubMapping() {
+          @Override
+          public boolean matches(Frame frame) {
+            return frame.message instanceof Options;
+          }
 
-              @Override
-              public List<Action> getActions(Node node, Frame frame) {
-                ArrayList<Action> actions = new ArrayList<>();
-                actions.add(new MessageResponseAction(new Supported(Collections.emptyMap())));
-                actions.add(DisconnectAction.builder().build());
-                return actions;
-              }
-            });
+          @Override
+          public List<Action> getActions(Node node, Frame frame) {
+            ArrayList<Action> actions = new ArrayList<>();
+            actions.add(new MessageResponseAction(new Supported(Collections.emptyMap())));
+            actions.add(DisconnectAction.builder().build());
+            return actions;
+          }
+        });
 
     try (MockClient client = new MockClient(eventLoop)) {
       client.connect(boundNode.getAddress());
@@ -268,20 +266,17 @@ public class DisconnectActionTest {
   }
 
   private void stubCloseOnStartup(Scope scope) {
-    localServer
-        .getStubStore()
-        .register(
-            new StubMapping() {
-              @Override
-              public boolean matches(Frame frame) {
-                return frame.message instanceof Startup;
-              }
+    localServer.stubStore.register(
+        new StubMapping() {
+          @Override
+          public boolean matches(Frame frame) {
+            return frame.message instanceof Startup;
+          }
 
-              @Override
-              public List<Action> getActions(Node node, Frame frame) {
-                return Collections.singletonList(
-                    DisconnectAction.builder().withScope(scope).build());
-              }
-            });
+          @Override
+          public List<Action> getActions(Node node, Frame frame) {
+            return Collections.singletonList(DisconnectAction.builder().withScope(scope).build());
+          }
+        });
   }
 }

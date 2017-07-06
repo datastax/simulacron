@@ -4,15 +4,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** Represents a cluster, which contains {@link DataCenter}s which contains {@link Node}s. */
-public class Cluster extends AbstractNodeProperties implements Closeable {
+public class Cluster extends AbstractNodeProperties {
 
   // json managed reference is used to indicate a two way linking between the 'parent' (cluster) and 'children'
   // (datacenters) in a json tree.  This tells the jackson mapping to tie child DCs to this cluster on deserialization.
@@ -21,8 +19,6 @@ public class Cluster extends AbstractNodeProperties implements Closeable {
   private final Collection<DataCenter> dataCenters = new ConcurrentSkipListSet<>();
 
   @JsonIgnore private final transient AtomicLong dcCounter = new AtomicLong(0);
-
-  @JsonIgnore private final transient ActivityLog activityLog = new ActivityLog();
 
   Cluster() {
     // Default constructor for jackson deserialization.
@@ -140,31 +136,39 @@ public class Cluster extends AbstractNodeProperties implements Closeable {
     return Optional.empty();
   }
 
-  @Override
-  public void close() throws IOException {
-    // by default does nothing, the expectation is implementations that are bound to a Server
-    // will unregister the Cluster when done with it.
-  }
+  public static class Builder extends NodePropertiesBuilder<Builder, Cluster> {
 
-  public static class Builder extends ClusterBuilderBase<Builder, Cluster> {
+    int[] nodes = null;
 
-    Builder() {
+    @SuppressWarnings("unchecked")
+    public Builder() {
       super(Builder.class);
     }
 
-    @Override
-    public Cluster baseCluster(
-        String name,
-        Long id,
-        String cassandraVersion,
-        String dseVersion,
-        Map<String, Object> peerInfo) {
-      return new Cluster(name, id, cassandraVersion, dseVersion, peerInfo);
+    /**
+     * Convenience method to preprovision data centers and nodes with default settings, each element
+     * of nodeCount is a datacenter with the number of nodes as its value.
+     *
+     * @param nodeCount Array with each element respresenting a DataCenter with its node counts.
+     */
+    public Builder withNodes(int... nodeCount) {
+      this.nodes = nodeCount;
+      return this;
     }
-  }
 
-  @JsonIgnore
-  public ActivityLog getActivityLog() {
-    return this.activityLog;
+    /** @return Constructs a {@link Cluster} from this builder. Can be called multiple times. */
+    public Cluster build() {
+      Cluster cluster = new Cluster(name, id, cassandraVersion, dseVersion, peerInfo);
+      if (nodes != null) {
+        for (int i = 1; i <= nodes.length; i++) {
+          int nodeCount = nodes[i - 1];
+          DataCenter dc = cluster.addDataCenter().withName("dc" + i).build();
+          for (int j = 1; j <= nodeCount; j++) {
+            dc.addNode().withName("node" + j).build();
+          }
+        }
+      }
+      return cluster;
+    }
   }
 }

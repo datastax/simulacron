@@ -6,15 +6,22 @@ info:
 
     up clusters, stubbing queries and behaviors, and monitoring driver client
     connections.
-  version: 0.0.1-SNAPSHOT
+  version: 0.1.0
   title: Simulacron REST API
 basePath: /
 tags:
   - name: cluster
     description: Cluster Provisioning and Metadata
-    externalDocs:
-      description: GitHub Repo
-      url: 'http://github.com/riptano/testeng-devtools'
+  - name: prime
+    description: Define how nodes respond to requests
+  - name: log
+    description: View requests sent to nodes
+  - name: connections
+    description: Retrieve and close node connections
+  - name: connection
+    description: Close an individual connection by ip address and port
+  - name: listener
+    description: Enable and disable node's capability to accept new connections
 paths:
   /cluster:
     post:
@@ -143,6 +150,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
       responses:
         '200':
           description: Cluster state
@@ -165,6 +173,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
       responses:
         '202':
           description: Cluster deleted
@@ -172,17 +181,23 @@ paths:
           description: Unexpected error
         '404':
           description: Not found
-  '/prime':
+  '/prime/{clusterId}':
     post:
       tags:
         - prime
-      summary: Primes a 'rows' response for a given query
-      operationId: primeQuerySingle
+      summary: Primes a response for a given query for all nodes in a cluster
+      operationId: primeQuerySingleByCluster
       consumes:
         - application/json
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: >
@@ -201,21 +216,8 @@ paths:
     delete:
       tags:
         - prime
-      summary: Deletes all primed queries
+      summary: Deletes all primed queries for all nodes in a cluster
       operationId: deletePrimedQueries
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      responses:
-        '200':
-          description: Primes deleted
-  '/prime/{clusterId}':
-    post:
-      tags:
-        - prime
-      summary: Primes a response for a given query for all nodes in a cluster
-      operationId: primeQuerySingleByCluster
       consumes:
         - application/json
       produces:
@@ -226,21 +228,10 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
-        - name: body
-          in: body
-          description: >
-            Contains a when section that defines the matching query text and a then section that defines the result
-            metadata and accompanying rows.
-          required: true
-          schema:
-            $ref: '#/definitions/PrimeQuerySuccess'
+          example: "0"
       responses:
-        '201':
-          description: PrimedQuery
-          schema:
-            $ref: '#/definitions/PrimeQuerySuccess'
-        '400':
-          description: Unable to parse provided query
+        '200':
+          description: Primes deleted
   '/prime/{clusterId}/{dataCenterId}':
     post:
       tags:
@@ -257,11 +248,13 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: body
           in: body
           description: >
@@ -277,6 +270,31 @@ paths:
             $ref: '#/definitions/PrimeQuerySuccess'
         '400':
           description: Unable to parse provided query
+    delete:
+      tags:
+        - prime
+      summary: Deletes all primed queries for all nodes in a DC
+      operationId: deletePrimedQueriesByDc
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+          example: "0"
+      responses:
+        '200':
+          description: Primes deleted
   '/prime/{clusterId}/{dataCenterId}/{nodeId}':
     post:
       tags:
@@ -293,16 +311,18 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: nodeId
-          in: path
           description: Id or name of the node
           required: true
           type: string
+          example: "0"
         - name: body
           in: body
           description: >
@@ -318,17 +338,53 @@ paths:
             $ref: '#/definitions/PrimeQuerySuccess'
         '400':
           description: Unable to parse provided query
-  '/prime (no_result)':
+    delete:
+      tags:
+        - prime
+      summary: Deletes all primed queries for a node
+      operationId: deletePrimedQueriesByNode
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+          example: "0"
+        - name: nodeId
+          description: Id or name of the node
+          required: true
+          type: string
+          example: "0"
+      responses:
+        '200':
+          description: Primes deleted
+  '/prime/{clusterId}#(no_result)':
     post:
       tags:
         - prime
-      summary: Primes a query that will not return a response
+      summary: "<b>no_result</b> Primes a query that will not return a response"
       operationId: primeQuerySingleNoResult
       consumes:
         - application/json
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines an already exists error to be returned with the given message.
@@ -342,7 +398,7 @@ paths:
             $ref: '#/definitions/PrimeQueryNoResult'
         '400':
           description: Unable to parse provided query
-  '/prime (already_exists)':
+  '/prime/{clusterId}#(already_exists)':
     post:
       tags:
         - prime
@@ -353,6 +409,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines an already exists error to be returned with the given message.
@@ -366,7 +428,7 @@ paths:
             $ref: '#/definitions/PrimeQueryAlreadyExists'
         '400':
           description: Unable to parse provided query
-  '/prime (authentication_error)':
+  '/prime/{clusterId}#(authentication_error)':
     post:
       tags:
         - prime
@@ -377,6 +439,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines an authentication error to be returned with the given message.
@@ -390,7 +458,7 @@ paths:
             $ref: '#/definitions/PrimeQueryAuthenticationError'
         '400':
           description: Unable to parse provided query
-  '/prime (config_error)':
+  '/prime/{clusterId}#(config_error)':
     post:
       tags:
         - prime
@@ -401,6 +469,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a config error to be returned with the given message.
@@ -414,7 +488,7 @@ paths:
             $ref: '#/definitions/PrimeQueryConfigError'
         '400':
           description: Unable to parse provided query
-  '/prime (function_failure)':
+  '/prime/{clusterId}#(function_failure)':
     post:
       tags:
         - prime
@@ -425,6 +499,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a function failure to be returned with the given message.
@@ -438,7 +518,7 @@ paths:
             $ref: '#/definitions/PrimeQueryFunctionFailure'
         '400':
           description: Unable to parse provided query
-  '/prime (invalid)':
+  '/prime/{clusterId}#(invalid)':
     post:
       tags:
         - prime
@@ -449,6 +529,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a invalid error to be returned with the given message.
@@ -462,7 +548,7 @@ paths:
             $ref: '#/definitions/PrimeQueryInvalid'
         '400':
           description: Unable to parse provided query
-  '/prime (is_bootstrapping)':
+  '/prime/{clusterId}#(is_bootstrapping)':
     post:
       tags:
         - prime
@@ -473,6 +559,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines an is bootstrapping error to be returned with the given message.
@@ -486,7 +578,7 @@ paths:
             $ref: '#/definitions/PrimeQueryIsBootstrapping'
         '400':
           description: Unable to parse provided query
-  '/prime (overloaded)':
+  '/prime/{clusterId}#(overloaded)':
     post:
       tags:
         - prime
@@ -497,6 +589,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines an overloaded error to be returned with the given message.
@@ -510,7 +608,7 @@ paths:
             $ref: '#/definitions/PrimeQueryOverloaded'
         '400':
           description: Unable to parse provided query
-  '/prime (protocol_error)':
+  '/prime/{clusterId}#(protocol_error)':
     post:
       tags:
         - prime
@@ -521,6 +619,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a protocl error to be returned with the given message.
@@ -534,7 +638,7 @@ paths:
             $ref: '#/definitions/PrimeQueryProtocolError'
         '400':
           description: Unable to parse provided query
-  '/prime (read_failure)':
+  '/prime/{clusterId}#(read_failure)':
     post:
       tags:
         - prime
@@ -545,6 +649,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a read failure to be returned with the given message.
@@ -558,7 +668,7 @@ paths:
             $ref: '#/definitions/PrimeQueryReadFailure'
         '400':
           description: Unable to parse provided query
-  '/prime (read_timeout)':
+  '/prime/{clusterId}#(read_timeout)':
     post:
       tags:
         - prime
@@ -569,6 +679,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a read timeout to be returned with the given message.
@@ -582,7 +698,7 @@ paths:
             $ref: '#/definitions/PrimeQueryReadTimeout'
         '400':
           description: Unable to parse provided query
-  '/prime (server_error)':
+  '/prime/{clusterId}#(server_error)':
     post:
       tags:
         - prime
@@ -593,6 +709,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a server error to be returned with the given message.
@@ -606,7 +728,7 @@ paths:
             $ref: '#/definitions/PrimeQueryServerError'
         '400':
           description: Unable to parse provided query
-  '/prime (syntax_error)':
+  '/prime/{clusterId}#(syntax_error)':
     post:
       tags:
         - prime
@@ -617,6 +739,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a syntax error to be returned with the given message.
@@ -630,7 +758,7 @@ paths:
             $ref: '#/definitions/PrimeQuerySyntaxError'
         '400':
           description: Unable to parse provided query
-  '/prime (truncate_error)':
+  '/prime/{clusterId}#(truncate_error)':
     post:
       tags:
         - prime
@@ -641,6 +769,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a truncate error to be returned with the given message.
@@ -654,7 +788,7 @@ paths:
             $ref: '#/definitions/PrimeQueryTruncateError'
         '400':
           description: Unable to parse provided query
-  '/prime (unauthorized)':
+  '/prime/{clusterId}#(unauthorized)':
     post:
       tags:
         - prime
@@ -665,6 +799,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines an unauthorized error to be returned with the given message.
@@ -678,7 +818,7 @@ paths:
             $ref: '#/definitions/PrimeQueryUnauthorized'
         '400':
           description: Unable to parse provided query
-  '/prime (unavailable)':
+  '/prime/{clusterId}#(unavailable)':
     post:
       tags:
         - prime
@@ -689,6 +829,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines an unavailable error to be returned with the given message.
@@ -702,7 +848,7 @@ paths:
             $ref: '#/definitions/PrimeQueryUnavailable'
         '400':
           description: Unable to parse provided query
-  '/prime (unprepared)':
+  '/prime/{clusterId}#(unprepared)':
     post:
       tags:
         - prime
@@ -713,6 +859,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines an unprepared error to be returned with the given message.
@@ -726,7 +878,7 @@ paths:
             $ref: '#/definitions/PrimeQueryUnprepared'
         '400':
           description: Unable to parse provided query
-  '/prime (write_failure)':
+  '/prime/{clusterId}#(write_failure)':
     post:
       tags:
         - prime
@@ -737,6 +889,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a write failure to be returned with the given message.
@@ -750,7 +908,7 @@ paths:
             $ref: '#/definitions/PrimeQueryWriteFailure'
         '400':
           description: Unable to parse provided query
-  '/prime (write_timeout)':
+  '/prime/{clusterId}#(write_timeout)':
     post:
       tags:
         - prime
@@ -761,6 +919,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines a write timeout to be returned with the given message.
@@ -774,7 +938,7 @@ paths:
             $ref: '#/definitions/PrimeQueryWriteFailure'
         '400':
           description: Unable to parse provided query
-  '/prime (close_connection)':
+  '/prime/{clusterId}#(close_connection)':
     post:
       tags:
         - prime
@@ -785,6 +949,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: Contains a then section that defines how to close connections and which to close.
@@ -798,7 +968,7 @@ paths:
             $ref: '#/definitions/PrimeQueryCloseConnection'
         '400':
           description: Unable to parse provided query
-  '/prime (fail heartbeats, options request with no response)':
+  '/prime/{clusterId}#(fail heartbeats, options request with no response)':
     post:
       tags:
         - prime
@@ -809,6 +979,12 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: body
           in: body
           description: |
@@ -840,6 +1016,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: filter
           in: query
           description: >
@@ -873,6 +1050,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
       responses:
         '204':
           description: Log deleted
@@ -894,11 +1072,13 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: filter
           in: query
           description: >
@@ -932,11 +1112,13 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
       responses:
         '204':
           description: Log deleted
@@ -958,16 +1140,19 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: nodeId
           in: path
           description: Id or name of the node
           required: true
           type: string
+          example: "0"
         - name: filter
           in: query
           description: >
@@ -1001,72 +1186,24 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: nodeId
           in: path
           description: Id or name of the node
           required: true
           type: string
+          example: "0"
       responses:
         '204':
           description: Log deleted
         '404':
           description: Cluster/Datacenter/Node not found
-  '/connections':
-    get:
-      tags:
-        - connections
-      summary: retrieve all the connections of all clusters
-      operationId: getAllConnections
-      produces:
-        - application/json
-      responses:
-        '200':
-          description: created connections
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/ClusterConnectionReport'
-        '500':
-          description: Internal server error
-
-    delete:
-      tags:
-        - connections
-      summary: closes all the connections of all clusters
-      operationId: closeAllConnections
-      produces:
-        - application/json
-      parameters:
-        - name: type
-          type: string
-          in: query
-          description: |
-            The way to close the connection.
-
-            * *disconnect* - Simply disconnects the connection.
-            * *shutdown_read* - Prevents the socket from being able to read any inbound data.  Good for testing things like heartbeat failures.
-            * *shutdown_write* - Prevents the socket from being able to write any outbound data.  This will typically close the connection so does not have much use over disconnect.
-
-            Defaults to *disconnect*.
-          enum:
-            - disconnect
-            - shutdown_read
-            - shutdown_write
-      responses:
-        '200':
-          description: closed connections
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/ClusterConnectionReport'
-        '500':
-          description: Internal server error
-
   '/connections/{clusterId}':
     get:
       tags:
@@ -1081,6 +1218,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
       responses:
         '200':
           description: connections
@@ -1105,6 +1243,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: type
           type: string
           in: query
@@ -1145,11 +1284,13 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
       responses:
         '200':
           description: connections
@@ -1174,11 +1315,13 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: type
           type: string
           in: query
@@ -1219,16 +1362,19 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: nodeId
           in: path
           description: Id or name of the node
           required: true
           type: string
+          example: "0"
       responses:
         '200':
           description: connections
@@ -1253,16 +1399,19 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: nodeId
           in: path
           description: Id or name of the node
           required: true
           type: string
+          example: "0"
         - name: type
           type: string
           in: query
@@ -1290,25 +1439,33 @@ paths:
         '500':
           description: Internal server error
 
-  '/connection/{ip}/{port}':
+  '/connection/{clusterId}/{ip}/{port}':
     delete:
       tags:
         - connection
       summary: close one specific connection
       operationId: closeOneConnection
       produces:
-              - application/json
+        - application/json
       parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
         - name: ip
           in: path
           description: source ip of the connection
           required: true
           type: string
+          example: "127.0.0.1"
         - name: port
           in: path
           description: source port of the connection
           required: true
           type: string
+          example: 8675
         - name: type
           type: string
           in: query
@@ -1391,6 +1548,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
       responses:
         '200':
           description: connections will be accepted
@@ -1407,6 +1565,7 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: after
           in: query
           description: Number of attempts after which to start rejecting connections (defaults to 0, (immediate))
@@ -1447,11 +1606,13 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
       responses:
         '200':
           description: connections will be accepted
@@ -1470,11 +1631,13 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: after
           in: query
           description: Number of attempts after which to start rejecting connections (defaults to 0, (immediate))
@@ -1515,16 +1678,19 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: nodeId
           in: path
           description: Id or name of the node
           required: true
           type: string
+          example: "0"
       responses:
         '200':
           description: connections will be accepted
@@ -1543,16 +1709,19 @@ paths:
           description: Id or name of the cluster
           required: true
           type: string
+          example: "0"
         - name: dataCenterId
           in: path
           description: Id or name of the datacenter
           required: true
           type: string
+          example: "0"
         - name: nodeId
           in: path
           description: Id or name of the node
           required: true
           type: string
+          example: "0"
         - name: after
           in: query
           description: Number of attempts after which to start rejecting connections (defaults to 0, (immediate))
@@ -1789,6 +1958,8 @@ definitions:
         example:
           param_name_1: ascii
           param_name_2: bigint
+    example:
+      query: "SELECT * FROM tbl"
   Options:
       type: object
       required:

@@ -1,6 +1,6 @@
 package com.datastax.simulacron.common.stubbing;
 
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.datastax.simulacron.common.codec.WriteType;
@@ -364,7 +364,6 @@ public class PrimeDsl {
   public static class PrimeBuilder {
     private Request when;
     private Result then;
-    private Scope scope;
 
     PrimeBuilder(Request when) {
       this.when = when;
@@ -399,61 +398,9 @@ public class PrimeDsl {
       return this;
     }
 
-    /**
-     * Indicates that the prime should only be applied to this cluster.
-     *
-     * @param cluster Cluster to apply prime to.
-     * @return this builder.
-     */
-    public PrimeBuilder forCluster(Cluster cluster) {
-      return forTopic(cluster);
-    }
-
-    /**
-     * Indicates that the prime should only be applied to this data center.
-     *
-     * @param dc DataCenter to apply prime to.
-     * @return this builder.
-     */
-    public PrimeBuilder forDataCenter(DataCenter dc) {
-      return forTopic(dc);
-    }
-
-    /**
-     * Indicates that the prime should only be applied to this node.
-     *
-     * @param node Node to apply prime to.
-     * @return this builder.
-     */
-    public PrimeBuilder forNode(Node node) {
-      return forTopic(node);
-    }
-
-    /**
-     * @param topic The node, dc, or cluster to apply this prime to.
-     * @return this builder.
-     */
-    @SuppressWarnings("OptionalGetWithoutIsPresent")
-    private PrimeBuilder forTopic(AbstractNodeProperties topic) {
-      Scope scope;
-      if (topic instanceof Cluster) {
-        scope = new Scope(topic.getId(), null, null);
-      } else if (topic instanceof DataCenter) {
-        scope = new Scope(topic.getParent().get().getId(), topic.getId(), null);
-      } else { // assume node
-        scope =
-            new Scope(
-                topic.getParent().get().getParent().get().getId(),
-                topic.getParent().get().getId(),
-                topic.getId());
-      }
-      this.scope = scope;
-      return this;
-    }
-
     /** @return a {@link Prime} from this configuration. */
     public Prime build() {
-      return new Prime(new RequestPrime(when, then), scope);
+      return new Prime(new RequestPrime(when, then));
     }
   }
 

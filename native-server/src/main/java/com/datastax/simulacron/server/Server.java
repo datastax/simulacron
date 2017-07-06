@@ -2,42 +2,39 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.FrameCodec;
-import com.datastax.simulacron.common.cluster.*;
-import com.datastax.simulacron.common.stubbing.*;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.stubbing.EmptyReturnMetadataHandler;
+import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.AttributeKey;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * The main point of entry for registering and binding Clusters to the network. Provides methods for
  * registering and unregistering Clusters. When a Cluster is registered, all applicable nodes are
  * bound to their respective network interfaces and are ready to handle native protocol traffic.
  */
-public final class Server<C extends Cluster> {
+public final class Server {
 
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
 
@@ -62,7 +59,7 @@ public final class Server<C extends Cluster> {
   private final long bindTimeoutInNanos;
 
   /** The store that configures how to handle requests sent from a client. */
-  private final StubStore stubStore;
+  final StubStore stubStore;
 
   /** The timer to use for scheduling actions. */
   private final Timer timer;
@@ -71,13 +68,10 @@ public final class Server<C extends Cluster> {
   private final AtomicLong clusterCounter = new AtomicLong();
 
   /** Mapping of registered {@link Cluster} instances to their identifier. */
-  private final Map<Long, C> clusters = new ConcurrentHashMap<>();
+  private final Map<Long, BoundCluster> clusters = new ConcurrentHashMap<>();
 
   /** Whether or not activity logging is enabled. */
   private final boolean activityLogging;
-
-  /** Used to build Cluster instances of the desired type * */
-  private final Supplier<ClusterBuilderBase<?, C>> builder;
 
   private Server(
       AddressResolver addressResolver,
@@ -85,66 +79,22 @@ public final class Server<C extends Cluster> {
       Timer timer,
       long bindTimeoutInNanos,
       StubStore stubStore,
-      boolean activityLogging,
-      Supplier<ClusterBuilderBase<?, C>> builder) {
+      boolean activityLogging) {
     this.serverBootstrap = serverBootstrap;
     this.addressResolver = addressResolver;
     this.timer = timer;
     this.bindTimeoutInNanos = bindTimeoutInNanos;
     this.stubStore = stubStore;
     this.activityLogging = activityLogging;
-    this.builder = builder;
-  }
-
-  /**
-   * Registers a prime that can be used by the native server to provide responses to various client
-   * requests. This is simply a convenience abstraction over {@link #registerStub(StubMapping)}.
-   *
-   * @param prime to register
-   */
-  public void prime(PrimeDsl.PrimeBuilder prime) {
-    prime(prime.build());
-  }
-
-  /**
-   * Registers a prime that can be used by the native server to provide responses to various client
-   * requests. This is simply a convenience abstraction over {@link #registerStub(StubMapping)}.
-   *
-   * @param prime to register
-   */
-  public void prime(Prime prime) {
-    registerStub(prime);
-  }
-
-  /**
-   * Provide a means to add a new StubMapping that can be used by the native server to provide
-   * responses to various client requests.
-   *
-   * @param stubMapping to register
-   */
-  public void registerStub(StubMapping stubMapping) {
-    this.stubStore.register(stubMapping);
-  }
-
-  /**
-   * Clears all stubmappings that match a specific classtype
-   *
-   * @param scope if it set only the stubmapping matching this scope will be removed, all of them
-   *     otherwise
-   * @param clazz all stubmapping matching this class type will be removed
-   * @return number of primes deleted
-   */
-  public int clear(Scope scope, Class clazz) {
-    return this.stubStore.clear(scope, clazz);
   }
 
   /** see {@link #register(Cluster, ServerOptions)} */
-  public CompletableFuture<C> register(ClusterBuilderBase<?, C> builder) {
+  public CompletableFuture<BoundCluster> register(Cluster.Builder builder) {
     return register(builder.build(), ServerOptions.DEFAULT);
   }
 
   /** see {@link #register(Cluster, ServerOptions)} */
-  public CompletableFuture<C> register(C cluster) {
+  public CompletableFuture<BoundCluster> register(Cluster cluster) {
     return register(cluster, ServerOptions.DEFAULT);
   }
 
@@ -152,20 +102,12 @@ public final class Server<C extends Cluster> {
    * Wraps a Cluster in a {@link BoundCluster} which is a {@link java.io.Closeable} version of
    * Cluster
    *
-   * @param cluster
-   * @return
+   * @param cluster Cluster to wrap in a bound cluster.
    */
   @SuppressWarnings("unchecked")
-  private C boundCluster(C cluster) {
+  private BoundCluster boundCluster(Cluster cluster) {
     long clusterId = cluster.getId() == null ? clusterCounter.getAndIncrement() : cluster.getId();
-    // This is a bit of a kludge to return the correct generic type.  Won't
-    // work for any other specialized Cluster in the future, but there shouldn't
-    // be more.
-    if (cluster instanceof SimulacronCluster) {
-      return (C) new BoundSimulacronCluster(cluster, clusterId, this);
-    } else {
-      return (C) new BoundCluster(cluster, clusterId, this);
-    }
+    return new BoundCluster(cluster, clusterId, this);
   }
 
   /**
@@ -183,10 +125,10 @@ public final class Server<C extends Cluster> {
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
   @SuppressWarnings("unchecked")
-  public CompletableFuture<C> register(C cluster, ServerOptions serverOptions) {
-    C c = boundCluster(cluster);
+  public CompletableFuture<BoundCluster> register(Cluster cluster, ServerOptions serverOptions) {
+    BoundCluster c = boundCluster(cluster);
 
-    List<CompletableFuture<Node>> bindFutures = new ArrayList<>();
+    List<CompletableFuture<BoundNode>> bindFutures = new ArrayList<>();
 
     boolean activityLogging =
         serverOptions.isActivityLoggingEnabled() != null
@@ -197,7 +139,7 @@ public final class Server<C extends Cluster> {
     for (DataCenter dataCenter : cluster.getDataCenters()) {
       long dcOffset = dcPos * 100;
       long nodeBase = ((long) Math.pow(2, 64) / dataCenter.getNodes().size());
-      DataCenter dc = c.addDataCenter().copy(dataCenter).build();
+      BoundDataCenter dc = new BoundDataCenter(dataCenter, c);
 
       for (Node node : dataCenter.getNodes()) {
         Optional<String> token = node.resolvePeerInfo("token", String.class);
@@ -213,7 +155,7 @@ public final class Server<C extends Cluster> {
         // Use node's address if set, otherwise generate a new one.
         SocketAddress address =
             node.getAddress() != null ? node.getAddress() : addressResolver.get();
-        bindFutures.add(bindInternal(node, dc, tokenStr, address, activityLogging));
+        bindFutures.add(bindInternal(node, c, dc, tokenStr, address, activityLogging));
         nPos++;
       }
       dcPos++;
@@ -227,7 +169,7 @@ public final class Server<C extends Cluster> {
     // Evaluate each future, if any fail capture the exception and record all successfully
     // bound nodes.
     long start = System.nanoTime();
-    for (CompletableFuture<Node> f : bindFutures) {
+    for (CompletableFuture<BoundNode> f : bindFutures) {
       try {
         if (timedOut) {
           Node node = f.getNow(null);
@@ -235,7 +177,7 @@ public final class Server<C extends Cluster> {
             nodes.add((BoundNode) node);
           }
         } else {
-          nodes.add((BoundNode) f.get(bindTimeoutInNanos, TimeUnit.NANOSECONDS));
+          nodes.add(f.get(bindTimeoutInNanos, TimeUnit.NANOSECONDS));
         }
         if (System.nanoTime() - start > bindTimeoutInNanos) {
           timedOut = true;
@@ -255,7 +197,7 @@ public final class Server<C extends Cluster> {
       List<CompletableFuture<Node>> futures =
           nodes.stream().map(this::close).collect(Collectors.toList());
 
-      CompletableFuture<C> future = new CompletableFuture<>();
+      CompletableFuture<BoundCluster> future = new CompletableFuture<>();
       // On completion of unbinding all nodes, fail the returned future.
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
           .handle(
@@ -280,9 +222,9 @@ public final class Server<C extends Cluster> {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<C> unregister(Node node) {
+  public CompletableFuture<BoundCluster> unregister(Node node) {
     if (node.getCluster() == null) {
-      CompletableFuture<C> future = new CompletableFuture<>();
+      CompletableFuture<BoundCluster> future = new CompletableFuture<>();
       future.completeExceptionally(new IllegalArgumentException("Node has no parent Cluster"));
       return future;
     }
@@ -297,7 +239,7 @@ public final class Server<C extends Cluster> {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<C> unregister(Cluster cluster) {
+  public CompletableFuture<BoundCluster> unregister(Cluster cluster) {
     return unregister(cluster.getId());
   }
 
@@ -311,12 +253,12 @@ public final class Server<C extends Cluster> {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<C> unregister(Long clusterId) {
-    CompletableFuture<C> future = new CompletableFuture<>();
+  public CompletableFuture<BoundCluster> unregister(Long clusterId) {
+    CompletableFuture<BoundCluster> future = new CompletableFuture<>();
     if (clusterId == null) {
       future.completeExceptionally(new IllegalArgumentException("Null id provided"));
     } else {
-      C foundCluster = clusters.get(clusterId);
+      BoundCluster foundCluster = clusters.remove(clusterId);
       List<CompletableFuture<Node>> closeFutures = new ArrayList<>();
       if (foundCluster != null) {
         // Close socket on each node.
@@ -329,8 +271,6 @@ public final class Server<C extends Cluster> {
         CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[] {}))
             .whenComplete(
                 (__, ex) -> {
-                  // remove cluster and complete future.
-                  clusters.remove(clusterId);
                   if (ex != null) {
                     future.completeExceptionally(ex);
                   } else {
@@ -351,7 +291,7 @@ public final class Server<C extends Cluster> {
    * @return future that is completed when all clusters are unregistered.
    */
   public CompletableFuture<Integer> unregisterAll() {
-    List<CompletableFuture<C>> futures =
+    List<CompletableFuture<BoundCluster>> futures =
         clusters.keySet().stream().map(this::unregister).collect(Collectors.toList());
 
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
@@ -359,12 +299,12 @@ public final class Server<C extends Cluster> {
   }
 
   /** see {@link #register(Node, ServerOptions)} */
-  public CompletableFuture<Node> register(Node.Builder builder) {
+  public CompletableFuture<BoundNode> register(Node.Builder builder) {
     return register(builder.build());
   }
 
   /** see {@link #register(Node, ServerOptions)} */
-  public CompletableFuture<Node> register(Node node) {
+  public CompletableFuture<BoundNode> register(Node node) {
     return register(node, ServerOptions.DEFAULT);
   }
 
@@ -380,17 +320,18 @@ public final class Server<C extends Cluster> {
    * @return A future that when it completes provides an updated {@link Cluster} with ids and
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
-  public CompletableFuture<Node> register(Node node, ServerOptions serverOptions) {
+  public CompletableFuture<BoundNode> register(Node node, ServerOptions serverOptions) {
     if (node.getDataCenter() != null) {
-      CompletableFuture<Node> future = new CompletableFuture<>();
+      CompletableFuture<BoundNode> future = new CompletableFuture<>();
       future.completeExceptionally(
           new IllegalArgumentException("Node belongs to a Cluster, should be standalone."));
       return future;
     }
     // Wrap node in dummy cluster
     Long clusterId = clusterCounter.getAndIncrement();
-    C dummyCluster = boundCluster(builder.get().withId(clusterId).withName("dummy").build());
-    DataCenter dummyDataCenter = dummyCluster.addDataCenter().withName("dummy").build();
+    BoundCluster dummyCluster =
+        boundCluster(Cluster.builder().withId(clusterId).withName("dummy").build());
+    BoundDataCenter dummyDataCenter = new BoundDataCenter(dummyCluster);
 
     clusters.put(clusterId, dummyCluster);
 
@@ -402,398 +343,29 @@ public final class Server<C extends Cluster> {
     SocketAddress address = node.getAddress() != null ? node.getAddress() : addressResolver.get();
     return bindInternal(
         node,
+        dummyCluster,
         dummyDataCenter,
         node.resolvePeerInfo("token", String.class).orElse("0"),
         address,
         activityLogging);
   }
 
-  /** @return a map of registered {@link Cluster} instances keyed by their identifier. */
-  public Map<Long, C> getClusterRegistry() {
-    return this.clusters;
-  }
-
-  /** @return The store that configures how to handle requests sent from a client. */
-  public StubStore getStubStore() {
-    return this.stubStore;
-  }
-
   /**
-   * Return the set of nodes in the scope scope
-   *
-   * @param scope the scope in which the nodes are
-   * @return set of nodes
+   * @param id identifier of the cluster
+   * @return cluster matching given id or null.
    */
-  public Set<Node> getNodesInScope(Scope scope) {
-    //Apply to all the clusters
-    if (scope.isScopeUnSet()) {
-      return this.getClusterRegistry()
-          .entrySet()
-          .stream()
-          .flatMap(entry -> getNodesInScope(new Scope(entry.getKey(), null, null)).stream())
-          .collect(Collectors.toSet());
-    }
-    Cluster cluster = this.getClusterRegistry().get(scope.getClusterId());
-    if (scope.getDataCenterId() == null) {
-      return cluster
-          .getDataCenters()
-          .stream()
-          .flatMap(dc -> dc.getNodes().stream())
-          .collect(Collectors.toSet());
-    }
-    DataCenter dc =
-        cluster
-            .getDataCenters()
-            .stream()
-            .filter(n -> n.getId().equals(scope.getDataCenterId()))
-            .findAny()
-            .get();
-    if (scope.getNodeId() == null) {
-      return dc.getNodes().stream().collect(Collectors.toSet());
-    } else {
-      Node node =
-          dc.getNodes().stream().filter(n -> n.getId().equals(scope.getNodeId())).findAny().get();
-      return Collections.singleton(node);
-    }
+  public BoundCluster getCluster(long id) {
+    return this.clusters.get(id);
   }
 
-  /**
-   * Retrieves report of all connections in input cluster.
-   *
-   * @param cluster input cluster
-   * @return connection report.
-   */
-  public ClusterConnectionReport getConnections(Cluster cluster) {
-    return getConnections(cluster.getScope()).iterator().next();
+  /** @return All clusters currently registered to this server. */
+  public Collection<BoundCluster> getClusters() {
+    return this.clusters.values();
   }
 
-  /**
-   * Retrieves report of all connections in input dc.
-   *
-   * @param dc input dc.
-   * @return connection report.
-   */
-  public DataCenterConnectionReport getConnections(DataCenter dc) {
-    ClusterConnectionReport report = getConnections(dc.getScope()).iterator().next();
-    return report.getDataCenters().iterator().next();
-  }
-
-  /**
-   * Retrieves report of all connections for input node.
-   *
-   * @param node input node.
-   * @return connection report.
-   */
-  public NodeConnectionReport getConnections(Node node) {
-    ClusterConnectionReport clusterReport = getConnections(node.getScope()).iterator().next();
-    DataCenterConnectionReport dcReport = clusterReport.getDataCenters().iterator().next();
-    return dcReport.getNodes().iterator().next();
-  }
-
-  /**
-   * Return a set connections in a particular scope
-   *
-   * @param scope scope in which the connection are
-   * @return set of ClusterConnectionReport describing the connections in scope
-   */
-  public Set<ClusterConnectionReport> getConnections(Scope scope) {
-    if (scope.isScopeUnSet()) {
-      return this.getClusterRegistry()
-          .entrySet()
-          .stream()
-          .flatMap(p -> this.getConnections(new Scope(p.getKey(), null, null)).stream())
-          .collect(Collectors.toSet());
-    } else {
-      // There will only be connections from one cluster
-      Set<Node> nodes = getNodesInScope(scope);
-      if (nodes.isEmpty()) {
-        return Collections.emptySet();
-      }
-      ClusterConnectionReport clusterReport =
-          new ClusterConnectionReport(nodes.iterator().next().getCluster().getId());
-      for (Node node : nodes) {
-        clusterReport.addNode(
-            node,
-            ((BoundNode) node)
-                .getClientChannelGroup()
-                .stream()
-                .map(Channel::remoteAddress)
-                .collect(Collectors.toList()),
-            node.getAddress());
-      }
-      return Collections.singleton(clusterReport);
-    }
-  }
-
-  /**
-   * Closes all connections in input cluster
-   *
-   * @param cluster Cluster to close connections for
-   * @param closeType way of closing the connection
-   * @return the closed connections
-   */
-  public CompletableFuture<ClusterConnectionReport> closeConnections(
-      Cluster cluster, CloseType closeType) {
-    return closeConnections(cluster.getScope(), closeType).thenApply(s -> s.iterator().next());
-  }
-
-  /**
-   * Closes all connections in input datacenter
-   *
-   * @param dc DataCenter to close connections for
-   * @param closeType way of closing connection
-   * @return the closed connections
-   */
-  public CompletableFuture<DataCenterConnectionReport> closeConnections(
-      DataCenter dc, CloseType closeType) {
-    return closeConnections(dc.getScope(), closeType)
-        .thenApply(s -> s.iterator().next().getDataCenters().iterator().next());
-  }
-
-  /**
-   * Closes all connections for input node
-   *
-   * @param node Node to close connections for
-   * @param closeType way of closing connection
-   * @return the closed connections
-   */
-  public CompletableFuture<NodeConnectionReport> closeConnections(Node node, CloseType closeType) {
-    return closeConnections(node.getScope(), closeType)
-        .thenApply(
-            s ->
-                s.iterator()
-                    .next()
-                    .getDataCenters()
-                    .iterator()
-                    .next()
-                    .getNodes()
-                    .iterator()
-                    .next());
-  }
-
-  /**
-   * Closes all the connections in a particular scope
-   *
-   * @param scope scope in which the connections to close are
-   * @param closeType way of closing connection
-   * @return set with the closed connections
-   */
-  public CompletableFuture<Set<ClusterConnectionReport>> closeConnections(
-      Scope scope, CloseType closeType) {
-
-    Set<Node> nodes = getNodesInScope(scope);
-
-    // Is this the correct way to do this, or we should get the closed node
-    Set<ClusterConnectionReport> clusterReport = getConnections(scope);
-    CompletableFuture<Void> futures = BoundNode.closeNodes(nodes.stream(), closeType);
-    return futures.thenApply(p -> clusterReport);
-  }
-
-  /**
-   * Closes a particular connection
-   *
-   * @param connection connection to close
-   * @param type way of closing the connection
-   * @return set with the closed connections which should contain only the closed connection
-   */
-  public CompletableFuture<Set<ClusterConnectionReport>> closeConnection(
-      InetSocketAddress connection, CloseType type) {
-    Set<Node> nodes = getNodesInScope(new Scope(null, null, null));
-    Optional<Node> toCloseNode =
-        nodes
-            .stream()
-            .filter(
-                p ->
-                    ((BoundNode) p)
-                        .getClientChannelGroup()
-                        .stream()
-                        .map(Channel::remoteAddress)
-                        .collect(Collectors.toSet())
-                        .contains(connection))
-            .findAny();
-
-    if (!toCloseNode.isPresent()) {
-      CompletableFuture<Set<ClusterConnectionReport>> failedFuture = new CompletableFuture<>();
-      failedFuture.completeExceptionally(new IllegalArgumentException("Not found"));
-      return failedFuture;
-    }
-
-    ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-    channelGroup.add(
-        ((BoundNode) toCloseNode.get())
-            .getClientChannelGroup()
-            .stream()
-            .filter(c -> c.remoteAddress().equals(connection))
-            .findAny()
-            .get());
-    CompletableFuture<Void> future = BoundNode.closeChannelGroups(Stream.of(channelGroup), type);
-
-    // Is this the correct way to do this, or we should get the closed node
-    ClusterConnectionReport clusterReport =
-        new ClusterConnectionReport(nodes.iterator().next().getCluster().getId());
-    clusterReport.addNode(
-        toCloseNode.get(), Collections.singletonList(connection), toCloseNode.get().getAddress());
-
-    return future.thenApply(f -> Collections.singleton(clusterReport));
-  }
-
-  /**
-   * Convenience method for 'stopping' a cluster, dc, or node. Shortcut for rejectConnections with
-   * STOP reject scope.
-   *
-   * @param topic cluster, dc, or node to stop
-   * @return future that completes when stop completes.
-   */
-  public CompletableFuture<Void> stop(NodeProperties topic) {
-    return rejectConnections(topic, 0, RejectScope.STOP);
-  }
-
-  /**
-   * Rejects connections for a cluster, dc, or node. Shortcut for reject connections with {@link
-   * NodeProperties#getScope()}.
-   *
-   * @param topic cluster, dc, or node to reject connections for
-   * @param after number of connection attempts after which the rejection will be applied
-   * @param rejectScope type of the rejection
-   * @return future that completes when reject completes
-   */
-  public CompletableFuture<Void> rejectConnections(
-      NodeProperties topic, Integer after, RejectScope rejectScope) {
-    return rejectConnections(topic.getScope(), after, rejectScope);
-  }
-
-  /**
-   * Method to configure the nodes so they reject future connections
-   *
-   * @param scope scope in which the nodes that will be configured are
-   * @param after number of connection attempts after which the rejection will be applied
-   * @param rejectScope type of the rejection
-   * @return future that completes when reject completes
-   */
-  public CompletableFuture<Void> rejectConnections(
-      Scope scope, Integer after, RejectScope rejectScope) {
-    Set<Node> nodes = getNodesInScope(scope);
-    List<CompletableFuture<Node>> futures;
-    futures =
-        nodes
-            .stream()
-            .map(n -> ((BoundNode) n).rejectNewConnections(after, rejectScope))
-            .collect(Collectors.toList());
-    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
-  }
-
-  /**
-   * Convenience method for 'starting' a previous stopped/rejected cluster, dc, or node. Shortcut
-   * for {@link #acceptConnections}.
-   *
-   * @param topic cluster, dc, or node to start
-   * @return future that completes when start completes
-   */
-  public CompletableFuture<Void> start(NodeProperties topic) {
-    return acceptConnections(topic);
-  }
-
-  /**
-   * Method to configure a cluster, dc, or node so they accept future connections. Usually called
-   * after {@link #rejectConnections(Scope, Integer, RejectScope)}.
-   *
-   * @param topic cluster, dc, or node to accept connections for
-   * @return future that completes when accept compeltes
-   */
-  public CompletableFuture<Void> acceptConnections(NodeProperties topic) {
-    return acceptConnections(topic.getScope());
-  }
-
-  /**
-   * Method to configure the nodes so they accept future connections. Usually called after {@link
-   * #rejectConnections(Scope, Integer, RejectScope)}
-   *
-   * @param scope scope in which the nodes that will be configured are
-   * @return future that completes when accept compeltes
-   */
-  public CompletableFuture<Void> acceptConnections(Scope scope) {
-    Set<Node> nodes = getNodesInScope(scope);
-    List<CompletableFuture<Node>> futures;
-    futures =
-        nodes
-            .stream()
-            .map(n -> ((BoundNode) n).acceptNewConnections())
-            .collect(Collectors.toList());
-    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
-  }
-
-  /**
-   * Convenience method for retrieving the id of a cluster given the id or the name of the cluster
-   *
-   * @param idOrName string which could be the id or the name of the cluster
-   * @return Id of the cluster
-   */
-  public Optional<Long> getClusterIdFromIdOrName(String idOrName) {
-    try {
-      long id = Long.parseLong(idOrName);
-      if (this.getClusterRegistry().containsKey(id)) {
-        return Optional.of(id);
-      } else {
-        return Optional.empty();
-      }
-    } catch (NumberFormatException e) {
-      return this.getClusterRegistry()
-          .entrySet()
-          .stream()
-          .filter(c -> c.getValue().getName().equals(idOrName))
-          .map(Map.Entry::getValue)
-          .findAny()
-          .map(AbstractNodeProperties::getId);
-    }
-  }
-
-  /**
-   * Convenience method for retrieving the id of a datacenter given the id or the name of the
-   * datacenter, and the id of the cluster it belongs to
-   *
-   * @param clusterId id of the cluster the datacenter belongs to
-   * @param idOrName string which could be the id or the name of the DataCenter
-   * @return id of the datacenter
-   */
-  public Optional<Long> getDatacenterIdFromIdOrName(Long clusterId, String idOrName) {
-    return this.getClusterRegistry()
-        .get(clusterId)
-        .getDataCenters()
-        .stream()
-        .filter(d -> d.getName().equals(idOrName) || d.getId().toString().equals(idOrName))
-        .findAny()
-        .map(AbstractNodeProperties::getId);
-  }
-
-  /**
-   * Convenience method for retrieving the id of a Node given the id or the name of the node, and
-   * the id of the cluster and the datacenter it belongs to
-   *
-   * @param clusterId id of the cluster the DataCenter belongs to
-   * @param datacenterId id of the datacenter the DataCenter belongs to
-   * @param idOrName string which could be the id or the name of the Node
-   * @return id of the cluster
-   */
-  public Optional<Long> getNodeIdFromIdOrName(Long clusterId, Long datacenterId, String idOrName) {
-    Optional<DataCenter> dc =
-        this.getClusterRegistry()
-            .get(clusterId)
-            .getDataCenters()
-            .stream()
-            .filter(d -> d.getId().equals(datacenterId))
-            .findAny();
-
-    return dc.flatMap(
-        d ->
-            d.getNodes()
-                .stream()
-                .filter(n -> n.getName().equals(idOrName) || n.getId().toString().equals(idOrName))
-                .findAny()
-                .map(AbstractNodeProperties::getId));
-  }
-
-  private CompletableFuture<Node> bindInternal(
+  private CompletableFuture<BoundNode> bindInternal(
       Node refNode,
+      BoundCluster cluster,
       DataCenter parent,
       String token,
       SocketAddress address,
@@ -802,7 +374,7 @@ public final class Server<C extends Cluster> {
     // data center is changed when it is bound.
     Map<String, Object> newPeerInfo = new HashMap<>(refNode.getPeerInfo());
     newPeerInfo.put("token", token);
-    CompletableFuture<Node> f = new CompletableFuture<>();
+    CompletableFuture<BoundNode> f = new CompletableFuture<>();
     ChannelFuture bindFuture = this.serverBootstrap.bind(address);
     bindFuture.addListener(
         (ChannelFutureListener)
@@ -818,11 +390,11 @@ public final class Server<C extends Cluster> {
                         refNode.getCassandraVersion(),
                         refNode.getDSEVersion(),
                         newPeerInfo,
+                        cluster,
                         parent,
                         this,
                         timer,
                         channelFuture.channel(),
-                        stubStore,
                         activityLogging);
                 logger.info("Bound {} to {}", node, channelFuture.channel());
                 channelFuture.channel().attr(HANDLER).set(node);
@@ -839,46 +411,14 @@ public final class Server<C extends Cluster> {
 
   private CompletableFuture<Node> close(BoundNode node) {
     logger.debug("Closing {}.", node);
-    return node.unbindAndClose()
+    return node.stop()
         .thenApply(
             n -> {
               logger.debug(
                   "Releasing {} back to address resolver so it may be reused.", node.getAddress());
-              addressResolver.release(n.getAddress());
-              return n;
+              addressResolver.release(node.getAddress());
+              return node;
             });
-  }
-
-  /**
-   * Creates a default event loop to use based on whether or not epoll is available. If epoll is not
-   * available, NIO is used.
-   *
-   * @return an {@link EventLoopGroup} to be used whose threads are prefixed with
-   *     'simulacron-io-worker'.
-   */
-  static EventLoopGroup createEventLoop() {
-    ThreadFactory f = new DefaultThreadFactory("simulacron-io-worker");
-    if (Epoll.isAvailable()) {
-      logger.debug("Detected epoll support, using EpollEventLoopGroup");
-      return new EpollEventLoopGroup(0, f);
-    } else {
-      logger.debug("Could not locate native transport (epoll), using NioEventLoopGroup");
-      return new NioEventLoopGroup(0, f);
-    }
-  }
-
-  /**
-   * Infers the {@link ServerChannel} implementaion based on whether or not epoll is available.
-   *
-   * @return {@link EpollServerSocketChannel} is available, otherwise {@link
-   *     NioServerSocketChannel}.
-   */
-  static Class<? extends ServerChannel> channelClass() {
-    if (Epoll.isAvailable()) {
-      return EpollServerSocketChannel.class;
-    } else {
-      return NioServerSocketChannel.class;
-    }
   }
 
   /**
@@ -892,8 +432,20 @@ public final class Server<C extends Cluster> {
    * @return Builder that is set up with {@link NioEventLoopGroup} and {@link
    *     NioServerSocketChannel}.
    */
-  public static Builder<Cluster> builder() {
-    return builder(createEventLoop(), channelClass());
+  public static Builder builder() {
+    ThreadFactory f = new DefaultThreadFactory("simulacron-io-worker");
+    EventLoopGroup eventLoop;
+    Class<? extends ServerChannel> channelClass;
+    if (Epoll.isAvailable()) {
+      logger.debug("Detected epoll support, using EpollEventLoopGroup");
+      eventLoop = new EpollEventLoopGroup(0, f);
+      channelClass = EpollServerSocketChannel.class;
+    } else {
+      logger.debug("Could not locate native transport (epoll), using NioEventLoopGroup");
+      eventLoop = new NioEventLoopGroup(0, f);
+      channelClass = NioServerSocketChannel.class;
+    }
+    return builder(eventLoop, channelClass);
   }
 
   /**
@@ -904,33 +456,17 @@ public final class Server<C extends Cluster> {
    * @param channelClass channel class to use, should be compatible with the event loop.
    * @return Builder that is set up with a {@link ServerBootstrap}.
    */
-  public static Builder<Cluster> builder(
+  public static Builder builder(
       EventLoopGroup eventLoopGroup, Class<? extends ServerChannel> channelClass) {
-    return builder(eventLoopGroup, channelClass, Cluster::builder);
-  }
-
-  /**
-   * Constructs a {@link Builder} that uses the given {@link EventLoopGroup} and {@link
-   * ServerChannel} to construct a {@link ServerBootstrap} to be used by this {@link Server}.
-   *
-   * @param eventLoopGroup event loop group to use.
-   * @param channelClass channel class to use, should be compatible with the event loop.
-   * @param clusterBuilder builder for constructing clusters.
-   * @return Builder that is set up with a {@link ServerBootstrap}.
-   */
-  static <C extends Cluster> Builder<C> builder(
-      EventLoopGroup eventLoopGroup,
-      Class<? extends ServerChannel> channelClass,
-      Supplier<ClusterBuilderBase<?, C>> clusterBuilder) {
     ServerBootstrap serverBootstrap =
         new ServerBootstrap()
             .group(eventLoopGroup)
             .channel(channelClass)
             .childHandler(new Initializer());
-    return new Builder<>(serverBootstrap, clusterBuilder);
+    return new Builder(serverBootstrap);
   }
 
-  public static class Builder<C extends Cluster> {
+  public static class Builder {
     private ServerBootstrap serverBootstrap;
 
     private AddressResolver addressResolver = AddressResolver.defaultResolver;
@@ -946,11 +482,8 @@ public final class Server<C extends Cluster> {
 
     private boolean activityLogging = true;
 
-    private final Supplier<ClusterBuilderBase<?, C>> clusterBuilder;
-
-    Builder(ServerBootstrap initialBootstrap, Supplier<ClusterBuilderBase<?, C>> clusterBuilder) {
+    Builder(ServerBootstrap initialBootstrap) {
       this.serverBootstrap = initialBootstrap;
-      this.clusterBuilder = clusterBuilder;
     }
 
     /**
@@ -961,7 +494,7 @@ public final class Server<C extends Cluster> {
      * @param timeUnit The unit of time to wait in.
      * @return This builder.
      */
-    public Builder<C> withBindTimeout(long time, TimeUnit timeUnit) {
+    public Builder withBindTimeout(long time, TimeUnit timeUnit) {
       this.bindTimeoutInNanos = TimeUnit.NANOSECONDS.convert(time, timeUnit);
       return this;
     }
@@ -973,7 +506,7 @@ public final class Server<C extends Cluster> {
      * @param addressResolver resolver to use.
      * @return This builder.
      */
-    public Builder<C> withAddressResolver(AddressResolver addressResolver) {
+    public Builder withAddressResolver(AddressResolver addressResolver) {
       this.addressResolver = addressResolver;
       return this;
     }
@@ -985,7 +518,7 @@ public final class Server<C extends Cluster> {
      * @param timer timer to use.
      * @return This builder.
      */
-    public Builder<C> withTimer(Timer timer) {
+    public Builder withTimer(Timer timer) {
       this.timer = timer;
       return this;
     }
@@ -998,7 +531,7 @@ public final class Server<C extends Cluster> {
      * @param stubStore stub store to use.
      * @return This builder.
      */
-    public Builder<C> withStubStore(StubStore stubStore) {
+    public Builder withStubStore(StubStore stubStore) {
       this.stubStore = stubStore;
       return this;
     }
@@ -1009,13 +542,13 @@ public final class Server<C extends Cluster> {
      * @param enabled enablement flag.
      * @return This builder.
      */
-    public Builder<C> withActivityLoggingEnabled(boolean enabled) {
+    public Builder withActivityLoggingEnabled(boolean enabled) {
       this.activityLogging = enabled;
       return this;
     }
 
     /** @return a {@link Server} instance based on this builder's configuration. */
-    public Server<C> build() {
+    public Server build() {
       if (stubStore == null) {
         stubStore = new StubStore();
         stubStore.register(new PeerMetadataHandler());
@@ -1046,14 +579,8 @@ public final class Server<C extends Cluster> {
         ThreadFactory f = new DefaultThreadFactory("simulacron-timer");
         this.timer = new HashedWheelTimer(f);
       }
-      return new Server<>(
-          addressResolver,
-          serverBootstrap,
-          timer,
-          bindTimeoutInNanos,
-          stubStore,
-          activityLogging,
-          clusterBuilder);
+      return new Server(
+          addressResolver, serverBootstrap, timer, bindTimeoutInNanos, stubStore, activityLogging);
     }
   }
 

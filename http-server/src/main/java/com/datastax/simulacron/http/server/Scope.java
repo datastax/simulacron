@@ -1,4 +1,9 @@
-package com.datastax.simulacron.common.cluster;
+package com.datastax.simulacron.http.server;
+
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.NodeProperties;
 
 /**
  * Represents a subset of the whole domain of {@link Cluster}s. The granularity can go down to a

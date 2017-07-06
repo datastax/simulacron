@@ -36,9 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class BoundNodeTest {
 
-  private final Cluster cluster = Cluster.builder().build();
-  private final DataCenter dc = cluster.addDataCenter().build();
-  private final StubStore stubStore = new StubStore();
+  private final BoundCluster cluster = new BoundCluster(Cluster.builder().build(), 0L, null);
+  private final DataCenter dc = new BoundDataCenter(cluster);
   private final Timer timer = new HashedWheelTimer();
   private final BoundNode node =
       new BoundNode(
@@ -48,11 +47,11 @@ public class BoundNodeTest {
           "1.2.19",
           null,
           Collections.emptyMap(),
+          cluster,
           dc,
           null,
           timer,
           null, // channel reference only needed for closing, not useful in context of this test.
-          stubStore,
           false);
 
   private final BoundNode loggedNode =
@@ -63,11 +62,11 @@ public class BoundNodeTest {
           "1.2.19",
           null,
           Collections.emptyMap(),
+          cluster,
           dc,
           null,
           timer,
           null, // channel reference only needed for closing, not useful in context of this test.
-          stubStore,
           true);
 
   private final EmbeddedChannel channel = new EmbeddedChannel(new RequestHandler(node));
@@ -162,26 +161,27 @@ public class BoundNodeTest {
     String query = "select * from foo where bar = ?";
     RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0]);
     Prepared response = new Prepared(new byte[] {1, 7, 9}, rowsMetadata, rowsMetadata);
-    stubStore.register(
-        new StubMapping() {
+    node.getStubStore()
+        .register(
+            new StubMapping() {
 
-          @Override
-          public boolean matches(Frame frame) {
-            Message msg = frame.message;
-            if (msg instanceof Prepare) {
-              Prepare p = (Prepare) msg;
-              if (p.cqlQuery.equals(query)) {
-                return true;
+              @Override
+              public boolean matches(Frame frame) {
+                Message msg = frame.message;
+                if (msg instanceof Prepare) {
+                  Prepare p = (Prepare) msg;
+                  if (p.cqlQuery.equals(query)) {
+                    return true;
+                  }
+                }
+                return false;
               }
-            }
-            return false;
-          }
 
-          @Override
-          public List<Action> getActions(Node node, Frame frame) {
-            return Collections.singletonList(new MessageResponseAction(response));
-          }
-        });
+              @Override
+              public List<Action> getActions(Node node, Frame frame) {
+                return Collections.singletonList(new MessageResponseAction(response));
+              }
+            });
 
     channel.writeInbound(FrameUtils.wrapRequest(new Prepare(query)));
     Frame frame = channel.readOutbound();
@@ -194,29 +194,30 @@ public class BoundNodeTest {
     String query = "select * from foo where bar = ?";
     RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0]);
     Prepared response = new Prepared(new byte[] {1, 7, 9}, rowsMetadata, rowsMetadata);
-    stubStore.register(
-        new StubMapping() {
+    node.getStubStore()
+        .register(
+            new StubMapping() {
 
-          @Override
-          public boolean matches(Frame frame) {
-            Message msg = frame.message;
-            if (msg instanceof Prepare) {
-              Prepare p = (Prepare) msg;
-              if (p.cqlQuery.equals(query)) {
-                return true;
+              @Override
+              public boolean matches(Frame frame) {
+                Message msg = frame.message;
+                if (msg instanceof Prepare) {
+                  Prepare p = (Prepare) msg;
+                  if (p.cqlQuery.equals(query)) {
+                    return true;
+                  }
+                }
+                return false;
               }
-            }
-            return false;
-          }
 
-          @Override
-          public List<Action> getActions(Node node, Frame frame) {
-            List<Action> actions = new ArrayList<>();
-            actions.add(new MessageResponseAction(response, 500));
-            actions.add(new MessageResponseAction(Options.INSTANCE));
-            return actions;
-          }
-        });
+              @Override
+              public List<Action> getActions(Node node, Frame frame) {
+                List<Action> actions = new ArrayList<>();
+                actions.add(new MessageResponseAction(response, 500));
+                actions.add(new MessageResponseAction(Options.INSTANCE));
+                return actions;
+              }
+            });
 
     channel.writeInbound(FrameUtils.wrapRequest(new Prepare(query)));
 

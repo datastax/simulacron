@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -20,7 +18,7 @@ import java.util.Optional;
  * <p>A {@link Node} has an address which indicates what ip address and port the node is listening
  * on.
  */
-public class Node extends AbstractNodeProperties implements Closeable {
+public class Node extends AbstractNodeProperties {
 
   /** The address and port that this node should listen on. */
   @JsonProperty private final SocketAddress address;
@@ -137,12 +135,6 @@ public class Node extends AbstractNodeProperties implements Closeable {
     // In the case of a concrete 'Node' instance, active connections will always be 0 since there is no actual
     // connection state here.  We expect specialized implementations of Node to override this.
     return 0L;
-  }
-
-  @Override
-  public void close() throws IOException {
-    // by default does nothing, the expectation is implementations that are bound to a Server
-    // will unregister the Node when done with it.
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, DataCenter> {

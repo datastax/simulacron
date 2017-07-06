@@ -1,9 +1,10 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
+import com.datastax.simulacron.common.cluster.ConnectionReport;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
-import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.stubbing.CloseType;
+import com.datastax.simulacron.server.BoundCluster;
 import com.datastax.simulacron.server.RejectScope;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -15,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.Set;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
@@ -56,11 +57,12 @@ public class EndpointManager implements HttpListener {
                 if (scope == null) {
                   return;
                 }
-                Set<ClusterConnectionReport> connections = server.getConnections(scope);
+                ClusterConnectionReport report =
+                    HttpUtils.find(server, scope).getConnections().getRootReport();
                 StringBuilder response = new StringBuilder();
 
                 String connectionsStr =
-                    om.writerWithDefaultPrettyPrinter().writeValueAsString(connections);
+                    om.writerWithDefaultPrettyPrinter().writeValueAsString(report);
                 response.append(connectionsStr);
                 context
                     .request()
@@ -111,16 +113,17 @@ public class EndpointManager implements HttpListener {
                   return;
                 }
                 CloseType closeType = CloseType.valueOf(type.toUpperCase());
-                CompletableFuture<Set<ClusterConnectionReport>> reportFuture =
-                    server.closeConnections(scope, closeType);
+                CompletableFuture<? extends ConnectionReport> reportFuture =
+                    HttpUtils.find(server, scope).closeConnections(closeType);
                 StringBuilder response = new StringBuilder();
 
                 reportFuture.whenComplete(
-                    (clusterReport, ex) -> {
+                    (report, ex) -> {
                       if (ex == null) {
                         try {
                           String reportStr =
-                              om.writerWithDefaultPrettyPrinter().writeValueAsString(clusterReport);
+                              om.writerWithDefaultPrettyPrinter()
+                                  .writeValueAsString(report.getRootReport());
                           response.append(reportStr);
                         } catch (JsonProcessingException jpex) {
                           logger.error(
@@ -163,6 +166,17 @@ public class EndpointManager implements HttpListener {
         .bodyHandler(
             totalBuffer -> {
               try {
+                String clusterIdOrName = context.request().getParam("clusterIdOrName");
+                Optional<Long> clusterId =
+                    HttpUtils.getClusterIdFromIdOrName(server, clusterIdOrName);
+                if (!clusterId.isPresent()) {
+                  handleError(
+                      new ErrorMessage("No cluster registered with id " + clusterIdOrName, 404),
+                      context);
+                  return;
+                }
+
+                BoundCluster cluster = server.getCluster(clusterId.get());
                 String ip = context.request().getParam("ip");
                 String portS = context.request().getParam("port");
                 Integer port = Integer.parseInt(portS);
@@ -173,9 +187,8 @@ public class EndpointManager implements HttpListener {
                 }
 
                 InetSocketAddress connection = new InetSocketAddress(ip, port);
-
-                CompletableFuture<Set<ClusterConnectionReport>> reportFuture =
-                    server.closeConnection(connection, CloseType.valueOf(type.toUpperCase()));
+                CompletableFuture<ClusterConnectionReport> reportFuture =
+                    cluster.closeConnection(connection, CloseType.valueOf(type.toUpperCase()));
                 StringBuilder response = new StringBuilder();
 
                 reportFuture.whenComplete(
@@ -246,7 +259,7 @@ public class EndpointManager implements HttpListener {
                 }
                 RejectScope rejectScope = RejectScope.valueOf(type.toUpperCase());
                 CompletableFuture<Void> future =
-                    server.rejectConnections(scope, after, rejectScope);
+                    HttpUtils.find(server, scope).rejectConnections(after, rejectScope);
                 future.whenComplete(
                     (completedCluster, ex) -> {
                       if (ex == null) {
@@ -293,7 +306,7 @@ public class EndpointManager implements HttpListener {
                 if (scope == null) {
                   return;
                 }
-                CompletableFuture<Void> future = server.acceptConnections(scope);
+                CompletableFuture<Void> future = HttpUtils.find(server, scope).acceptConnections();
                 future.whenComplete(
                     (completedCluster, ex) -> {
                       if (ex == null) {
@@ -330,7 +343,6 @@ public class EndpointManager implements HttpListener {
         .route(HttpMethod.GET, "/connections/:clusterIdOrName/:datacenterIdOrName")
         .handler(this::getConnections);
     router.route(HttpMethod.GET, "/connections/:clusterIdOrName").handler(this::getConnections);
-    router.route(HttpMethod.GET, "/connections/").handler(this::getConnections);
 
     // Delete connections
     router
@@ -342,12 +354,12 @@ public class EndpointManager implements HttpListener {
     router
         .route(HttpMethod.DELETE, "/connections/:clusterIdOrName")
         .handler(this::closeConnections);
-    router.route(HttpMethod.DELETE, "/connections/").handler(this::closeConnections);
-    router.route(HttpMethod.DELETE, "/connection/:ip/:port").handler(this::closeConnectionByIp);
+    router
+        .route(HttpMethod.DELETE, "/connection/:clusterIdOrName/:ip/:port")
+        .handler(this::closeConnectionByIp);
 
     // Stop listening for connections
 
-    router.route(HttpMethod.DELETE, "/listener/").handler(this::rejectConnections);
     router
         .route(HttpMethod.DELETE, "/listener/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::rejectConnections);
@@ -357,7 +369,6 @@ public class EndpointManager implements HttpListener {
     router.route(HttpMethod.DELETE, "/listener/:clusterIdOrName").handler(this::rejectConnections);
 
     // Restore listening for connections
-    router.route(HttpMethod.PUT, "/listener").handler(this::acceptConnections);
     router
         .route(HttpMethod.PUT, "/listener/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::acceptConnections);

@@ -7,10 +7,10 @@ import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.error.Unprepared;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.stubbing.*;
 import com.datastax.simulacron.common.stubbing.PrimeDsl.PrimeBuilder;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -26,7 +26,6 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.net.SocketAddress;
 import java.util.*;
@@ -47,14 +46,14 @@ import static com.datastax.simulacron.common.stubbing.PrimeDsl.when;
 import static com.datastax.simulacron.common.utils.FrameUtils.wrapResponse;
 import static com.datastax.simulacron.server.ChannelUtils.completable;
 
-class BoundNode extends Node {
+public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> {
 
   private static Logger logger = LoggerFactory.getLogger(BoundNode.class);
 
   private static final Pattern useKeyspacePattern =
       Pattern.compile("\\s*use\\s+(.*)$", Pattern.CASE_INSENSITIVE);
 
-  private final ServerBootstrap bootstrap;
+  private final transient ServerBootstrap bootstrap;
 
   // TODO: Isn't really a good reason for this to be an AtomicReference as if binding fails we don't reset
   // the channel, but leaving it this way for now in case there is a future use case.
@@ -65,15 +64,20 @@ class BoundNode extends Node {
 
   // TODO: There could be a lot of concurrency issues around simultaneous calls to reject/accept, however
   // in the general case we don't expect it.   Leave this as AtomicReference in case we want to handle it better.
-  private final AtomicReference<RejectState> rejectState = new AtomicReference<>(new RejectState());
+  private final transient AtomicReference<RejectState> rejectState =
+      new AtomicReference<>(new RejectState());
 
-  private final Timer timer;
+  private final transient Timer timer;
 
   private final transient StubStore stubStore;
 
   private final boolean activityLogging;
 
-  private final Server<?> server;
+  private final Server server;
+
+  private final BoundCluster cluster;
+
+  private final transient ActivityLog activityLog = new ActivityLog();
 
   private static class RejectState {
     private final RejectScope scope;
@@ -98,19 +102,20 @@ class BoundNode extends Node {
       String cassandraVersion,
       String dseVersion,
       Map<String, Object> peerInfo,
+      BoundCluster cluster,
       DataCenter parent,
-      Server<?> server,
+      Server server,
       Timer timer,
       Channel channel,
-      StubStore stubStore,
       boolean activityLogging) {
     super(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
+    this.cluster = cluster;
     this.server = server;
     // for test purposes server may be null.
     this.bootstrap = server != null ? server.serverBootstrap : null;
     this.timer = timer;
     this.channel = new AtomicReference<>(channel);
-    this.stubStore = stubStore;
+    this.stubStore = new StubStore();
     this.activityLogging = activityLogging;
   }
 
@@ -120,10 +125,6 @@ class BoundNode extends Node {
     return clientChannelGroup.stream().filter(Channel::isActive).count();
   }
 
-  public ChannelGroup getClientChannelGroup() {
-    return clientChannelGroup;
-  }
-
   /**
    * Closes the listening channel for this node. Note that this does not close existing client
    * connections, this can be done using {@link #disconnectConnections()}. To stop listening and
@@ -131,9 +132,9 @@ class BoundNode extends Node {
    *
    * @return future that completes when listening channel is closed.
    */
-  CompletableFuture<Node> unbind() {
+  private CompletableFuture<Void> unbind() {
     logger.debug("Unbinding listener on {}", channel);
-    return completable(channel.get().close()).thenApply(v -> this);
+    return completable(channel.get().close()).thenApply(v -> null);
   }
 
   /**
@@ -142,12 +143,12 @@ class BoundNode extends Node {
    *
    * @return future that completes when listening channel is reopened.
    */
-  CompletableFuture<Node> rebind() {
+  private CompletableFuture<Void> rebind() {
     if (this.channel.get().isOpen()) {
       // already accepting...
-      return CompletableFuture.completedFuture(this);
+      return CompletableFuture.completedFuture(null);
     }
-    CompletableFuture<Node> future = new CompletableFuture<>();
+    CompletableFuture<Void> future = new CompletableFuture<>();
     ChannelFuture bindFuture = bootstrap.bind(this.getAddress());
     bindFuture.addListener(
         (ChannelFutureListener)
@@ -155,7 +156,7 @@ class BoundNode extends Node {
               if (channelFuture.isSuccess()) {
                 channelFuture.channel().attr(Server.HANDLER).set(this);
                 logger.debug("Bound {} to {}", BoundNode.this, channelFuture.channel());
-                future.complete(BoundNode.this);
+                future.complete(null);
                 channel.set(channelFuture.channel());
               } else {
                 // If failed, propagate it.
@@ -167,22 +168,13 @@ class BoundNode extends Node {
   }
 
   /**
-   * Closes both the listening channel and all existing client channels.
-   *
-   * @return future that completes when listening channel and client channels are all closed.
-   */
-  CompletableFuture<Node> unbindAndClose() {
-    return unbind().thenCombine(disconnectConnections(), (n0, n1) -> this);
-  }
-
-  /**
    * Disconnects all client channels. Does not close listening interface (see {@link #unbind()} for
    * that).
    *
    * @return future that completes when all client channels are disconnected.
    */
-  CompletableFuture<Node> disconnectConnections() {
-    return completable(clientChannelGroup.disconnect()).thenApply(v -> this);
+  private CompletableFuture<Void> disconnectConnections() {
+    return completable(clientChannelGroup.disconnect()).thenApply(v -> null);
   }
 
   /**
@@ -190,15 +182,27 @@ class BoundNode extends Node {
    *
    * @return future that completes when node is listening again.
    */
-  CompletableFuture<Node> acceptNewConnections() {
+  @Override
+  public CompletableFuture<Void> acceptConnections() {
     logger.debug("Accepting New Connections");
     rejectState.set(new RejectState());
     // Reopen listening interface if not currently open.
     if (!channel.get().isOpen()) {
       return rebind();
     } else {
-      return CompletableFuture.completedFuture(this);
+      return CompletableFuture.completedFuture(null);
     }
+  }
+
+  @Override
+  @JsonIgnore
+  public List<QueryLog> getLogs() {
+    return activityLog.getLogs();
+  }
+
+  @Override
+  public void clearLogs() {
+    activityLog.clear();
   }
 
   /**
@@ -211,7 +215,8 @@ class BoundNode extends Node {
    * @return future that completes when listening channel is unbound (if {@link RejectScope#UNBIND}
    *     was used) or immediately if {@link RejectScope#REJECT_STARTUP} was used or after > 0.
    */
-  CompletableFuture<Node> rejectNewConnections(int after, RejectScope scope) {
+  @Override
+  public CompletableFuture<Void> rejectConnections(int after, RejectScope scope) {
     RejectState state;
     if (after <= 0) {
       logger.debug("Rejecting new connections with scope {}", scope);
@@ -222,7 +227,7 @@ class BoundNode extends Node {
     }
     rejectState.set(state);
     if (after <= 0 && scope != RejectScope.REJECT_STARTUP) {
-      CompletableFuture<Node> unbindFuture = unbind();
+      CompletableFuture<Void> unbindFuture = unbind();
       // if scope is STOP, disconnect existing connections after unbinding.
       if (scope == RejectScope.STOP) {
         return unbindFuture.thenCompose(n -> disconnectConnections());
@@ -230,8 +235,24 @@ class BoundNode extends Node {
         return unbindFuture;
       }
     } else {
-      return CompletableFuture.completedFuture(this);
+      return CompletableFuture.completedFuture(null);
     }
+  }
+
+  /**
+   * Search stub stores for matches for the given frame and this node. If not found at node level,
+   * checks dc level, if not found at dc level, checks cluster level, if not found at cluster level,
+   * checks global store.
+   *
+   * @param frame frame to match on.
+   * @return matching stub if present.
+   */
+  private Optional<StubMapping> find(Frame frame) {
+    Optional<StubMapping> stub = stubStore.find(this, frame);
+    if (!stub.isPresent()) {
+      return Optional.ofNullable(getDataCenter()).flatMap(dc -> dc.find(BoundNode.this, frame));
+    }
+    return stub;
   }
 
   void handle(ChannelHandlerContext ctx, Frame frame) {
@@ -239,7 +260,7 @@ class BoundNode extends Node {
     // On receiving a message, first check the stub store to see if there is handling logic for it.
     // If there is, handle each action.
     // Otherwise delegate to default behavior.
-    Optional<StubMapping> stubOption = stubStore.find(this, frame);
+    Optional<StubMapping> stubOption = find(frame);
     List<Action> actions = null;
     if (stubOption.isPresent()) {
       StubMapping stub = stubOption.get();
@@ -248,10 +269,8 @@ class BoundNode extends Node {
 
     //store the frame in history
     if (activityLogging) {
-      getCluster()
-          .getActivityLog()
-          .addLog(
-              this, frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
+      activityLog.addLog(
+          this, frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
     }
 
     if (actions != null && !actions.isEmpty()) {
@@ -274,7 +293,7 @@ class BoundNode extends Node {
             // If reject after is now 0, indicate that it's time to stop listening (but allow this one)
             state.rejectAfter = -1;
             state.listeningForNewConnections = false;
-            deferFuture = rejectNewConnections(-1, state.scope);
+            deferFuture = rejectConnections(-1, state.scope);
           }
         }
         response = new Ready();
@@ -311,9 +330,8 @@ class BoundNode extends Node {
         Prepare prepare = (Prepare) frame.message;
         // TODO: Maybe attempt to identify bind parameters
         String query = prepare.cqlQuery;
-        Prime prime =
-            whenWithInferedParams(query).then(noRows()).forCluster(this.getCluster()).build();
-        this.stubStore.registerInternal(prime);
+        Prime prime = whenWithInferredParams(query).then(noRows()).build();
+        this.getBoundCluster().getStubStore().registerInternal(prime);
         response = prime.toPrepared();
       }
       if (response != null) {
@@ -385,35 +403,16 @@ class BoundNode extends Node {
         DisconnectAction cAction = (DisconnectAction) action;
         switch (cAction.getScope()) {
           case CONNECTION:
-            switch (cAction.getCloseType()) {
-              case DISCONNECT:
-                future = completable(ctx.disconnect());
-                break;
-              default:
-                Function<SocketChannel, ChannelFuture> shutdownMethod =
-                    cAction.getCloseType() == CloseType.SHUTDOWN_READ
-                        ? SocketChannel::shutdownInput
-                        : SocketChannel::shutdownOutput;
-
-                Channel c = ctx.channel();
-                if (c instanceof SocketChannel) {
-                  future = completable(shutdownMethod.apply(((SocketChannel) c)));
-                } else {
-                  logger.warn(
-                      "Got {} request for non-SocketChannel {}, disconnecting instead.",
-                      cAction.getCloseType(),
-                      c);
-                  future = completable(ctx.disconnect());
-                }
-                break;
-            }
+            future =
+                closeConnection(ctx.channel().remoteAddress(), cAction.getCloseType())
+                    .thenApply(v -> null);
             break;
           default:
             Stream<Node> nodes =
                 cAction.getScope() == NODE
                     ? Stream.of(BoundNode.this)
                     : cAction.getScope() == CLUSTER
-                        ? getCluster().getNodes().stream()
+                        ? getBoundCluster().getNodes().stream()
                         : getDataCenter().getNodes().stream();
             future = closeNodes(nodes, cAction.getCloseType());
             break;
@@ -438,18 +437,54 @@ class BoundNode extends Node {
     }
   }
 
-  public static CompletableFuture<Void> closeChannelGroups(
-      Stream<ChannelGroup> channels, CloseType closeType) {
-    List<CompletableFuture<Void>> futures = null;
+  private static CompletableFuture<Void> closeNodes(Stream<Node> nodes, CloseType closeType) {
+    return CompletableFuture.allOf(
+        nodes
+            .map(n -> ((BoundNode) n).closeConnections(closeType))
+            .collect(Collectors.toList())
+            .toArray(new CompletableFuture[] {}));
+  }
+
+  private ChannelFuture sendMessage(
+      ChannelHandlerContext ctx, Frame requestFrame, Message responseMessage) {
+    Frame responseFrame = wrapResponse(requestFrame, responseMessage);
+    logger.debug(
+        "Sending response for streamId: {} with msg {}",
+        responseFrame.streamId,
+        responseFrame.message);
+    return ctx.writeAndFlush(responseFrame);
+  }
+
+  @Override
+  public StubStore getStubStore() {
+    return stubStore;
+  }
+
+  @Override
+  public NodeConnectionReport getConnections() {
+    ClusterConnectionReport clusterConnectionReport = new ClusterConnectionReport(cluster.getId());
+    return clusterConnectionReport.addNode(
+        this,
+        clientChannelGroup.stream().map(Channel::remoteAddress).collect(Collectors.toList()),
+        getAddress());
+  }
+
+  @Override
+  public CompletableFuture<NodeConnectionReport> closeConnections(CloseType closeType) {
+    NodeConnectionReport report = getConnections();
+
+    return closeChannelGroup(this.clientChannelGroup, closeType).thenApply(v -> report);
+  }
+
+  private static CompletableFuture<Void> closeChannelGroup(
+      ChannelGroup channelGroup, CloseType closeType) {
     switch (closeType) {
       case DISCONNECT:
-        futures = channels.map(chs -> completable(chs.disconnect())).collect(Collectors.toList());
-        break;
-      case SHUTDOWN_READ:
-      case SHUTDOWN_WRITE:
-        futures =
-            channels
-                .flatMap(Collection::stream)
+        return completable(channelGroup.disconnect());
+      default:
+        return CompletableFuture.allOf(
+            channelGroup
+                .stream()
                 .map(
                     c -> {
                       CompletableFuture<Void> f;
@@ -468,31 +503,57 @@ class BoundNode extends Node {
                       }
                       return f;
                     })
-                .collect(Collectors.toList());
-        break;
+                .collect(Collectors.toList())
+                .toArray(new CompletableFuture[] {}));
     }
-    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}));
-  }
-
-  public static CompletableFuture<Void> closeNodes(Stream<Node> nodes, CloseType closeType) {
-    return closeChannelGroups(nodes.map(n -> ((BoundNode) n).getClientChannelGroup()), closeType);
-  }
-
-  private ChannelFuture sendMessage(
-      ChannelHandlerContext ctx, Frame requestFrame, Message responseMessage) {
-    Frame responseFrame = wrapResponse(requestFrame, responseMessage);
-    logger.debug(
-        "Sending response for streamId: {} with msg {}",
-        responseFrame.streamId,
-        responseFrame.message);
-    return ctx.writeAndFlush(responseFrame);
   }
 
   @Override
-  public void close() throws IOException {
-    if (this.getCluster() != null) {
-      this.getCluster().close();
+  public CompletableFuture<NodeConnectionReport> closeConnection(
+      SocketAddress connection, CloseType type) {
+    Optional<Channel> channel =
+        this.clientChannelGroup
+            .stream()
+            .filter(c -> c.remoteAddress().equals(connection))
+            .findFirst();
+
+    if (channel.isPresent()) {
+      ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+      channelGroup.add(channel.get());
+      ClusterConnectionReport clusterReport = new ClusterConnectionReport(getCluster().getId());
+      NodeConnectionReport report =
+          clusterReport.addNode(this, Collections.singletonList(connection), getAddress());
+
+      return closeChannelGroup(channelGroup, type).thenApply(f -> report);
+    } else {
+      CompletableFuture<NodeConnectionReport> failedFuture = new CompletableFuture<>();
+      failedFuture.completeExceptionally(new IllegalArgumentException("Not found"));
+      return failedFuture;
     }
+  }
+
+  @Override
+  public Stream<BoundNode> getBoundNodes() {
+    return Stream.of(this);
+  }
+
+  @Override
+  public BoundCluster getBoundCluster() {
+    return cluster;
+  }
+
+  /**
+   * @return The {@link DataCenter} this node belongs to, otherwise null if it does not have one.
+   */
+  @JsonIgnore
+  public BoundDataCenter getDataCenter() {
+    Optional<NodeProperties> parent = getParent();
+    return parent.map(dc -> (BoundDataCenter) dc).orElse(null);
+  }
+
+  @Override
+  public Server getServer() {
+    return server;
   }
 
   /**
@@ -502,7 +563,7 @@ class BoundNode extends Node {
    * @param query The query string to match against.
    * @return builder for this prime.
    */
-  private static PrimeBuilder whenWithInferedParams(String query) {
+  private static PrimeBuilder whenWithInferredParams(String query) {
     long posParamCount = query.chars().filter(num -> num == '?').count();
 
     // Do basic param population for positional types
@@ -516,7 +577,7 @@ class BoundNode extends Node {
     }
     // Do basic param population for named types
     else {
-      List<String> allMatches = new ArrayList<String>();
+      List<String> allMatches = new ArrayList<>();
       Pattern p = Pattern.compile("([\\w']+)\\s=\\s:[\\w]+");
       Matcher m = p.matcher(query);
       while (m.find()) {

@@ -3,7 +3,6 @@ package com.datastax.simulacron.http.server;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.simulacron.common.cluster.*;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Rule;
 import org.junit.Test;
@@ -13,13 +12,12 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Set;
 
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class EndpointIntegrationTest {
-  ObjectMapper om = ObjectMapperHolder.getMapper();
+  private final ObjectMapper om = ObjectMapperHolder.getMapper();
 
   @Rule public AdminServer server = new AdminServer(Cluster.builder().withNodes(3, 3).build());
 
@@ -40,17 +38,13 @@ public class EndpointIntegrationTest {
     list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
     list.add(new Scope(server.getCluster().getId(), dc.getId(), null));
     list.add(new Scope(server.getCluster().getId(), null, null));
-    list.add(new Scope(null, null, null));
 
     for (Scope scope : list) {
       HttpTestResponse responseToValidate = server.get("/connections/" + scope.toString());
       assertThat(responseToValidate.response.statusCode()).isEqualTo(200);
-      TypeReference<Set<ClusterConnectionReport>> setReportType =
-          new TypeReference<Set<ClusterConnectionReport>>() {};
-      Set<ClusterConnectionReport> responseReport =
-          om.readValue(responseToValidate.body, setReportType);
-      this.verifyClusterConnectionReport(
-          responseReport.iterator().next(), scope, dc.getId(), node.getId());
+      ClusterConnectionReport responseReport =
+          om.readValue(responseToValidate.body, ClusterConnectionReport.class);
+      this.verifyClusterConnectionReport(responseReport, scope, dc.getId(), node.getId());
     }
   }
 
@@ -66,7 +60,6 @@ public class EndpointIntegrationTest {
     list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
     list.add(new Scope(server.getCluster().getId(), dc.getId(), null));
     list.add(new Scope(server.getCluster().getId(), null, null));
-    list.add(new Scope(null, null, null));
 
     for (Scope scope : list) {
       com.datastax.driver.core.Cluster driverCluster =
@@ -75,12 +68,9 @@ public class EndpointIntegrationTest {
       HttpTestResponse responseDelete =
           server.delete("/connections/" + scope.toString() + "?type=disconnect");
 
-      TypeReference<Set<ClusterConnectionReport>> setReportType =
-          new TypeReference<Set<ClusterConnectionReport>>() {};
-      Set<ClusterConnectionReport> responseReport =
-          om.readValue(responseDelete.body, setReportType);
-      Collection<NodeConnectionReport> nodes =
-          getNodeConnectionReports(responseReport.iterator().next(), dc.getId());
+      ClusterConnectionReport responseReport =
+          om.readValue(responseDelete.body, ClusterConnectionReport.class);
+      Collection<NodeConnectionReport> nodes = getNodeConnectionReports(responseReport, dc.getId());
 
       assertThat(responseDelete.response.statusCode()).isEqualTo(200);
 
@@ -116,10 +106,8 @@ public class EndpointIntegrationTest {
     Scope scope = new Scope(server.getCluster().getId(), dc.getId(), node.getId());
     HttpTestResponse response = server.get("/connections/" + scope.toString());
 
-    TypeReference<Set<ClusterConnectionReport>> setReportType =
-        new TypeReference<Set<ClusterConnectionReport>>() {};
-    Set<ClusterConnectionReport> responseReport = om.readValue(response.body, setReportType);
-    ClusterConnectionReport clusterReport = responseReport.iterator().next();
+    ClusterConnectionReport clusterReport =
+        om.readValue(response.body, ClusterConnectionReport.class);
     NodeConnectionReport connectionNode =
         clusterReport
             .getDataCenters()
@@ -131,9 +119,14 @@ public class EndpointIntegrationTest {
             .get();
     InetSocketAddress connection = (InetSocketAddress) connectionNode.getConnections().get(0);
 
-    HttpTestResponse deleteReponse =
-        server.delete("/connection" + connection.getAddress() + "/" + connection.getPort());
-    assertThat(deleteReponse.response.statusCode()).isEqualTo(200);
+    HttpTestResponse deleteResponse =
+        server.delete(
+            "/connection/"
+                + server.getCluster().getId()
+                + connection.getAddress()
+                + "/"
+                + connection.getPort());
+    assertThat(deleteResponse.response.statusCode()).isEqualTo(200);
 
     HttpTestResponse responseAfter = server.get("/connections/" + scope.toString());
 
@@ -141,21 +134,23 @@ public class EndpointIntegrationTest {
     String sAtrimmed = sAString.substring(1, sAString.length());
     assertThat(responseAfter.body).isNotEqualTo(response.body);
     assertThat(responseAfter.body).doesNotContain(sAtrimmed);
-    assertThat(deleteReponse.body).contains(sAtrimmed);
+    assertThat(deleteResponse.body).contains(sAtrimmed);
     driverCluster.close();
   }
 
   @Test
   public void testDeleteParticularConnectionNotFound() throws Exception {
     // 888 would be root reserved port so unused.
-    HttpTestResponse deleteResponse = server.delete("/connection/127.0.0.1/888");
+    HttpTestResponse deleteResponse =
+        server.delete("/connection/" + server.getCluster().getId() + "/127.0.0.1/888");
     assertThat(deleteResponse.response.statusCode()).isEqualTo(404);
   }
 
   @Test
   public void testDeleteParticularConnectionBadPort() throws Exception {
     // Invalid port should return bad request.
-    HttpTestResponse deleteResponse = server.delete("/connection/127.0.0.1/8888888");
+    HttpTestResponse deleteResponse =
+        server.delete("/connection/" + server.getCluster().getId() + "/127.0.0.1/8888888");
     assertThat(deleteResponse.response.statusCode()).isEqualTo(400);
   }
 
@@ -172,7 +167,6 @@ public class EndpointIntegrationTest {
     list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
     list.add(new Scope(server.getCluster().getId(), dc.getId(), null));
     list.add(new Scope(server.getCluster().getId(), null, null));
-    list.add(new Scope(null, null, null));
 
     for (Scope scope : list) {
       HttpTestResponse delete =

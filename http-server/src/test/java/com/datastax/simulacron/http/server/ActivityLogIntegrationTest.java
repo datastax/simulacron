@@ -48,7 +48,7 @@ public class ActivityLogIntegrationTest {
             .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
             .build()) {
       Session session = driverCluster.connect();
-      server.getCluster().getActivityLog().clearAll();
+      server.getCluster().clearLogs();
       for (String executeQuery : queries) {
         session.execute(new SimpleStatement(executeQuery));
       }
@@ -106,7 +106,7 @@ public class ActivityLogIntegrationTest {
 
   @Test
   public void testShouldMarkPeerQueriesAsNonPrimed() throws Exception {
-    server.getCluster().getActivityLog().clearAll();
+    server.getCluster().clearLogs();
 
     try (com.datastax.driver.core.Cluster driverCluster =
         defaultBuilder(server.getCluster())

@@ -3,7 +3,6 @@ package com.datastax.simulacron.driver;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.NettyOptions;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.cluster.SimulacronCluster;
 import io.netty.channel.EventLoopGroup;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -54,8 +53,8 @@ public class SimulacronDriverSupport {
     return Node.builder();
   }
 
-  /** @return a default {@link SimulacronCluster} builder * */
-  public static SimulacronCluster.Builder cluster() {
-    return SimulacronCluster.cbuilder();
+  /** @return a default {@link Cluster} builder * */
+  public static com.datastax.simulacron.common.cluster.Cluster.Builder cluster() {
+    return com.datastax.simulacron.common.cluster.Cluster.builder();
   }
 }

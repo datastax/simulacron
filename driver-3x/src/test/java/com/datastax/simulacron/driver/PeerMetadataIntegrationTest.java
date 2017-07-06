@@ -5,9 +5,8 @@ import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.cluster.SimulacronCluster;
 import com.datastax.simulacron.server.Server;
-import com.datastax.simulacron.server.SimulacronServer;
+import com.datastax.simulacron.server.BoundCluster;
 import org.junit.Test;
 
 import java.net.SocketAddress;
@@ -21,13 +20,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class PeerMetadataIntegrationTest {
 
-  private final Server<SimulacronCluster> server = SimulacronServer.builder().build();
+  private final Server server = Server.builder().build();
 
   @Test
   public void testClusterDiscovery() throws Exception {
     // Validate that peers as appropriately discovered when connecting to a node.
-    SimulacronCluster cluster = cluster().withNodes(3, 3, 3).build();
-    SimulacronCluster boundCluster = server.register(cluster).get(5, TimeUnit.SECONDS);
+    BoundCluster boundCluster =
+        server.register(cluster().withNodes(3, 3, 3)).get(5, TimeUnit.SECONDS);
 
     DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
 

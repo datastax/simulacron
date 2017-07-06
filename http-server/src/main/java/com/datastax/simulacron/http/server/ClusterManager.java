@@ -2,6 +2,7 @@ package com.datastax.simulacron.http.server;
 
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
+import com.datastax.simulacron.server.BoundCluster;
 import com.datastax.simulacron.server.Server;
 import com.datastax.simulacron.server.ServerOptions;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,7 +13,6 @@ import io.vertx.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -80,7 +80,7 @@ public class ClusterManager implements HttpListener {
                   String jsonBody = totalBuffer.toString();
                   cluster = om.readValue(jsonBody, Cluster.class);
                 }
-                CompletableFuture<Cluster> future =
+                CompletableFuture<BoundCluster> future =
                     server.register(
                         cluster,
                         ServerOptions.builder()
@@ -127,7 +127,8 @@ public class ClusterManager implements HttpListener {
                 if (idOrNameToFetch == null) {
                   future = server.unregisterAll();
                 } else {
-                  Optional<Long> clusterId = server.getClusterIdFromIdOrName(idOrNameToFetch);
+                  Optional<Long> clusterId =
+                      HttpUtils.getClusterIdFromIdOrName(server, idOrNameToFetch);
                   if (clusterId.isPresent()) {
                     future = server.unregister(clusterId.get()).thenApply(__ -> 1);
                   } else {
@@ -180,14 +181,14 @@ public class ClusterManager implements HttpListener {
         .bodyHandler(
             totalBuffer -> {
               try {
-                Map<Long, Cluster> clusters = this.server.getClusterRegistry();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
                 String idOrNameToFetch = context.request().getParam("clusterIdOrName");
                 if (idOrNameToFetch != null) {
-                  Optional<Long> clusterId = server.getClusterIdFromIdOrName(idOrNameToFetch);
+                  Optional<Long> clusterId =
+                      HttpUtils.getClusterIdFromIdOrName(server, idOrNameToFetch);
                   if (clusterId.isPresent()) {
-                    Cluster cluster = clusters.get(clusterId.get());
+                    Cluster cluster = server.getCluster(clusterId.get());
                     String clusterStr =
                         om.writerWithDefaultPrettyPrinter().writeValueAsString(cluster);
                     response.append(clusterStr);
@@ -199,7 +200,7 @@ public class ClusterManager implements HttpListener {
                   }
                 } else {
                   String clusterStr =
-                      om.writerWithDefaultPrettyPrinter().writeValueAsString(clusters.values());
+                      om.writerWithDefaultPrettyPrinter().writeValueAsString(server.getClusters());
                   response.append(clusterStr);
                 }
                 context

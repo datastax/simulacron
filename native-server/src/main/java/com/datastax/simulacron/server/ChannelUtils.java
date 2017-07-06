@@ -15,7 +15,7 @@ public class ChannelUtils {
    * @param future future to convert.
    * @return converted future.
    */
-  static CompletableFuture<Void> completable(ChannelFuture future) {
+  public static CompletableFuture<Void> completable(ChannelFuture future) {
     CompletableFuture<Void> cf = new CompletableFuture<>();
     future.addListener(
         (ChannelFutureListener)
@@ -29,7 +29,7 @@ public class ChannelUtils {
     return cf;
   }
 
-  static CompletableFuture<Void> completable(ChannelGroupFuture future) {
+  public static CompletableFuture<Void> completable(ChannelGroupFuture future) {
     CompletableFuture<Void> cf = new CompletableFuture<>();
     future.addListener(
         (ChannelGroupFutureListener)

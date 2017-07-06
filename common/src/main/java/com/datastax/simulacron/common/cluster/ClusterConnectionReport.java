@@ -16,7 +16,7 @@ import java.util.TreeSet;
  * the results with JSON.
  */
 @JsonIgnoreProperties(value = {"name"})
-public class ClusterConnectionReport extends AbstractNodeProperties {
+public class ClusterConnectionReport extends ConnectionReport {
 
   @JsonManagedReference
   @JsonProperty("data_centers")
@@ -38,7 +38,8 @@ public class ClusterConnectionReport extends AbstractNodeProperties {
    * @param addressList client side of the connections this node has
    * @param serverAddress the address where this node is listening
    */
-  public void addNode(Node node, List<SocketAddress> addressList, SocketAddress serverAddress) {
+  public NodeConnectionReport addNode(
+      Node node, List<SocketAddress> addressList, SocketAddress serverAddress) {
     Long id = node.getParent().get().getId();
     Optional<DataCenterConnectionReport> optionalDatacenterReport =
         dataCenters.stream().filter(dc -> dc.getId().equals(id)).findFirst();
@@ -52,9 +53,10 @@ public class ClusterConnectionReport extends AbstractNodeProperties {
     NodeConnectionReport nodeReport =
         new NodeConnectionReport(node.getId(), addressList, serverAddress, datacenterReport);
     datacenterReport.addNode(nodeReport);
+    return nodeReport;
   }
 
-  private void addDataCenter(DataCenterConnectionReport dataCenter) {
+  void addDataCenter(DataCenterConnectionReport dataCenter) {
     assert dataCenter.getParent().orElse(null) == this;
     this.dataCenters.add(dataCenter);
   }
@@ -96,5 +98,10 @@ public class ClusterConnectionReport extends AbstractNodeProperties {
   @Override
   public int hashCode() {
     return dataCenters != null ? dataCenters.hashCode() : 0;
+  }
+
+  @Override
+  public ClusterConnectionReport getRootReport() {
+    return this;
   }
 }

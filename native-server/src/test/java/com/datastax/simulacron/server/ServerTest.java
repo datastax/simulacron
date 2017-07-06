@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import static com.datastax.simulacron.server.AddressResolver.localAddressResolver;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +33,7 @@ public class ServerTest {
 
   private final EventLoopGroup eventLoop = new DefaultEventLoopGroup();
 
-  private final Server<Cluster> localServer =
+  private final Server localServer =
       Server.builder(eventLoop, LocalServerChannel.class)
           .withAddressResolver(localAddressResolver)
           .build();
@@ -46,10 +47,10 @@ public class ServerTest {
   public void testRegisterNode() throws Exception {
     Node node = Node.builder().build();
 
-    try (Node boundNode = localServer.register(node).get(5, TimeUnit.SECONDS)) {
+    try (BoundNode boundNode = localServer.register(node).get(5, TimeUnit.SECONDS)) {
       assertThat(boundNode).isInstanceOf(BoundNode.class);
       // Should be wrapped and registered in a dummy cluster.
-      assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+      assertThat(localServer.getCluster(boundNode.getCluster().getId()))
           .isSameAs(boundNode.getCluster());
 
       try (MockClient client = new MockClient(eventLoop)) {
@@ -80,9 +81,9 @@ public class ServerTest {
   @Test
   public void testRegisterCluster() throws Exception {
     Cluster cluster = Cluster.builder().withNodes(5, 5).build();
-    try (Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS)) {
+    try (BoundCluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS)) {
       // Cluster should be registered.
-      assertThat(localServer.getClusterRegistry().get(boundCluster.getId())).isSameAs(boundCluster);
+      assertThat(localServer.getCluster(boundCluster.getId())).isSameAs(boundCluster);
 
       // Should be 2 DCs.
       assertThat(boundCluster.getDataCenters()).hasSize(2);
@@ -121,19 +122,22 @@ public class ServerTest {
     Node node0 = dc.addNode().withAddress(address).build();
     Node node1 = dc.addNode().withAddress(address).build();
 
+    BoundCluster boundCluster = null;
     try {
-      localServer.register(cluster).get(5, TimeUnit.SECONDS);
+      boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
       fail();
     } catch (Exception e) {
       assertThat(e.getCause()).isInstanceOf(BindNodeException.class);
       BindNodeException bne = (BindNodeException) e.getCause();
       assertThat(bne.getAddress()).isSameAs(address);
       assertThat(bne.getNode()).isIn(node0, node1);
-      assertThat(localServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
+      if (boundCluster != null) {
+        assertThat(localServer.getCluster(boundCluster.getId())).isNull();
+      }
     }
 
     // Cluster should not have been registered.
-    assertThat(localServer.getClusterRegistry()).isEmpty();
+    assertThat(localServer.getClusters()).isEmpty();
   }
 
   /** A custom handler that delays binding of a socket by 1 second for the given address. */
@@ -181,8 +185,8 @@ public class ServerTest {
             .childHandler(new Server.Initializer());
 
     // Define server with 500ms timeout, which should cause binding of slow address to timeout and fail register.
-    Server<Cluster> flakyServer =
-        new Server.Builder<>(serverBootstrap, Cluster::builder)
+    Server flakyServer =
+        new Server.Builder(serverBootstrap)
             .withAddressResolver(localAddressResolver)
             .withBindTimeout(500, TimeUnit.MILLISECONDS)
             .build();
@@ -206,16 +210,16 @@ public class ServerTest {
   @Test
   public void testUnregisterCluster() throws Exception {
     Cluster cluster = Cluster.builder().withNodes(2, 2).build();
-    try (Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS)) {
+    try (BoundCluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS)) {
       // Cluster should be registered.
-      assertThat(localServer.getClusterRegistry().get(boundCluster.getId())).isSameAs(boundCluster);
+      assertThat(localServer.getCluster(boundCluster.getId())).isSameAs(boundCluster);
 
       // Should be 4 nodes total.
-      List<Node> nodes = boundCluster.getNodes();
+      List<BoundNode> nodes = boundCluster.getBoundNodes().collect(Collectors.toList());
       assertThat(nodes).hasSize(4);
-      for (Node node : nodes) {
+      for (BoundNode node : nodes) {
         // Each node's channel should be open.
-        assertThat(((BoundNode) node).channel.get().isOpen()).isTrue();
+        assertThat(node.channel.get().isOpen()).isTrue();
       }
 
       try (MockClient client = new MockClient(eventLoop).connect(nodes.get(0).getAddress())) {
@@ -232,12 +236,12 @@ public class ServerTest {
             .isSameAs(boundCluster);
 
         // Cluster should be removed from registry.
-        assertThat(localServer.getClusterRegistry()).doesNotContainKey(boundCluster.getId());
+        assertThat(localServer.getCluster(boundCluster.getId())).isNull();
 
         // All node's channels should be closed.
-        for (Node node : nodes) {
+        for (BoundNode node : nodes) {
           // Each node's channel should be open.
-          assertThat(((BoundNode) node).channel.get().isOpen()).isFalse();
+          assertThat((node).channel.get().isOpen()).isFalse();
         }
 
         // Channel should be closed.  Send a write so client probes connection status (otherwise it may not get close
@@ -274,7 +278,7 @@ public class ServerTest {
       fail();
     } catch (ExecutionException ex) {
       assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class);
-      assertThat(localServer.getClusterRegistry()).doesNotContainKey(cluster.getId());
+      assertThat(localServer.getCluster(cluster.getId())).isNull();
     }
   }
 
@@ -292,87 +296,83 @@ public class ServerTest {
 
   @Test
   public void testShouldCloseNodeConnections() throws Exception {
-    try (Node boundNode = localServer.register(Node.builder()).get(5, TimeUnit.SECONDS);
+    try (BoundNode node = localServer.register(Node.builder()).get(5, TimeUnit.SECONDS);
         MockClient client = new MockClient(eventLoop)) {
-      client.connect(boundNode.getAddress());
+      client.connect(node.getAddress());
       client.write(new Startup());
 
       // Retrieve active connection
-      NodeConnectionReport report = localServer.getConnections(boundNode);
+      NodeConnectionReport report = node.getConnections();
       assertThat(report.getConnections()).hasSize(1);
 
       // Close connection
-      report =
-          localServer.closeConnections(boundNode, CloseType.DISCONNECT).get(5, TimeUnit.SECONDS);
+      report = node.closeConnections(CloseType.DISCONNECT).get(5, TimeUnit.SECONDS);
       assertThat(report.getActiveConnections()).isEqualTo(1);
 
-      report = localServer.getConnections(boundNode);
+      report = node.getConnections();
       assertThat(report.getConnections()).hasSize(0);
     }
   }
 
   @Test
   public void testShouldCloseClusterConnections() throws Exception {
-    try (Cluster cluster =
+    try (BoundCluster cluster =
             localServer.register(Cluster.builder().withNodes(3)).get(5, TimeUnit.SECONDS);
         MockClient client = new MockClient(eventLoop)) {
       client.connect(cluster.node(0, 1).getAddress());
       client.write(new Startup());
 
       // Retrieve active connection
-      ClusterConnectionReport report = localServer.getConnections(cluster);
+      ClusterConnectionReport report = cluster.getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(1);
 
       // Close connection
-      report = localServer.closeConnections(cluster, CloseType.DISCONNECT).get(5, TimeUnit.SECONDS);
+      report = cluster.closeConnections(CloseType.DISCONNECT).get(5, TimeUnit.SECONDS);
       assertThat(report.getActiveConnections()).isEqualTo(1);
 
-      report = localServer.getConnections(cluster);
+      report = cluster.getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(0);
     }
   }
 
   @Test
   public void testShouldCloseDataCenterConnections() throws Exception {
-    try (Cluster cluster =
+    try (BoundCluster cluster =
             localServer.register(Cluster.builder().withNodes(3, 1)).get(5, TimeUnit.SECONDS);
         MockClient client = new MockClient(eventLoop)) {
       client.connect(cluster.node(1, 0).getAddress());
       client.write(new Startup());
 
       // Retrieve active connection - dc1 should have 1
-      DataCenterConnectionReport report = localServer.getConnections(cluster.dc(1));
+      DataCenterConnectionReport report = cluster.dc(1).getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(1);
 
       // Retrieve active connections - dc0 should have 0
-      report = localServer.getConnections(cluster.dc(0));
+      report = cluster.dc(0).getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(0);
 
       // Close connection
-      report =
-          localServer
-              .closeConnections(cluster.dc(1), CloseType.DISCONNECT)
-              .get(5, TimeUnit.SECONDS);
+      report = cluster.dc(1).closeConnections(CloseType.DISCONNECT).get(5, TimeUnit.SECONDS);
       assertThat(report.getActiveConnections()).isEqualTo(1);
 
-      report = localServer.getConnections(cluster.dc(1));
+      report = cluster.dc(1).getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(0);
     }
   }
 
   @Test
   public void testStopAndStart() throws Exception {
-    try (Node boundNode = localServer.register(Node.builder()).get(5, TimeUnit.SECONDS);
+    try (BoundNode boundNode = localServer.register(Node.builder()).get(5, TimeUnit.SECONDS);
         MockClient client = new MockClient(eventLoop)) {
       client.connect(boundNode.getAddress());
       client.write(new Startup());
 
-      NodeConnectionReport report = localServer.getConnections(boundNode);
+      NodeConnectionReport report = boundNode.getConnections();
       assertThat(report.getConnections()).hasSize(1);
 
       // stop the node, connection should close.
-      localServer.stop(boundNode).get(5, TimeUnit.SECONDS);
-      report = localServer.getConnections(boundNode);
+      boundNode.stop().get(5, TimeUnit.SECONDS);
+      report = boundNode.getConnections();
       assertThat(report.getConnections()).hasSize(0);
 
       // attempt to connect should fail
@@ -384,12 +384,12 @@ public class ServerTest {
       }
 
       // start the node
-      localServer.start(boundNode).get(5, TimeUnit.SECONDS);
+      boundNode.start().get(5, TimeUnit.SECONDS);
 
       // attempt to connect should succeed
       client.connect(boundNode.getAddress());
 
-      report = localServer.getConnections(boundNode);
+      report = boundNode.getConnections();
       assertThat(report.getConnections()).hasSize(1);
     }
   }
@@ -397,9 +397,9 @@ public class ServerTest {
   @Test
   public void testShouldStopAcceptingStartupAndAcceptAgain() throws Exception {
     Node node = Node.builder().build();
-    try (BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS)) {
+    try (BoundNode boundNode = localServer.register(node).get(5, TimeUnit.SECONDS)) {
       // Should be wrapped and registered in a dummy cluster.
-      assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+      assertThat(localServer.getCluster(boundNode.getCluster().getId()))
           .isSameAs(boundNode.getCluster());
 
       try (MockClient client = new MockClient(eventLoop)) {
@@ -409,7 +409,7 @@ public class ServerTest {
         Frame response = client.next();
         assertThat(response.message).isInstanceOf(Ready.class);
 
-        boundNode.rejectNewConnections(-1, RejectScope.REJECT_STARTUP).get(5, TimeUnit.SECONDS);
+        boundNode.rejectConnections(-1, RejectScope.REJECT_STARTUP).get(5, TimeUnit.SECONDS);
 
         // client should remain connected.
         assertThat(client.channel.isOpen()).isTrue();
@@ -424,7 +424,7 @@ public class ServerTest {
         }
 
         // Start accepting new connections again.
-        boundNode.acceptNewConnections().get(5, TimeUnit.SECONDS);
+        boundNode.acceptConnections().get(5, TimeUnit.SECONDS);
 
         // New client should open connection and receive 'Ready' to 'Startup' request.
         try (MockClient client3 = new MockClient(eventLoop)) {
@@ -441,10 +441,10 @@ public class ServerTest {
   @Test
   public void testShouldStopAcceptingConnectionsAndAcceptAgain() throws Exception {
     Node node = Node.builder().build();
-    try (BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS)) {
+    try (BoundNode boundNode = localServer.register(node).get(5, TimeUnit.SECONDS)) {
 
       // Should be wrapped and registered in a dummy cluster.
-      assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+      assertThat(localServer.getCluster(boundNode.getCluster().getId()))
           .isSameAs(boundNode.getCluster());
 
       try (MockClient client = new MockClient(eventLoop)) {
@@ -454,7 +454,7 @@ public class ServerTest {
         Frame response = client.next();
         assertThat(response.message).isInstanceOf(Ready.class);
 
-        boundNode.rejectNewConnections(-1, RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
+        boundNode.rejectConnections(-1, RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
 
         // client should remain connected.
         assertThat(client.channel.isOpen()).isTrue();
@@ -469,7 +469,7 @@ public class ServerTest {
         }
 
         // Start accepting new connections again.
-        boundNode.acceptNewConnections().get(5, TimeUnit.SECONDS);
+        boundNode.acceptConnections().get(5, TimeUnit.SECONDS);
 
         // New client should open connection and receive 'Ready' to 'Startup' request.
         try (MockClient client3 = new MockClient(eventLoop)) {
@@ -486,9 +486,9 @@ public class ServerTest {
   @Test
   public void testShouldCloseExistingConnectionsAndAcceptAgain() throws Exception {
     Node node = Node.builder().build();
-    try (BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS)) {
+    try (BoundNode boundNode = localServer.register(node).get(5, TimeUnit.SECONDS)) {
       // Should be wrapped and registered in a dummy cluster.
-      assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+      assertThat(localServer.getCluster(boundNode.getCluster().getId()))
           .isSameAs(boundNode.getCluster());
 
       try (MockClient client = new MockClient(eventLoop)) {
@@ -498,7 +498,7 @@ public class ServerTest {
         Frame response = client.next();
         assertThat(response.message).isInstanceOf(Ready.class);
 
-        boundNode.rejectNewConnections(-1, RejectScope.STOP).get(5, TimeUnit.SECONDS);
+        boundNode.rejectConnections(-1, RejectScope.STOP).get(5, TimeUnit.SECONDS);
 
         // client should not remain connected.
         assertThat(client.channel.isOpen()).isFalse();
@@ -513,7 +513,7 @@ public class ServerTest {
         }
 
         // Start accepting new connections again.
-        boundNode.acceptNewConnections().get(5, TimeUnit.SECONDS);
+        boundNode.acceptConnections().get(5, TimeUnit.SECONDS);
 
         // New client should open connection and receive 'Ready' to 'Startup' request.
         try (MockClient client3 = new MockClient(eventLoop)) {
@@ -530,9 +530,9 @@ public class ServerTest {
   @Test
   public void testShouldStopAcceptingConnectionsAfter5() throws Exception {
     Node node = Node.builder().build();
-    try (BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS)) {
+    try (BoundNode boundNode = localServer.register(node).get(5, TimeUnit.SECONDS)) {
       // Should be wrapped and registered in a dummy cluster.
-      assertThat(localServer.getClusterRegistry().get(boundNode.getCluster().getId()))
+      assertThat(localServer.getCluster(boundNode.getCluster().getId()))
           .isSameAs(boundNode.getCluster());
 
       try (MockClient client = new MockClient(eventLoop)) {
@@ -542,7 +542,7 @@ public class ServerTest {
         Frame response = client.next();
         assertThat(response.message).isInstanceOf(Ready.class);
 
-        boundNode.rejectNewConnections(5, RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
+        boundNode.rejectConnections(5, RejectScope.UNBIND).get(5, TimeUnit.SECONDS);
 
         // client should remain connected.
         assertThat(client.channel.isOpen()).isTrue();
@@ -574,7 +574,7 @@ public class ServerTest {
   public void testShouldReturnProtocolErrorWhenUsingUnsupportedProtocolVersion() throws Exception {
     // If connecting with a newer protocol version than simulacron supports, a protocol error should be sent back.
     Node node = Node.builder().build();
-    try (BoundNode boundNode = (BoundNode) localServer.register(node).get(5, TimeUnit.SECONDS)) {
+    try (BoundNode boundNode = localServer.register(node).get(5, TimeUnit.SECONDS)) {
 
       // Create encoders/decoders for protocol v6.
       FrameCodec.CodecGroup v6Codecs =
@@ -645,7 +645,7 @@ public class ServerTest {
   @Test
   public void testClusterActiveConnections() throws Exception {
     Cluster cluster = Cluster.builder().withNodes(5).build();
-    try (Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS)) {
+    try (BoundCluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS)) {
       List<Node> nodes = boundCluster.getNodes();
 
       // Create clients and ensure active connections on each node, data center, and cluster
@@ -690,7 +690,7 @@ public class ServerTest {
   @Test
   public void testClusterActiveConnectionsMultipleDataCenters() throws Exception {
     Cluster cluster = Cluster.builder().withNodes(1, 3, 5).build();
-    try (Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS)) {
+    try (BoundCluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS)) {
       List<Node> nodes = boundCluster.getNodes();
 
       // Create clients and ensure active connections on each node, data center, and cluster
@@ -757,7 +757,7 @@ public class ServerTest {
     SocketAddress address;
     // Validate that when a cluster is created in try-with-resources that when leaving try block
     // that the cluster is unregistered from the server.
-    try (Cluster cluster =
+    try (BoundCluster cluster =
         localServer.register(Cluster.builder().withNodes(3)).get(5, TimeUnit.SECONDS)) {
       clusterId = cluster.getId();
       address = cluster.node(0, 1).getAddress();
@@ -767,7 +767,7 @@ public class ServerTest {
     }
 
     // ensure cluster id was set.
-    assertThat(localServer.getClusterRegistry()).doesNotContainKey(clusterId);
+    assertThat(localServer.getCluster(clusterId)).isNull();
     try (MockClient client = new MockClient(eventLoop)) {
       try {
         client.connect(address);
@@ -784,7 +784,7 @@ public class ServerTest {
     SocketAddress address;
     // Validate that when a node is created in try-with-resources that when leaving try block
     // that the associated cluster is unregistered from the server.
-    try (Node node = localServer.register(Node.builder()).get(5, TimeUnit.SECONDS)) {
+    try (BoundNode node = localServer.register(Node.builder()).get(5, TimeUnit.SECONDS)) {
       clusterId = node.getCluster().getId();
       address = node.getAddress();
       try (MockClient client = new MockClient(eventLoop)) {
@@ -792,8 +792,8 @@ public class ServerTest {
       }
     }
 
-    // ensure cluster id was set.
-    assertThat(localServer.getClusterRegistry()).doesNotContainKey(clusterId);
+    // ensure cluster id was unregistered.
+    assertThat(localServer.getCluster(clusterId)).isNull();
     try (MockClient client = new MockClient(eventLoop)) {
       try {
         client.connect(address);

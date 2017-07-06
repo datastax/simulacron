@@ -27,7 +27,7 @@ import static com.datastax.simulacron.common.codec.CodecUtils.*;
 public class PeerMetadataHandler extends StubMapping implements InternalStubMapping {
 
   private static final List<String> queries = new ArrayList<>();
-  private static final List<Pattern> queryPatterns = new ArrayList();
+  private static final List<Pattern> queryPatterns = new ArrayList<>();
 
   static final UUID schemaVersion = java.util.UUID.randomUUID();
 
@@ -118,12 +118,8 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   }
 
   private Set<String> resolveTokens(Node node) {
-    String[] t = ((String) node.resolvePeerInfo("token", "0")).split(",");
-    Set<String> tokens = new HashSet<>(t.length);
-    for (int i = 0; i < t.length; i++) {
-      tokens.add(t[i]);
-    }
-    return tokens;
+    String[] t = node.resolvePeerInfo("token", "0").split(",");
+    return new LinkedHashSet<>(Arrays.asList(t));
   }
 
   private List<Action> handleSystemLocalQuery(Node node, CqlMapper mapper) {

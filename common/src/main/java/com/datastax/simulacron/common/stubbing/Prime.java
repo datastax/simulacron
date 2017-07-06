@@ -8,7 +8,6 @@ import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.cluster.RequestPrime;
-import com.datastax.simulacron.common.cluster.Scope;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.SuccessResult;
@@ -23,8 +22,7 @@ import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecBuilder;
 public class Prime extends StubMapping {
   private final RequestPrime primedRequest;
 
-  public Prime(RequestPrime primedQuery, Scope scope) {
-    this.setScope(scope);
+  public Prime(RequestPrime primedQuery) {
     this.primedRequest = primedQuery;
   }
 

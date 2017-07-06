@@ -14,67 +14,53 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * A wrapper around {@link Cluster} that is bound to a {@link Server}. If used as {@link
- * java.io.Closeable} will unbind itself form its bound server.
- */
-public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectionReport> {
+public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenterConnectionReport> {
 
   private final transient Server server;
 
+  private final transient BoundCluster cluster;
+
   private final transient StubStore stubStore;
 
-  BoundCluster(Cluster delegate, Long clusterId, Server server) {
+  BoundDataCenter(BoundCluster parent) {
+    super(
+        "dummy",
+        0L,
+        parent.getCassandraVersion(),
+        parent.getDSEVersion(),
+        parent.getPeerInfo(),
+        parent);
+    this.server = parent.getServer();
+    this.cluster = parent;
+    this.stubStore = new StubStore();
+  }
+
+  BoundDataCenter(DataCenter delegate, BoundCluster parent) {
     super(
         delegate.getName(),
-        clusterId,
+        delegate.getId(),
         delegate.getCassandraVersion(),
         delegate.getDSEVersion(),
-        delegate.getPeerInfo());
-    this.server = server;
+        delegate.getPeerInfo(),
+        parent);
+    this.server = parent.getServer();
+    this.cluster = parent;
     this.stubStore = new StubStore();
   }
 
   /**
-   * Convenience method to find the DataCenter with the given id.
+   * Convenience method to look up node by id.
    *
-   * @param id id of the data center.
-   * @return the data center if found or null.
+   * @param id The id of the node.
+   * @return The node if found or null.
    */
-  public BoundDataCenter dc(long id) {
-    return this.getDataCenters()
+  public BoundNode node(long id) {
+    return this.getNodes()
         .stream()
-        .filter(dc -> dc.getId() == id)
+        .filter(n -> n.getId() == id)
         .findFirst()
-        .map(dc -> (BoundDataCenter) dc)
+        .map(n -> (BoundNode) n)
         .orElse(null);
-  }
-
-  /**
-   * Convenience method to find the Node with the given DataCenter id and node id.
-   *
-   * @param dcId id of the data center.
-   * @param nodeId id of the node.
-   * @return the node if found or null
-   */
-  public BoundNode node(long dcId, long nodeId) {
-    BoundDataCenter dc = dc(dcId);
-    if (dc != null) {
-      return dc.node(nodeId);
-    } else {
-      return null;
-    }
-  }
-
-  /**
-   * Convenience method to find the Node in DataCenter 0 with the given id. This is a shortcut for
-   * <code>node(0, X)</code> as it is common for clusters to only have 1 dc.
-   *
-   * @param nodeId id of the node.
-   * @return the node if found in dc 0 or null
-   */
-  public BoundNode node(long nodeId) {
-    return node(0, nodeId);
   }
 
   @Override
@@ -83,8 +69,8 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
   }
 
   @Override
-  public ClusterConnectionReport getConnections() {
-    ClusterConnectionReport clusterConnectionReport = new ClusterConnectionReport(getId());
+  public DataCenterConnectionReport getConnections() {
+    ClusterConnectionReport clusterConnectionReport = new ClusterConnectionReport(cluster.getId());
     for (Node node : this.getNodes()) {
       BoundNode boundNode = (BoundNode) node;
       clusterConnectionReport.addNode(
@@ -96,12 +82,12 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
               .collect(Collectors.toList()),
           boundNode.getAddress());
     }
-    return clusterConnectionReport;
+    return clusterConnectionReport.getDataCenters().iterator().next();
   }
 
   @Override
-  public CompletableFuture<ClusterConnectionReport> closeConnections(CloseType closeType) {
-    ClusterConnectionReport report = getConnections();
+  public CompletableFuture<DataCenterConnectionReport> closeConnections(CloseType closeType) {
+    DataCenterConnectionReport report = getConnections();
     return CompletableFuture.allOf(
             this.getNodes()
                 .stream()
@@ -112,7 +98,7 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
   }
 
   @Override
-  public CompletableFuture<ClusterConnectionReport> closeConnection(
+  public CompletableFuture<DataCenterConnectionReport> closeConnection(
       SocketAddress connection, CloseType type) {
 
     for (Node node : this.getNodes()) {
@@ -122,12 +108,12 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
         if (connection.equals(address)) {
           return boundNode
               .closeConnection(address, type)
-              .thenApply(NodeConnectionReport::getRootReport);
+              .thenApply(n -> n.getRootReport().getDataCenters().iterator().next());
         }
       }
     }
 
-    CompletableFuture<ClusterConnectionReport> failedFuture = new CompletableFuture<>();
+    CompletableFuture<DataCenterConnectionReport> failedFuture = new CompletableFuture<>();
     failedFuture.completeExceptionally(new IllegalArgumentException("Not found"));
     return failedFuture;
   }
@@ -150,7 +136,7 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
 
   @Override
   public BoundCluster getBoundCluster() {
-    return this;
+    return cluster;
   }
 
   @Override
@@ -160,8 +146,8 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
 
   Optional<StubMapping> find(Node node, Frame frame) {
     Optional<StubMapping> stub = stubStore.find(node, frame);
-    if (!stub.isPresent() && server != null) {
-      stub = server.stubStore.find(node, frame);
+    if (!stub.isPresent()) {
+      stub = getBoundCluster().find(node, frame);
     }
     return stub;
   }

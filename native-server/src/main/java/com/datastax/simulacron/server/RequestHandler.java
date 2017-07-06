@@ -5,11 +5,11 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.MDC;
 
-class RequestHandler extends ChannelInboundHandlerAdapter {
+public class RequestHandler extends ChannelInboundHandlerAdapter {
 
   private BoundNode node;
 
-  RequestHandler(BoundNode node) {
+  public RequestHandler(BoundNode node) {
     this.node = node;
   }
 

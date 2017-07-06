@@ -1,21 +1,19 @@
 package com.datastax.simulacron.http.server;
 
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
+import com.datastax.simulacron.common.cluster.QueryLog;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
 
 public class ActivityLogManager implements HttpListener {
-  Logger logger = LoggerFactory.getLogger(ActivityLogManager.class);
   Server server;
 
   public ActivityLogManager(Server server) {
@@ -40,39 +38,36 @@ public class ActivityLogManager implements HttpListener {
    *
    * @param context RoutingContext Provided by vertx
    */
-  public void getQueryLog(RoutingContext context) {
+  private void getQueryLog(RoutingContext context) {
     context
         .request()
         .bodyHandler(
             totalBuffer -> {
               try {
-                Map<Long, Cluster> clusters = this.server.getClusterRegistry();
                 ObjectMapper om = ObjectMapperHolder.getMapper();
                 StringBuilder response = new StringBuilder();
                 String filterStr = context.request().getParam("filter");
 
-                Boolean filter = null;
-                if (filterStr != null) {
-                  if (filterStr.equalsIgnoreCase("primed")) {
-                    filter = true;
-                  } else if (filterStr.equalsIgnoreCase("nonprimed")) {
-                    filter = false;
-                  }
-                }
+                final Boolean filter =
+                    filterStr != null ? filterStr.equalsIgnoreCase("primed") : null;
 
                 Scope scope = HttpUtils.getScope(context, server);
                 if (scope == null) {
                   return;
                 }
 
-                QueryLogScope queryLogScope = new QueryLogScope(scope, filter);
-                if (scope.getClusterId() != null) {
-                  Cluster cluster = clusters.get(scope.getClusterId());
-                  List<QueryLog> logs = cluster.getActivityLog().getLogs(queryLogScope);
-                  String activityLogStr =
-                      om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
-                  response.append(activityLogStr);
+                HttpUtils.find(server, scope).getLogs();
+
+                List<QueryLog> logs = HttpUtils.find(server, scope).getLogs();
+                if (filter != null) {
+                  logs =
+                      logs.stream()
+                          .filter(l -> l.isPrimed() == filter)
+                          .collect(Collectors.toList());
                 }
+                String activityLogStr =
+                    om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
+                response.append(activityLogStr);
                 context
                     .request()
                     .response()
@@ -103,30 +98,24 @@ public class ActivityLogManager implements HttpListener {
    *
    * @param context RoutingContext Provided by vertx
    */
-  public void deleteQueryLog(RoutingContext context) {
+  private void deleteQueryLog(RoutingContext context) {
     context
         .request()
         .bodyHandler(
             totalBuffer -> {
               try {
-                Map<Long, Cluster> clusters = this.server.getClusterRegistry();
-                ObjectMapper om = ObjectMapperHolder.getMapper();
-                StringBuilder response = new StringBuilder();
                 Scope scope = HttpUtils.getScope(context, server);
                 if (scope == null) {
                   return;
                 }
-                QueryLogScope queryLogScope = new QueryLogScope(scope, null);
-                if (scope.getClusterId() != null) {
-                  Cluster cluster = clusters.get(scope.getClusterId());
-                  cluster.getActivityLog().clearLogs(queryLogScope);
-                }
+
+                HttpUtils.find(server, scope).clearLogs();
                 context
                     .request()
                     .response()
                     .putHeader("content-type", "application/json")
                     .setStatusCode(204)
-                    .end(response.toString());
+                    .end();
               } catch (Exception e) {
                 handleError(new ErrorMessage(e, 404), context);
               }
