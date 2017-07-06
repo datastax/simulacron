@@ -38,17 +38,26 @@ emphasis on testing with many simulated native protocol endpoints.
        for i in {0..255}; do sudo ifconfig lo0 alias 127.0.$sub.$i up; done
    done
    ```
-   
+
    Note that this is known to cause temporary increased CPU usage in OS X initially while mDNSResponder acclimates
    itself to the presence of added ip addresses.  This lasts several minutes.
-   
+
    Also note that on reboot these ip addresses need to be re-added.
 
 ## Getting Started with the Standalone Jar
 
 To use simulacron with its included HTTP server, one may use the standalone jar.
 
-To build and run simulacron follow these instructions:
+Pre-built versions of the standalone jar can be downloaded from the
+[releases page](https://github.com/riptano/simulacron/releases).
+
+The jar is executed in the following manner:
+
+```bash
+java -jar simulacron-standalone-VERSION.jar
+```
+
+If you'd like to build simulacron, follow these instructions:
 
 0. Set up your maven settings.xml to use artifactory ([see java-api doc](doc/java_api#getting-simulacron))
 1. `mvn package` - Compiles, Tests, and packages the project.  Produces standalone jar in `standalone/target/`
