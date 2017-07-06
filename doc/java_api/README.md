@@ -2,7 +2,7 @@
 
 This document describes how to use the Simulacron Java API to provision and interact with simulated clusters.
 
-For non-java development, it is recommended to use the [standalone jar](../../#getting-started-with-the-standalone-jar).
+For non-java development, it is recommended to use the [standalone jar](https://github.com/riptano/simulacron#getting-started-with-the-standalone-jar).
 
 ## Getting Simulacron
 
