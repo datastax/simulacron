@@ -32,7 +32,6 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
   @Override
   protected Frame decode(ChannelHandlerContext ctx, ByteBuf buffer) throws Exception {
     if (buffer.readableBytes() < HEADER_LENGTH) return null;
-
     ByteBuf contents = (ByteBuf) super.decode(ctx, buffer);
     if (contents == null) return null;
 
@@ -65,7 +64,10 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
       contents.skipBytes(9 + length);
       return null;
     }
-
-    return frameCodec.decode(contents);
+    try {
+      return frameCodec.decode(contents);
+    } finally {
+      buffer.release();
+    }
   }
 }
