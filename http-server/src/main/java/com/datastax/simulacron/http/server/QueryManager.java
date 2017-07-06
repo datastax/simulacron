@@ -107,7 +107,7 @@ public class QueryManager implements HttpListener {
 
               int cleared = 0;
               try {
-                HttpUtils.find(server, scope).getStubStore().clear(Prime.class);
+                cleared = HttpUtils.find(server, scope).getStubStore().clear();
               } catch (Exception e) {
                 handleQueryError(e, "clear primed queries", context);
               }

@@ -230,7 +230,7 @@ paths:
           type: string
           example: "0"
       responses:
-        '200':
+        '202':
           description: Primes deleted
   '/prime/{clusterId}/{dataCenterId}':
     post:
@@ -293,7 +293,7 @@ paths:
           type: string
           example: "0"
       responses:
-        '200':
+        '202':
           description: Primes deleted
   '/prime/{clusterId}/{dataCenterId}/{nodeId}':
     post:
@@ -319,6 +319,7 @@ paths:
           type: string
           example: "0"
         - name: nodeId
+          in: path
           description: Id or name of the node
           required: true
           type: string
@@ -361,12 +362,13 @@ paths:
           type: string
           example: "0"
         - name: nodeId
+          in: path
           description: Id or name of the node
           required: true
           type: string
           example: "0"
       responses:
-        '200':
+        '202':
           description: Primes deleted
   '/prime/{clusterId}#(no_result)':
     post:
