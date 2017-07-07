@@ -72,4 +72,38 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>de.jutzig</groupId>
+                        <artifactId>github-release-plugin</artifactId>
+                        <version>1.2.0</version>
+                        <configuration>
+                            <prerelease>true</prerelease>
+                            <draft>true</draft>
+                            <tag>${project.version}</tag>
+                            <fileSets>
+                                <fileSet>
+                                    <directory>${project.build.directory}/simulacron-standalone-${project.version}.jar
+                                    </directory>
+                                </fileSet>
+                            </fileSets>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>release-at-deploy</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>release</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
