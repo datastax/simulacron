@@ -54,7 +54,7 @@ Pre-built versions of the standalone jar can be downloaded from the
 The jar is executed in the following manner:
 
 ```bash
-java -jar simulacron-standalone-VERSION.jar
+java -jar simulacron-standalone-<VERSION>.jar
 ```
 
 If you'd like to build simulacron, follow these instructions:
