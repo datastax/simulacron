@@ -142,38 +142,6 @@ public final class Query extends Request {
     return true;
   }
 
-  /**
-   * * Convience method to centralize parameter encoding decoding and equality checking
-   *
-   * @param buffer The buffer of the incoming query parameter
-   * @param primedParam The corresponding primed parameter
-   * @param stringType The parameter type
-   * @param mapper Used for encoding decoding
-   * @return True if they match otherwise false
-   */
-  private boolean checkParamsEqual(
-      ByteBuffer buffer, Object primedParam, String stringType, CqlMapper mapper) {
-    if (primedParam.equals("*")) return true;
-    RawType type = CodecUtils.getTypeFromName(stringType);
-    Object nativeParamToCheck = mapper.codecFor(type).decode(buffer);
-    Object primedParamToCheck = mapper.codecFor(type).toNativeType(primedParam);
-    if (primedParamToCheck.equals(nativeParamToCheck)) {
-      return true;
-    }
-    return false;
-  }
-
-  private static List<ConsistencyLevel> createEnumFromConsistency(String[] consistencies) {
-    if (consistencies == null) {
-      return new LinkedList<ConsistencyLevel>();
-    }
-    List<ConsistencyLevel> consistencyEnum = new LinkedList<ConsistencyLevel>();
-    for (String consistency : consistencies) {
-      consistencyEnum.add(ConsistencyLevel.fromString(consistency));
-    }
-    return consistencyEnum;
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;

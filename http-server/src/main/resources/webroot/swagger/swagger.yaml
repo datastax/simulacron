@@ -1002,6 +1002,40 @@ paths:
             $ref: '#/definitions/PrimeOptions'
         '400':
           description: Unable to parse provided query
+
+  '/prime/{clusterId}#(Batch statement)':
+      post:
+        tags:
+          - prime
+        summary: Primes a batch statement with a successful response
+        operationId: primeBatchByCluster
+        consumes:
+          - application/json
+        produces:
+          - application/json
+        parameters:
+          - name: clusterId
+            in: path
+            description: Id or name of the cluster
+            required: true
+            type: string
+            example: "0"
+          - name: body
+            in: body
+            description: >
+              Contains a when section that defines the matching batch statement, and a then section that defines the result
+              metadata and accompanying rows.
+            required: true
+            schema:
+              $ref: '#/definitions/PrimeQuerySuccessBatch'
+        responses:
+          '201':
+            description: PrimedQuery
+            schema:
+              $ref: '#/definitions/PrimeQuerySuccessBatch'
+          '400':
+            description: Unable to parse provided query
+
   '/log/{clusterId}':
     get:
       tags:
@@ -1970,6 +2004,33 @@ definitions:
         request:
           type: string
           example: "options"
+  Batch:
+    type: object
+    required:
+      - query
+    properties:
+      request:
+        type: string
+        example: "batch"
+      queries:
+        type: array
+        items:
+          $ref: '#/definitions/Query'
+      consistency_level:
+        type: array
+        items:
+          $ref: '#/definitions/Consistency'
+    example:
+      request: "batch"
+      queries:
+        - query: "INSERT INTO my_table(column1, column2) VALUES(1, 2)"
+        - query: "INSERT INTO your_table(column1, column2) VALUES(?, ?)"
+          params:
+            column1: "value1"
+            column2: "2"
+          paramTypes:
+            column1: "ascii"
+            column2: "int"
   Then:
     type: object
     discriminator: result
@@ -2023,6 +2084,27 @@ definitions:
               key: "bigint"
               description: "ascii"
               dates: "map<ascii,date>"
+  SuccessResultBatch:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - rows
+          - column_types
+        properties:
+          rows:
+            type: array
+            items:
+              $ref: "#/definitions/Row"
+            example:
+              - applied: true
+          column_types:
+            type: object
+            description: "Each property is a mapping of column name to column type"
+            additionalProperties:
+              $ref: "#/definitions/DataType"
+            example:
+              applied: "boolean"
   AlreadyExistsResult:
     allOf:
       - $ref: '#/definitions/Then'
@@ -2350,6 +2432,16 @@ definitions:
         $ref: '#/definitions/Query'
       then:
         $ref: '#/definitions/SuccessResult'
+  PrimeQuerySuccessBatch:
+      type: object
+      required:
+        - when
+        - then
+      properties:
+        when:
+          $ref: '#/definitions/Batch'
+        then:
+          $ref: '#/definitions/SuccessResultBatch'
   PrimeQueryAlreadyExists:
     type: object
     required:
@@ -2552,7 +2644,6 @@ definitions:
     example:
       when:
         request: "options"
-
   QueryLog:
     type: object
     properties:
