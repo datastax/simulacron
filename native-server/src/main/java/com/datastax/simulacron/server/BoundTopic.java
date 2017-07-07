@@ -8,8 +8,6 @@ import com.datastax.simulacron.common.stubbing.Prime;
 import com.datastax.simulacron.common.stubbing.PrimeDsl;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -18,7 +16,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public interface BoundTopic<C extends ConnectionReport> extends Closeable, NodeProperties {
+public interface BoundTopic<C extends ConnectionReport> extends AutoCloseable, NodeProperties {
 
   StubStore getStubStore();
 
@@ -127,7 +125,7 @@ public interface BoundTopic<C extends ConnectionReport> extends Closeable, NodeP
   Server getServer();
 
   @Override
-  default void close() throws IOException {
+  default void close() {
     try {
       getServer().unregister(getBoundCluster()).join();
     } catch (CompletionException ce) {
