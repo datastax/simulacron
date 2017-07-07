@@ -84,11 +84,14 @@
                         <configuration>
                             <prerelease>true</prerelease>
                             <draft>true</draft>
+                            <repositoryId>riptano/simulacron</repositoryId>
                             <tag>${project.version}</tag>
                             <fileSets>
                                 <fileSet>
-                                    <directory>${project.build.directory}/simulacron-standalone-${project.version}.jar
-                                    </directory>
+                                    <directory>${project.build.directory}</directory>
+                                    <includes>
+                                        <include>simulacron-standalone-${project.version}.jar</include>
+                                    </includes>
                                 </fileSet>
                             </fileSets>
                         </configuration>
