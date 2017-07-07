@@ -43,7 +43,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
 
   private static final Pattern queryPeers = Pattern.compile("SELECT (.*) FROM system\\.peers");
   private static final Pattern queryLocal =
-      Pattern.compile("SELECT (.*) FROM system\\.local WHERE key='local'");
+      Pattern.compile("SELECT (.*) FROM system\\.local( WHERE key='local')*");
   private static final Pattern queryPeersWithAddr =
       Pattern.compile("SELECT \\* FROM system\\.peers WHERE peer='(.*)'");
 
@@ -64,7 +64,8 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
       String queryStr = query.query;
-      return queries.contains(queryStr) || queryPatternMatches(queryStr);
+      return queries.stream().anyMatch(q -> q.equalsIgnoreCase(queryStr))
+          || queryPatternMatches(queryStr);
     }
     return false;
   }
@@ -75,7 +76,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
       CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
       Query query = (Query) frame.message;
 
-      if (query.query.equals(queryClusterName)) {
+      if (query.query.equalsIgnoreCase(queryClusterName)) {
         return handleClusterNameQuery(node, mapper);
       } else {
         // if querying for particular peer, return information for only that peer.
