@@ -11,6 +11,8 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.local.LocalServerChannel;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
 import org.junit.After;
 import org.junit.Test;
 
@@ -34,7 +36,8 @@ public class ServerTest {
   private final EventLoopGroup eventLoop = new DefaultEventLoopGroup();
 
   private final Server localServer =
-      Server.builder(eventLoop, LocalServerChannel.class)
+      Server.builder()
+          .withEventLoopGroup(eventLoop, LocalServerChannel.class)
           .withAddressResolver(localAddressResolver)
           .build();
 
@@ -186,10 +189,16 @@ public class ServerTest {
 
     // Define server with 500ms timeout, which should cause binding of slow address to timeout and fail register.
     Server flakyServer =
-        new Server.Builder(serverBootstrap)
-            .withAddressResolver(localAddressResolver)
-            .withBindTimeout(500, TimeUnit.MILLISECONDS)
-            .build();
+        new Server(
+            localAddressResolver,
+            eventLoop,
+            true,
+            new HashedWheelTimer(),
+            false,
+            TimeUnit.NANOSECONDS.convert(500, TimeUnit.MILLISECONDS),
+            new StubStore(),
+            false,
+            serverBootstrap);
 
     // Create a 2 node cluster with 1 node having the slow address.
     Cluster cluster = Cluster.builder().build();
@@ -800,5 +809,188 @@ public class ServerTest {
         // expected
       }
     }
+  }
+
+  @Test
+  public void testTryWithResourcesShouldCloseAllResources() throws Exception {
+    EventLoopGroup eventLoop;
+    Timer timer;
+
+    try (Server server = Server.builder().build()) {
+      // Do nothing here, since this is a unit test, we don't want to create any inet sockets
+      // which is what Server does by default.
+      eventLoop = server.eventLoopGroup;
+      timer = server.timer;
+    }
+
+    // event loop should have been closed since a custom one was not provided.
+    assertThat(eventLoop.isShutdown()).isTrue();
+    // timer should have since a custom one was not provided.
+    try {
+      timer.newTimeout(
+          timeout -> {
+            // noop
+          },
+          1,
+          TimeUnit.SECONDS);
+      fail("Expected IllegalStateException");
+    } catch (IllegalStateException ise) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testTryWithResourcesShouldCloseAllClustersButNotEventLoopIfProvided()
+      throws Exception {
+    EventLoopGroup eventLoop = new DefaultEventLoopGroup();
+    BoundCluster cluster;
+    MockClient client;
+
+    try (Server server =
+        Server.builder()
+            .withAddressResolver(localAddressResolver)
+            .withEventLoopGroup(eventLoop, LocalServerChannel.class)
+            .build()) {
+
+      cluster = server.register(Cluster.builder().withNodes(5));
+      BoundNode node = cluster.node(0);
+      SocketAddress address = node.getAddress();
+      client = new MockClient(eventLoop);
+      client.connect(address);
+    }
+
+    assertThat(cluster.getActiveConnections()).isEqualTo(0);
+    assertThat(client.channel.isOpen()).isFalse();
+    // event loop should not have been closed.
+    assertThat(eventLoop.isShutdown()).isFalse();
+    // timer should have since a custom one was not provided.
+    try {
+      cluster
+          .getServer()
+          .timer
+          .newTimeout(
+              timeout -> {
+                // noop
+              },
+              1,
+              TimeUnit.SECONDS);
+      fail("Expected IllegalStateException");
+    } catch (IllegalStateException ise) {
+      // expected
+    }
+    eventLoop.shutdownGracefully(0, 0, TimeUnit.SECONDS);
+  }
+
+  @Test
+  public void testTryWithResourcesShouldCloseAllClustersButNotEventLoopAndTimerIfProvided()
+      throws Exception {
+    EventLoopGroup eventLoop = new DefaultEventLoopGroup();
+    Timer timer = new HashedWheelTimer();
+    BoundCluster cluster;
+    MockClient client;
+
+    try (Server server =
+        Server.builder()
+            .withAddressResolver(localAddressResolver)
+            .withTimer(timer)
+            .withEventLoopGroup(eventLoop, LocalServerChannel.class)
+            .build()) {
+
+      cluster = server.register(Cluster.builder().withNodes(5));
+      BoundNode node = cluster.node(0);
+      SocketAddress address = node.getAddress();
+      client = new MockClient(eventLoop);
+      client.connect(address);
+    }
+
+    assertThat(cluster.getActiveConnections()).isEqualTo(0);
+    assertThat(client.channel.isOpen()).isFalse();
+    // event loop should not have been closed.
+    assertThat(eventLoop.isShutdown()).isFalse();
+    // timer should not have since a custom one was not provided.
+    cluster
+        .getServer()
+        .timer
+        .newTimeout(
+            timeout -> {
+              // noop
+            },
+            1,
+            TimeUnit.SECONDS);
+
+    eventLoop.shutdownGracefully(0, 0, TimeUnit.SECONDS);
+    timer.stop();
+  }
+
+  @Test
+  public void testTryWithResourcesShouldCloseAllClustersButNotTimerIfProvided() throws Exception {
+    EventLoopGroup eventLoop;
+    Timer timer = new HashedWheelTimer();
+
+    try (Server server = Server.builder().withTimer(timer).build()) {
+      // Do nothing here, since this is a unit test, we don't want to create any inet sockets
+      // which is what Server does by default.
+      eventLoop = server.eventLoopGroup;
+    }
+
+    // event loop should have been closed since a custom one was not provided.
+    assertThat(eventLoop.isShutdown()).isTrue();
+    // timer should not have been closed since a custom one was provided.
+    timer.newTimeout(
+        timeout -> {
+          // noop
+        },
+        1,
+        TimeUnit.SECONDS);
+    timer.stop();
+  }
+
+  @Test
+  public void testShouldThrowIllegalStateExceptionWhenUsingClosedServer() throws Exception {
+    Server server =
+        Server.builder()
+            .withAddressResolver(localAddressResolver)
+            .withEventLoopGroup(eventLoop, LocalServerChannel.class)
+            .build();
+
+    server.close();
+
+    try {
+      server.register(Cluster.builder().withNodes(1));
+      fail("Expected IllegalStateException");
+    } catch (IllegalStateException ise) {
+      // expected
+    }
+
+    try {
+      server.unregister(Cluster.builder().withNodes(1).build());
+      fail("Expected IllegalStateException");
+    } catch (IllegalStateException ise) {
+      // expected
+    }
+
+    try {
+      server.register(Node.builder().build());
+      fail("Expected IllegalStateException");
+    } catch (IllegalStateException ise) {
+      // expected
+    }
+
+    try {
+      server.unregister(Node.builder().build());
+      fail("Expected IllegalStateException");
+    } catch (IllegalStateException ise) {
+      // expected
+    }
+
+    try {
+      server.unregisterAll();
+      fail("Expected IllegalStateException");
+    } catch (IllegalStateException ise) {
+      // expected
+    }
+
+    // closing should not throw exception if already closed.
+    server.close();
   }
 }

@@ -50,13 +50,16 @@ By default nodes provisioned by Server will use socket addresses starting with 1
 on.   To alter this behavior you may pass in a custom `AddressResolver` by using
 `Server.Builder.withAddressResolver(AddressResolver)`.
 
+`Server` is an [`AutoCloseable`][AutoCloseable] resource, thus can be used in a `try-with-resources` block or may be
+closed explicitly using `close()`.
+
 ## Provisioning Clusters and Nodes
 
 With a `Server` instance in hand, you can provision Cluster and Nodes using `Server.register`.
 
-`register` returns `BoundCluster` and `BoundNode` instances which each implement [`java.io.Closeable`][Closeable] and
-thus can be used in a `try-with-resources` block such that when the `try` block
-exits, the `Cluster` or `Node` is automatically unregistered with the `Server`.
+`register` returns `BoundCluster` and `BoundNode` instances which each implement
+[`java.io.AutoCloseable`][AutoCloseable] and thus can be used in a `try-with-resources` block such that when the `try`
+block` exits, the `Cluster` or `Node` is automatically unregistered with the `Server`.
 
 To register a single `Node`:
 
@@ -519,4 +522,4 @@ BoundCluster boundCluster = server.register(cluster().withNodes(5));
 CompletionStage<BoundCluster> future = server.registerAsync(cluster().withNodes(5));
 ```
 
-[Closeable]: https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
+[AutoCloseable]: https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html

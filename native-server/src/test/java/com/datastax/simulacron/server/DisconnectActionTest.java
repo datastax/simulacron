@@ -32,7 +32,8 @@ public class DisconnectActionTest {
   private final EventLoopGroup eventLoop = new DefaultEventLoop();
 
   private final Server localServer =
-      Server.builder(eventLoop, LocalServerChannel.class)
+      Server.builder()
+          .withEventLoopGroup(eventLoop, LocalServerChannel.class)
           .withAddressResolver(localAddressResolver)
           .build();
 

@@ -24,6 +24,7 @@ import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static com.datastax.simulacron.server.CompletableFutures.getUninterruptibly;
@@ -33,7 +34,7 @@ import static com.datastax.simulacron.server.CompletableFutures.getUninterruptib
  * registering and unregistering Clusters. When a Cluster is registered, all applicable nodes are
  * bound to their respective network interfaces and are ready to handle native protocol traffic.
  */
-public final class Server {
+public final class Server implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
 
@@ -61,7 +62,10 @@ public final class Server {
   final StubStore stubStore;
 
   /** The timer to use for scheduling actions. */
-  private final Timer timer;
+  final Timer timer;
+
+  /** Whether or not a custom timer was used. We don't want to close ones users pass in. */
+  private final boolean customTimer;
 
   /** Counter used to assign incrementing ids to clusters. */
   private final AtomicLong clusterCounter = new AtomicLong();
@@ -72,19 +76,69 @@ public final class Server {
   /** Whether or not activity logging is enabled. */
   private final boolean activityLogging;
 
-  private Server(
+  final EventLoopGroup eventLoopGroup;
+
+  /** Whether or not a custom event loop was used. We don't want to close ones users pass in. */
+  private final boolean customEventLoop;
+
+  private final AtomicReference<CompletionStage<Void>> closeFuture = new AtomicReference<>();
+
+  Server(
       AddressResolver addressResolver,
-      ServerBootstrap serverBootstrap,
+      EventLoopGroup eventLoopGroup,
+      boolean customEventLoop,
       Timer timer,
+      boolean customTimer,
       long bindTimeoutInNanos,
       StubStore stubStore,
-      boolean activityLogging) {
-    this.serverBootstrap = serverBootstrap;
+      boolean activityLogging,
+      ServerBootstrap serverBootstrap) {
+    // custom constructor onyl made to help facilitate testing with a custom bootstrap.
     this.addressResolver = addressResolver;
     this.timer = timer;
+    this.customTimer = customTimer;
+    this.eventLoopGroup = eventLoopGroup;
+    this.customEventLoop = customEventLoop;
+    this.serverBootstrap = serverBootstrap;
     this.bindTimeoutInNanos = bindTimeoutInNanos;
     this.stubStore = stubStore;
     this.activityLogging = activityLogging;
+  }
+
+  private Server(
+      AddressResolver addressResolver,
+      EventLoopGroup eventLoopGroup,
+      Class<? extends ServerChannel> channelClass,
+      boolean customEventLoop,
+      Timer timer,
+      boolean customTimer,
+      long bindTimeoutInNanos,
+      StubStore stubStore,
+      boolean activityLogging) {
+    this(
+        addressResolver,
+        eventLoopGroup,
+        customEventLoop,
+        timer,
+        customTimer,
+        bindTimeoutInNanos,
+        stubStore,
+        activityLogging,
+        new ServerBootstrap()
+            .group(eventLoopGroup)
+            .channel(channelClass)
+            .childHandler(new Initializer()));
+  }
+
+  /** @return Whether or not this has been closed. */
+  public boolean isClosed() {
+    return closeFuture.get() != null;
+  }
+
+  <T> CompletionStage<T> failByClose() {
+    CompletableFuture<T> future = new CompletableFuture<>();
+    future.completeExceptionally(new IllegalStateException("Server is closed"));
+    return future;
   }
 
   /**
@@ -140,6 +194,9 @@ public final class Server {
    */
   @SuppressWarnings("unchecked")
   public CompletionStage<BoundCluster> registerAsync(Cluster cluster, ServerOptions serverOptions) {
+    if (isClosed()) {
+      return failByClose();
+    }
     BoundCluster c = boundCluster(cluster);
 
     List<CompletableFuture<BoundNode>> bindFutures = new ArrayList<>();
@@ -243,6 +300,9 @@ public final class Server {
    *     registry, may not be the same object as the input.
    */
   public CompletionStage<BoundCluster> unregisterAsync(Node node) {
+    if (isClosed()) {
+      return failByClose();
+    }
     if (node.getCluster() == null) {
       CompletableFuture<BoundCluster> future = new CompletableFuture<>();
       future.completeExceptionally(new IllegalArgumentException("Node has no parent Cluster"));
@@ -284,6 +344,9 @@ public final class Server {
    *     registry, may not be the same object as the input.
    */
   public CompletionStage<BoundCluster> unregisterAsync(Long clusterId) {
+    if (isClosed()) {
+      return failByClose();
+    }
     CompletableFuture<BoundCluster> future = new CompletableFuture<>();
     if (clusterId == null) {
       future.completeExceptionally(new IllegalArgumentException("Null id provided"));
@@ -326,6 +389,9 @@ public final class Server {
    * @return future that is completed when all clusters are unregistered.
    */
   public CompletionStage<Integer> unregisterAllAsync() {
+    if (isClosed()) {
+      return failByClose();
+    }
     List<CompletableFuture<BoundCluster>> futures =
         clusters
             .keySet()
@@ -376,6 +442,9 @@ public final class Server {
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
   public CompletionStage<BoundNode> registerAsync(Node node, ServerOptions serverOptions) {
+    if (isClosed()) {
+      return failByClose();
+    }
     if (node.getDataCenter() != null) {
       CompletableFuture<BoundNode> future = new CompletableFuture<>();
       future.completeExceptionally(
@@ -494,64 +563,72 @@ public final class Server {
     return io.netty.channel.epoll.EpollServerSocketChannel.class;
   }
 
-  /**
-   * Convenience method that provides a {@link Builder} that uses NIO for networking traffic (or
-   * epoll if available), which should be the typical case.
-   *
-   * <p>Note that this creates an {@link EventLoopGroup} that has numberOfCores*2 threads and a
-   * naming format of 'simulacron-io-worker'. This is not directly asscessible or closable, if you
-   * need this capability use {@link #builder(EventLoopGroup, Class)}.
-   *
-   * @return Builder that is set up with {@link NioEventLoopGroup} and {@link
-   *     NioServerSocketChannel}.
-   */
+  /** @return a {@link Builder} for configuring and creating {@link Server} instances. */
   public static Builder builder() {
-    ThreadFactory f = new DefaultThreadFactory("simulacron-io-worker");
-    EventLoopGroup eventLoop;
-    Class<? extends ServerChannel> channelClass;
-    try {
-      // try to resolve Epoll class, if throws Exception, fall back on nio
-      Class.forName("io.netty.channel.epoll.Epoll");
-      // if epoll event loop could be established, use it, otherwise use nio.
-      Optional<EventLoopGroup> epollEventLoop = epollEventLoopGroup(f);
-      if (epollEventLoop.isPresent()) {
-        logger.debug("Detected epoll support, using EpollEventLoopGroup");
-        eventLoop = epollEventLoop.get();
-        channelClass = epollClass();
-      } else {
-        logger.debug("Could not load native transport (epoll), using NioEventLoopGroup");
-        eventLoop = new NioEventLoopGroup(0, f);
-        channelClass = NioServerSocketChannel.class;
-      }
-    } catch (ClassNotFoundException ce) {
-      logger.debug("netty-transport-native-epoll not on classpath, using NioEventLoopGroup");
-      eventLoop = new NioEventLoopGroup(0, f);
-      channelClass = NioServerSocketChannel.class;
-    }
-    return builder(eventLoop, channelClass);
+    return new Builder();
   }
 
   /**
-   * Constructs a {@link Builder} that uses the given {@link EventLoopGroup} and {@link
-   * ServerChannel} to construct a {@link ServerBootstrap} to be used by this {@link Server}.
+   * Closes Server and all of its resources. First unregisters all Clusters then closes event loop
+   * and timer unless they were provided as input into {@link Server.Builder}.
    *
-   * @param eventLoopGroup event loop group to use.
-   * @param channelClass channel class to use, should be compatible with the event loop.
-   * @return Builder that is set up with a {@link ServerBootstrap}.
+   * @return future that completes when Server is freed.
    */
-  public static Builder builder(
-      EventLoopGroup eventLoopGroup, Class<? extends ServerChannel> channelClass) {
-    ServerBootstrap serverBootstrap =
-        new ServerBootstrap()
-            .group(eventLoopGroup)
-            .channel(channelClass)
-            .childHandler(new Initializer());
-    return new Builder(serverBootstrap);
+  public CompletionStage<Void> closeAsync() {
+    if (isClosed()) {
+      return closeFuture.get();
+    } else {
+      return closeFuture.updateAndGet(
+          current -> {
+            if (current != null) {
+              return current;
+            } else {
+              return this.unregisterAllAsync()
+                  .thenCompose(
+                      i -> {
+                        // If timer was created for Server, stop it.
+                        if (!customTimer) {
+                          timer.stop();
+                        }
+                        // If event loop was created for Server, shut it down.
+                        if (!customEventLoop) {
+                          // Immediate shutdown should be appropriate since we unregister first so nothing should be
+                          // happening on event loop.
+                          Future<?> future =
+                              eventLoopGroup.shutdownGracefully(0, 1, TimeUnit.SECONDS);
+                          // adapt future to completable future by calling get on common pool.
+                          CompletableFuture<Void> f =
+                              CompletableFuture.supplyAsync(
+                                  () -> {
+                                    try {
+                                      future.get();
+                                      return null;
+                                    } catch (InterruptedException | ExecutionException e) {
+                                      throw new RuntimeException(e);
+                                    }
+                                  });
+                          return f;
+                        } else {
+                          CompletableFuture<Void> future = new CompletableFuture<>();
+                          future.complete(null);
+                          return future;
+                        }
+                      });
+            }
+          });
+    }
+  }
+
+  /**
+   * @inheritDoc
+   *     <p>Also see {@link #closeAsync()}
+   */
+  @Override
+  public void close() {
+    getUninterruptibly(closeAsync());
   }
 
   public static class Builder {
-    private ServerBootstrap serverBootstrap;
-
     private AddressResolver addressResolver = AddressResolver.defaultResolver;
 
     private static long DEFAULT_BIND_TIMEOUT_IN_NANOS =
@@ -565,9 +642,11 @@ public final class Server {
 
     private boolean activityLogging = true;
 
-    Builder(ServerBootstrap initialBootstrap) {
-      this.serverBootstrap = initialBootstrap;
-    }
+    private EventLoopGroup eventLoopGroup;
+
+    private Class<? extends ServerChannel> channelClass;
+
+    Builder() {}
 
     /**
      * Sets the bind timeout which is the amount of time allowed while binding listening interfaces
@@ -591,6 +670,24 @@ public final class Server {
      */
     public Builder withAddressResolver(AddressResolver addressResolver) {
       this.addressResolver = addressResolver;
+      return this;
+    }
+
+    /**
+     * Sets a pre-created event loop group to use for the created servers {@link ServerBootstrap}.
+     * This will not be closed when the server is closed.
+     *
+     * <p>If not specified, an Epoll or NIO event loop will be created with Server that is closed
+     * when Server closes. Threads created by this event loop will be named 'simulacron-worker-X-Y'.
+     *
+     * @param eventLoopGroup event loop to use for Server
+     * @param clazz The expected channel class to be created with this event loop.
+     * @return This builder.
+     */
+    public Builder withEventLoopGroup(
+        EventLoopGroup eventLoopGroup, Class<? extends ServerChannel> clazz) {
+      this.eventLoopGroup = eventLoopGroup;
+      this.channelClass = clazz;
       return this;
     }
 
@@ -658,12 +755,46 @@ public final class Server {
         stubStore.register(
             new EmptyReturnMetadataHandler("SELECT * FROM system.schema_aggregates"));
       }
+      Timer timer = this.timer;
       if (timer == null) {
         ThreadFactory f = new DefaultThreadFactory("simulacron-timer");
-        this.timer = new HashedWheelTimer(f);
+        timer = new HashedWheelTimer(f);
+      }
+
+      EventLoopGroup eventLoopGroup = this.eventLoopGroup;
+      Class<? extends ServerChannel> channelClass = this.channelClass;
+      if (eventLoopGroup == null) {
+        ThreadFactory f = new DefaultThreadFactory("simulacron-io-worker");
+        try {
+          // try to resolve Epoll class, if throws Exception, fall back on nio
+          Class.forName("io.netty.channel.epoll.Epoll");
+          // if epoll event loop could be established, use it, otherwise use nio.
+          Optional<EventLoopGroup> epollEventLoop = epollEventLoopGroup(f);
+          if (epollEventLoop.isPresent()) {
+            logger.debug("Detected epoll support, using EpollEventLoopGroup");
+            eventLoopGroup = epollEventLoop.get();
+            channelClass = epollClass();
+          } else {
+            logger.debug("Could not load native transport (epoll), using NioEventLoopGroup");
+            eventLoopGroup = new NioEventLoopGroup(0, f);
+            channelClass = NioServerSocketChannel.class;
+          }
+        } catch (ClassNotFoundException ce) {
+          logger.debug("netty-transport-native-epoll not on classpath, using NioEventLoopGroup");
+          eventLoopGroup = new NioEventLoopGroup(0, f);
+          channelClass = NioServerSocketChannel.class;
+        }
       }
       return new Server(
-          addressResolver, serverBootstrap, timer, bindTimeoutInNanos, stubStore, activityLogging);
+          addressResolver,
+          eventLoopGroup,
+          channelClass,
+          this.eventLoopGroup != null,
+          timer,
+          this.timer != null,
+          bindTimeoutInNanos,
+          stubStore,
+          activityLogging);
     }
   }
 
