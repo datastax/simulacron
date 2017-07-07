@@ -26,6 +26,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static com.datastax.simulacron.server.CompletableFutures.getUninterruptibly;
+
 /**
  * The main point of entry for registering and binding Clusters to the network. Provides methods for
  * registering and unregistering Clusters. When a Cluster is registered, all applicable nodes are
@@ -85,16 +87,6 @@ public final class Server {
     this.activityLogging = activityLogging;
   }
 
-  /** see {@link #register(Cluster, ServerOptions)} */
-  public CompletableFuture<BoundCluster> register(Cluster.Builder builder) {
-    return register(builder.build(), ServerOptions.DEFAULT);
-  }
-
-  /** see {@link #register(Cluster, ServerOptions)} */
-  public CompletableFuture<BoundCluster> register(Cluster cluster) {
-    return register(cluster, ServerOptions.DEFAULT);
-  }
-
   /**
    * Wraps a Cluster in a {@link BoundCluster} which is a {@link java.io.Closeable} version of
    * Cluster
@@ -105,6 +97,31 @@ public final class Server {
   private BoundCluster boundCluster(Cluster cluster) {
     long clusterId = cluster.getId() == null ? clusterCounter.getAndIncrement() : cluster.getId();
     return new BoundCluster(cluster, clusterId, this);
+  }
+
+  /** synchronous version of {@link #registerAsync(Cluster.Builder)} */
+  public BoundCluster register(Cluster.Builder builder) {
+    return getUninterruptibly(registerAsync(builder));
+  }
+
+  /** see {@link #registerAsync(Cluster, ServerOptions)} */
+  public CompletionStage<BoundCluster> registerAsync(Cluster.Builder builder) {
+    return registerAsync(builder.build(), ServerOptions.DEFAULT);
+  }
+
+  /** synchronous version of {@link #registerAsync(Cluster)} */
+  public BoundCluster register(Cluster cluster) {
+    return getUninterruptibly(registerAsync(cluster));
+  }
+
+  /** see {@link #registerAsync(Cluster, ServerOptions)} */
+  public CompletionStage<BoundCluster> registerAsync(Cluster cluster) {
+    return registerAsync(cluster, ServerOptions.DEFAULT);
+  }
+
+  /** synchronous version of {@link #registerAsync(Cluster, ServerOptions)} */
+  public BoundCluster register(Cluster cluster, ServerOptions serverOptions) {
+    return getUninterruptibly(registerAsync(cluster, serverOptions));
   }
 
   /**
@@ -122,7 +139,7 @@ public final class Server {
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
   @SuppressWarnings("unchecked")
-  public CompletableFuture<BoundCluster> register(Cluster cluster, ServerOptions serverOptions) {
+  public CompletionStage<BoundCluster> registerAsync(Cluster cluster, ServerOptions serverOptions) {
     BoundCluster c = boundCluster(cluster);
 
     List<CompletableFuture<BoundNode>> bindFutures = new ArrayList<>();
@@ -152,7 +169,8 @@ public final class Server {
         // Use node's address if set, otherwise generate a new one.
         SocketAddress address =
             node.getAddress() != null ? node.getAddress() : addressResolver.get();
-        bindFutures.add(bindInternal(node, c, dc, tokenStr, address, activityLogging));
+        bindFutures.add(
+            bindInternal(node, c, dc, tokenStr, address, activityLogging).toCompletableFuture());
         nPos++;
       }
       dcPos++;
@@ -191,7 +209,7 @@ public final class Server {
     if (exception != null) {
       final Throwable e = exception;
       // Close each node
-      List<CompletableFuture<Node>> futures =
+      List<CompletableFuture<BoundNode>> futures =
           nodes.stream().map(this::close).collect(Collectors.toList());
 
       CompletableFuture<BoundCluster> future = new CompletableFuture<>();
@@ -211,33 +229,48 @@ public final class Server {
     }
   }
 
+  /** synchronous version of {@link #unregisterAsync(Node)} */
+  public BoundCluster unregister(Node node) {
+    return getUninterruptibly(unregisterAsync(node));
+  }
+
   /**
    * Convenience method for unregistering Node's cluster by object instead of by id as in {@link
-   * #unregister(Long)}.
+   * #unregisterAsync(Long)}.
    *
    * @param node Node to unregister
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<BoundCluster> unregister(Node node) {
+  public CompletionStage<BoundCluster> unregisterAsync(Node node) {
     if (node.getCluster() == null) {
       CompletableFuture<BoundCluster> future = new CompletableFuture<>();
       future.completeExceptionally(new IllegalArgumentException("Node has no parent Cluster"));
       return future;
     }
-    return unregister(node.getCluster().getId());
+    return unregisterAsync(node.getCluster().getId());
+  }
+
+  /** synchronous version of {@link #unregisterAsync(Cluster)} */
+  public BoundCluster unregister(Cluster cluster) {
+    return getUninterruptibly(unregisterAsync(cluster));
   }
 
   /**
    * Convenience method for unregistering Cluster by object instead of by id as in {@link
-   * #unregister(Long)}.
+   * #unregisterAsync(Long)}.
    *
    * @param cluster Cluster to unregister
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<BoundCluster> unregister(Cluster cluster) {
-    return unregister(cluster.getId());
+  public CompletionStage<BoundCluster> unregisterAsync(Cluster cluster) {
+    return unregisterAsync(cluster.getId());
+  }
+
+  /** synchronous version of {@link #unregisterAsync(Long)} */
+  public BoundCluster unregister(Long clusterId) {
+    return getUninterruptibly(unregisterAsync(clusterId));
   }
 
   /**
@@ -250,13 +283,13 @@ public final class Server {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletableFuture<BoundCluster> unregister(Long clusterId) {
+  public CompletionStage<BoundCluster> unregisterAsync(Long clusterId) {
     CompletableFuture<BoundCluster> future = new CompletableFuture<>();
     if (clusterId == null) {
       future.completeExceptionally(new IllegalArgumentException("Null id provided"));
     } else {
       BoundCluster foundCluster = clusters.remove(clusterId);
-      List<CompletableFuture<Node>> closeFutures = new ArrayList<>();
+      List<CompletableFuture<BoundNode>> closeFutures = new ArrayList<>();
       if (foundCluster != null) {
         // Close socket on each node.
         for (DataCenter dataCenter : foundCluster.getDataCenters()) {
@@ -282,27 +315,52 @@ public final class Server {
     return future;
   }
 
+  /** synchronous version of {@link #unregisterAllAsync()} */
+  public Integer unregisterAll() {
+    return getUninterruptibly(unregisterAllAsync());
+  }
+
   /**
    * Unregister all currently registered clusters.
    *
    * @return future that is completed when all clusters are unregistered.
    */
-  public CompletableFuture<Integer> unregisterAll() {
+  public CompletionStage<Integer> unregisterAllAsync() {
     List<CompletableFuture<BoundCluster>> futures =
-        clusters.keySet().stream().map(this::unregister).collect(Collectors.toList());
+        clusters
+            .keySet()
+            .stream()
+            .map(this::unregisterAsync)
+            .map(CompletionStage::toCompletableFuture)
+            .collect(Collectors.toList());
 
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[] {}))
         .thenApply(__ -> futures.size());
   }
 
-  /** see {@link #register(Node, ServerOptions)} */
-  public CompletableFuture<BoundNode> register(Node.Builder builder) {
-    return register(builder.build());
+  /** synchronous version of {@link #registerAsync(Node.Builder)} */
+  public BoundNode register(Node.Builder builder) {
+    return getUninterruptibly(registerAsync(builder));
   }
 
-  /** see {@link #register(Node, ServerOptions)} */
-  public CompletableFuture<BoundNode> register(Node node) {
-    return register(node, ServerOptions.DEFAULT);
+  /** see {@link #registerAsync(Node, ServerOptions)} */
+  public CompletionStage<BoundNode> registerAsync(Node.Builder builder) {
+    return registerAsync(builder.build());
+  }
+
+  /** see {@link #registerAsync(Node, ServerOptions)} */
+  public BoundNode register(Node node) {
+    return getUninterruptibly(registerAsync(node));
+  }
+
+  /** see {@link #registerAsync(Node, ServerOptions)} */
+  public CompletionStage<BoundNode> registerAsync(Node node) {
+    return registerAsync(node, ServerOptions.DEFAULT);
+  }
+
+  /** synchronous version of {@link #registerAsync(Node, ServerOptions)} */
+  public BoundNode register(Node node, ServerOptions serverOptions) {
+    return getUninterruptibly(registerAsync(node, serverOptions));
   }
 
   /**
@@ -317,7 +375,7 @@ public final class Server {
    * @return A future that when it completes provides an updated {@link Cluster} with ids and
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
-  public CompletableFuture<BoundNode> register(Node node, ServerOptions serverOptions) {
+  public CompletionStage<BoundNode> registerAsync(Node node, ServerOptions serverOptions) {
     if (node.getDataCenter() != null) {
       CompletableFuture<BoundNode> future = new CompletableFuture<>();
       future.completeExceptionally(
@@ -360,7 +418,7 @@ public final class Server {
     return this.clusters.values();
   }
 
-  private CompletableFuture<BoundNode> bindInternal(
+  private CompletionStage<BoundNode> bindInternal(
       Node refNode,
       BoundCluster cluster,
       DataCenter parent,
@@ -406,16 +464,17 @@ public final class Server {
     return f;
   }
 
-  private CompletableFuture<Node> close(BoundNode node) {
+  private CompletableFuture<BoundNode> close(BoundNode node) {
     logger.debug("Closing {}.", node);
-    return node.stop()
+    return node.stopAsync()
         .thenApply(
             n -> {
               logger.debug(
                   "Releasing {} back to address resolver so it may be reused.", node.getAddress());
               addressResolver.release(node.getAddress());
               return node;
-            });
+            })
+        .toCompletableFuture();
   }
 
   /**

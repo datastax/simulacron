@@ -17,7 +17,7 @@ Simulacron can be added to your application by using the following maven depende
 ```
 
 The native-server module provides all of the functionality needed to interact with simulacron, but if you are also
-using the java driver you should consider depending on the `driver-3x` module which provides convenience mechanisms 
+using the java driver you should consider depending on the `driver-3x` module which provides convenience mechanisms
 (such as avoiding class name clashing) for working with the driver.  To install `driver-3x`:
 
 ```xml
@@ -43,7 +43,7 @@ class Test {
 }
 ```
 
-Constructing a `Server` will register a netty `EventLoopGroup` and `Timer` under the covers.  Alternatively you may 
+Constructing a `Server` will register a netty `EventLoopGroup` and `Timer` under the covers.  Alternatively you may
 provide your own `EventLoopGroup` as input to the builder.
 
 By default nodes provisioned by Server will use socket addresses starting with 127.0.0.1:9042, 127.0.0.2:9042, and so
@@ -64,7 +64,7 @@ To register a single `Node`:
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.server.BoundNode;
 
-try (BoundNode node = server.register(Node.builder()).join()) {
+try (BoundNode node = server.register(Node.builder())) {
     // interact with Node
 }
 ```
@@ -75,7 +75,7 @@ To register a `Cluster`:
 import com.datastax.simulacron.server.BoundCluster;
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.cluster;
 
-try (BoundCluster cluster = server.register(cluster().withNodes(10,10)).join()) {
+try (BoundCluster cluster = server.register(cluster().withNodes(10,10))) {
     // interact with Cluster
 }
 ```
@@ -131,7 +131,7 @@ Node node0 = dc.addNode().withPeerInfo("rack", "rack2").build();
 Node node1 = dc.addNode().withPeerInfo("rack", "rack1").withPeerInfo("host_id", UUID.randomUUID()).build();
 
 // Nodes and DataCenters cannot be added after the Cluster is registered to the Server.
-BoundCluster bCluster = server.register(cluster).join();
+BoundCluster bCluster = server.register(cluster);
 ```
 
 This API is admittedly non-ideal.  See [#48](https://github.com/riptano/simulacron/issues/48) for future improvements.
@@ -142,7 +142,7 @@ Both `BoundCluster` and `BoundDataCenter` provide convenience methods to quickly
 objects respectively, i.e.:
 
 ```java
-try (BoundCluster cluster = server.register(cluster().withNodes(5, 5, 5)).join()) {
+try (BoundCluster cluster = server.register(cluster().withNodes(5, 5, 5))) {
     // short cut to get a node in dc 0.
     BoundNode dc0node1 = cluster.node(1);
     // short cut to get dc 1.
@@ -167,14 +167,14 @@ so there is no direct need to import them, i.e.:
 ```java
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.*;
 
-BoundNode node = server.register(node()).join();
+BoundNode node = server.register(node());
 
-BoundCluster cluster = server.register(cluster().withNodes(10)).join();
+BoundCluster cluster = server.register(cluster().withNodes(10));
 ```
 
 ### Building a Java Driver Cluster from a Simulacron Cluster
 
-`SimulacronDriverSupport` also provides `defaultBuilder()` methods for creating 
+`SimulacronDriverSupport` also provides `defaultBuilder()` methods for creating
 `com.datastax.driver.core.Cluster.Builder` instances that are preconfigured to communicate with simulacron `Cluster`s.
 
 ```java
@@ -185,7 +185,7 @@ import static com.datastax.simulacron.driver.SimulacronDriverSupport.*;
 Cluster.Builder builder = defaultBuilder();
 
 // Creates a builder that has its contact point pointing to the first node in the input cluster.
-BoundCluster cluster = server.register(cluster().withNodes(3)).join();
+BoundCluster cluster = server.register(cluster().withNodes(3));
 Cluster.Builder builder2 = defaultBuilder(cluster);
 
 // Creates a builder that has its contact point pointing to the the input node.
@@ -229,7 +229,7 @@ A prime is broken up into two sections:
 * `when`:  Defines the matching criteria, i.e.: When this query is made..
 * `then`:  Defines what response to send, i.e.: Then send this response...
 
-To begin a prime, simply use `PrimeDsl.when` to construct the when criteria, and then chain a `then` call with the 
+To begin a prime, simply use `PrimeDsl.when` to construct the when criteria, and then chain a `then` call with the
 desired result.
 
 For example, the following primes the query `select bar from foo` to return a 'read timeout' error that specifies that
@@ -243,7 +243,7 @@ PrimeBuilder builder = when("select bar from foo").then(readTimeout(ConsistencyL
 Prime prime = builder.build();
 ```
 
-To register the prime with a `BoundCluster`, `BoundDataCenter` or `BoundNode` simply call simply call `prime`. 
+To register the prime with a `BoundCluster`, `BoundDataCenter` or `BoundNode` simply call simply call `prime`.
 
 ```java
 node.prime(prime);
@@ -321,7 +321,7 @@ In addition, you may simply not provide a `then`.  This indicates to simulacron 
 
 ### Priming Row Responses
 
-A specialized builder is available for priming row responses as this would be arduous otherwise.  This is made 
+A specialized builder is available for priming row responses as this would be arduous otherwise.  This is made
 available via `PrimeDsl.rows`.
 
 The following primes a response to 'select bar,baz from foo' to return 2 rows.
@@ -343,7 +343,7 @@ cluster.node(1,2).prime(
 
 ### Priming Delay
 
-It may be desired to delay a response being sent by the server,  to do this, use 
+It may be desired to delay a response being sent by the server,  to do this, use
 `PrimeBuilder.delay(long delay, TimeUnit delayUnit)`:
 
 ```java
@@ -380,7 +380,7 @@ BoundCluster cluster = server.register(cluster().withNodes(5).build(),
 ### Accessing Activity Logs
 
 To access logs for a `BoundCluster`, `BoundDataCenter`, or `BoundServer` simply call `getLogs()`, i.e.:
- 
+
 ```java
 List<QueryLog> logs = node.getLogs();
 ```
@@ -390,10 +390,10 @@ List<QueryLog> logs = node.getLogs();
 ### Clearing Activity Logs
 
 To clear activity logs, simply call `clearLogs()` on the target object you want to clear logs for, i.e.:
- 
+
 ```java
 dc.clearLogs();
-``` 
+```
 
 ## Accessing and Closing Connections
 
@@ -419,7 +419,7 @@ established sockets to that node.
 List<SocketAddress> connections = nodeReport.getConnections();
 ```
 
-To simply retrieve the number of active connections, one could use `getActiveConnections()`. 
+To simply retrieve the number of active connections, one could use `getActiveConnections()`.
 
 ### Closing Connections
 
@@ -430,7 +430,7 @@ import com.datastax.simulacron.common.stubbing.CloseType;
 
 // Request to close connections and join until connections are closed.
 // The connections that were closed are returned.
-ClusterConnectionReport report = cluster.closeConnections(CloseType.DISCONNECT).join();
+ClusterConnectionReport report = cluster.closeConnections(CloseType.DISCONNECT);
 ```
 
 `CloseType` offers a number of ways by which to close a connection:
@@ -445,7 +445,7 @@ You can also close individual connections, i.e.:
 ```java
 // Close the earliest established connection to the node.
 NodeConnectionReport nodeReport = cluster.node(0, 1).getConnections();
-cluster.closeConnection(nodeReport.get(0), CloseType.SHUTDOWN_READ).join();
+cluster.closeConnection(nodeReport.get(0), CloseType.SHUTDOWN_READ);
 ```
 
 ## Disabling and Enabling Acceptance of Connections
@@ -462,17 +462,17 @@ telling nodes to disable listening for new connections, i.e.:
 import com.datastax.simulacron.server.RejectScope;
 
 // simulate DC outage
-cluster.dc(1).rejectConnections(0, RejectScope.STOP).join();
+cluster.dc(1).rejectConnections(0, RejectScope.STOP);
 
 // alias for stopping immediately as done in previous instance
 cluster.dc(1).stop().join();
 
 // tell node to unbind listening for new connections after 1 successful connection while keeping existing connections open.
-cluster.node(2).rejectConnections(1, RejectScope.UNBIND).join();
+cluster.node(2).rejectConnections(1, RejectScope.UNBIND);
 
 // tell cluster to continue accepting connections, but to not respond to 'STARTUP' requests.
 // simulates scenario where network is responsive, but cassandra process is not.
-cluster.rejectConnections(1, RejectScope.REJECT_STARTUP).join();
+cluster.rejectConnections(1, RejectScope.REJECT_STARTUP);
 ```
 
 The `after` argument offers a way to tell simulacron to continue accepting connections until the provided number of
@@ -493,16 +493,30 @@ i.e.:
 
 ```java
 // simulate DC outage
-cluster.dc(1).stop().join();
+cluster.dc(1).stop();
 
 // bring node 1 back up in dc 1.
-cluster.node(1, 1).acceptConnections().join();
+cluster.node(1, 1).acceptConnections();
 
 // start() is also provided as an alias to acceptConnections()
-cluster.node(1, 1).start().join();
+cluster.node(1, 1).start();
 ```
 
 Note that if `acceptConnections()` is used on a subject that is already listening, there is no effect and the future
 completes immediately.
+
+## Async API
+
+All methods that require network interactivity in `Server`, `BoundCluster`, `BoundDataCenter` and `BoundNode` have
+asynchronous counterpart methods that are used under the covers and are also exposed in the API.  These methods have the
+same name as their synchronous version, but ending with `Async`.  These methods return `CompletionStage`.  For example:
+
+```java
+// sync version
+BoundCluster boundCluster = server.register(cluster().withNodes(5));
+
+// async version
+CompletionStage<BoundCluster> future = server.registerAsync(cluster().withNodes(5));
+```
 
 [Closeable]: https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html

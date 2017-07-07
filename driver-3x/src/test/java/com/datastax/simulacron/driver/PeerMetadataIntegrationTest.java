@@ -5,13 +5,12 @@ import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.server.Server;
 import com.datastax.simulacron.server.BoundCluster;
+import com.datastax.simulacron.server.Server;
 import org.junit.Test;
 
 import java.net.SocketAddress;
 import java.util.Collection;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.cluster;
@@ -25,12 +24,9 @@ public class PeerMetadataIntegrationTest {
   @Test
   public void testClusterDiscovery() throws Exception {
     // Validate that peers as appropriately discovered when connecting to a node.
-    BoundCluster boundCluster =
-        server.register(cluster().withNodes(3, 3, 3)).get(5, TimeUnit.SECONDS);
-
-    DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
-
-    try (Cluster driverCluster = defaultBuilder(boundCluster).build()) {
+    try (BoundCluster boundCluster = server.register(cluster().withNodes(3, 3, 3));
+        Cluster driverCluster = defaultBuilder(boundCluster).build()) {
+      DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
       driverCluster.init();
 
       // Should be 9 hosts
@@ -52,8 +48,6 @@ public class PeerMetadataIntegrationTest {
           dc0.getNodes().stream().map(Node::getAddress).collect(Collectors.toList());
 
       assertThat(connectedHosts).hasSameElementsAs(dcHosts);
-    } finally {
-      server.unregister(boundCluster.getId()).get(5, TimeUnit.SECONDS);
     }
   }
 }

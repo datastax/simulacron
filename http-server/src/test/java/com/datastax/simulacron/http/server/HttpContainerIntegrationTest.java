@@ -66,7 +66,7 @@ public class HttpContainerIntegrationTest {
     }
 
     try {
-      nativeServer.unregisterAll().get(5, TimeUnit.SECONDS);
+      nativeServer.unregisterAll();
     } catch (Exception e) {
       logger.error("Error encountered unregistering native server clusters", e);
     }
@@ -199,10 +199,8 @@ public class HttpContainerIntegrationTest {
   }
 
   private void unregisterClusterExists(Function<Cluster, String> f) throws Exception {
-    Cluster cluster =
-        nativeServer.register(Cluster.builder().withNodes(1).build()).get(1, TimeUnit.SECONDS);
-    Cluster cluster2 =
-        nativeServer.register(Cluster.builder().withNodes(1).build()).get(1, TimeUnit.SECONDS);
+    Cluster cluster = nativeServer.register(Cluster.builder().withNodes(1).build());
+    Cluster cluster2 = nativeServer.register(Cluster.builder().withNodes(1).build());
 
     HttpClient client = vertx.createHttpClient();
     CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
@@ -264,11 +262,7 @@ public class HttpContainerIntegrationTest {
     // register 10 clusters and capture their ids.
     List<Long> ids = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      ids.add(
-          nativeServer
-              .register(Cluster.builder().withNodes(1).build())
-              .get(5, TimeUnit.SECONDS)
-              .getId());
+      ids.add(nativeServer.register(Cluster.builder().withNodes(1).build()).getId());
     }
 
     HttpClient client = vertx.createHttpClient();

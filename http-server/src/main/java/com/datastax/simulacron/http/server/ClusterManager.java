@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
 import static com.datastax.simulacron.http.server.HttpUtils.handleMessage;
@@ -80,8 +80,8 @@ public class ClusterManager implements HttpListener {
                   String jsonBody = totalBuffer.toString();
                   cluster = om.readValue(jsonBody, Cluster.class);
                 }
-                CompletableFuture<BoundCluster> future =
-                    server.register(
+                CompletionStage<BoundCluster> future =
+                    server.registerAsync(
                         cluster,
                         ServerOptions.builder()
                             .withActivityLoggingEnabled(activityLogEnabled)
@@ -122,15 +122,15 @@ public class ClusterManager implements HttpListener {
         .bodyHandler(
             b -> {
               try {
-                CompletableFuture<Integer> future;
+                CompletionStage<Integer> future;
                 String idOrNameToFetch = context.request().getParam("clusterIdOrName");
                 if (idOrNameToFetch == null) {
-                  future = server.unregisterAll();
+                  future = server.unregisterAllAsync();
                 } else {
                   Optional<Long> clusterId =
                       HttpUtils.getClusterIdFromIdOrName(server, idOrNameToFetch);
                   if (clusterId.isPresent()) {
-                    future = server.unregister(clusterId.get()).thenApply(__ -> 1);
+                    future = server.unregisterAsync(clusterId.get()).thenApply(__ -> 1);
                   } else {
                     handleError(
                         new ErrorMessage(

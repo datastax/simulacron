@@ -11,6 +11,7 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -100,19 +101,19 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
   }
 
   @Override
-  public CompletableFuture<ClusterConnectionReport> closeConnections(CloseType closeType) {
+  public CompletionStage<ClusterConnectionReport> closeConnectionsAsync(CloseType closeType) {
     ClusterConnectionReport report = getConnections();
     return CompletableFuture.allOf(
             this.getNodes()
                 .stream()
-                .map(n -> ((BoundNode) n).closeConnections(closeType))
+                .map(n -> ((BoundNode) n).closeConnectionsAsync(closeType).toCompletableFuture())
                 .collect(Collectors.toList())
                 .toArray(new CompletableFuture[] {}))
         .thenApply(v -> report);
   }
 
   @Override
-  public CompletableFuture<ClusterConnectionReport> closeConnection(
+  public CompletionStage<ClusterConnectionReport> closeConnectionAsync(
       SocketAddress connection, CloseType type) {
 
     for (Node node : this.getNodes()) {
@@ -121,7 +122,7 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
       for (SocketAddress address : boundNode.getConnections().getConnections()) {
         if (connection.equals(address)) {
           return boundNode
-              .closeConnection(address, type)
+              .closeConnectionAsync(address, type)
               .thenApply(NodeConnectionReport::getRootReport);
         }
       }

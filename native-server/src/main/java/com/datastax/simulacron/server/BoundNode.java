@@ -30,6 +30,7 @@ import java.math.BigInteger;
 import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -173,7 +174,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
    *
    * @return future that completes when all client channels are disconnected.
    */
-  private CompletableFuture<Void> disconnectConnections() {
+  private CompletionStage<Void> disconnectConnections() {
     return completable(clientChannelGroup.disconnect()).thenApply(v -> null);
   }
 
@@ -183,7 +184,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
    * @return future that completes when node is listening again.
    */
   @Override
-  public CompletableFuture<Void> acceptConnections() {
+  public CompletionStage<Void> acceptConnectionsAsync() {
     logger.debug("Accepting New Connections");
     rejectState.set(new RejectState());
     // Reopen listening interface if not currently open.
@@ -216,7 +217,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
    *     was used) or immediately if {@link RejectScope#REJECT_STARTUP} was used or after > 0.
    */
   @Override
-  public CompletableFuture<Void> rejectConnections(int after, RejectScope scope) {
+  public CompletionStage<Void> rejectConnectionsAsync(int after, RejectScope scope) {
     RejectState state;
     if (after <= 0) {
       logger.debug("Rejecting new connections with scope {}", scope);
@@ -293,7 +294,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
             // If reject after is now 0, indicate that it's time to stop listening (but allow this one)
             state.rejectAfter = -1;
             state.listeningForNewConnections = false;
-            deferFuture = rejectConnections(-1, state.scope);
+            deferFuture = rejectConnectionsAsync(-1, state.scope).toCompletableFuture();
           }
         }
         response = new Ready();
@@ -405,7 +406,8 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
         switch (cAction.getScope()) {
           case CONNECTION:
             future =
-                closeConnection(ctx.channel().remoteAddress(), cAction.getCloseType())
+                closeConnectionAsync(ctx.channel().remoteAddress(), cAction.getCloseType())
+                    .toCompletableFuture()
                     .thenApply(v -> null);
             break;
           default:
@@ -441,7 +443,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
   private static CompletableFuture<Void> closeNodes(Stream<Node> nodes, CloseType closeType) {
     return CompletableFuture.allOf(
         nodes
-            .map(n -> ((BoundNode) n).closeConnections(closeType))
+            .map(n -> ((BoundNode) n).closeConnectionsAsync(closeType).toCompletableFuture())
             .collect(Collectors.toList())
             .toArray(new CompletableFuture[] {}));
   }
@@ -471,7 +473,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
   }
 
   @Override
-  public CompletableFuture<NodeConnectionReport> closeConnections(CloseType closeType) {
+  public CompletionStage<NodeConnectionReport> closeConnectionsAsync(CloseType closeType) {
     NodeConnectionReport report = getConnections();
 
     return closeChannelGroup(this.clientChannelGroup, closeType).thenApply(v -> report);
@@ -510,7 +512,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
   }
 
   @Override
-  public CompletableFuture<NodeConnectionReport> closeConnection(
+  public CompletionStage<NodeConnectionReport> closeConnectionAsync(
       SocketAddress connection, CloseType type) {
     Optional<Channel> channel =
         this.clientChannelGroup

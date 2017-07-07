@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
 
@@ -113,8 +113,8 @@ public class EndpointManager implements HttpListener {
                   return;
                 }
                 CloseType closeType = CloseType.valueOf(type.toUpperCase());
-                CompletableFuture<? extends ConnectionReport> reportFuture =
-                    HttpUtils.find(server, scope).closeConnections(closeType);
+                CompletionStage<? extends ConnectionReport> reportFuture =
+                    HttpUtils.find(server, scope).closeConnectionsAsync(closeType);
                 StringBuilder response = new StringBuilder();
 
                 reportFuture.whenComplete(
@@ -187,8 +187,8 @@ public class EndpointManager implements HttpListener {
                 }
 
                 InetSocketAddress connection = new InetSocketAddress(ip, port);
-                CompletableFuture<ClusterConnectionReport> reportFuture =
-                    cluster.closeConnection(connection, CloseType.valueOf(type.toUpperCase()));
+                CompletionStage<ClusterConnectionReport> reportFuture =
+                    cluster.closeConnectionAsync(connection, CloseType.valueOf(type.toUpperCase()));
                 StringBuilder response = new StringBuilder();
 
                 reportFuture.whenComplete(
@@ -258,8 +258,8 @@ public class EndpointManager implements HttpListener {
                   return;
                 }
                 RejectScope rejectScope = RejectScope.valueOf(type.toUpperCase());
-                CompletableFuture<Void> future =
-                    HttpUtils.find(server, scope).rejectConnections(after, rejectScope);
+                CompletionStage<Void> future =
+                    HttpUtils.find(server, scope).rejectConnectionsAsync(after, rejectScope);
                 future.whenComplete(
                     (completedCluster, ex) -> {
                       if (ex == null) {
@@ -306,7 +306,8 @@ public class EndpointManager implements HttpListener {
                 if (scope == null) {
                   return;
                 }
-                CompletableFuture<Void> future = HttpUtils.find(server, scope).acceptConnections();
+                CompletionStage<Void> future =
+                    HttpUtils.find(server, scope).acceptConnectionsAsync();
                 future.whenComplete(
                     (completedCluster, ex) -> {
                       if (ex == null) {

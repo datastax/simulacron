@@ -6,8 +6,6 @@ import com.datastax.simulacron.server.BoundNode;
 import com.datastax.simulacron.server.Server;
 import org.junit.Test;
 
-import java.util.concurrent.TimeUnit;
-
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,7 +15,7 @@ public class Driver3xIntegrationTest {
 
   @Test
   public void testShouldCreateAndConnectToCluster() throws Exception {
-    try (BoundCluster sCluster = server.register(cluster().withNodes(3)).get(5, TimeUnit.SECONDS);
+    try (BoundCluster sCluster = server.register(cluster().withNodes(3));
         Cluster cluster = defaultBuilder(sCluster).build()) {
       cluster.connect();
 
@@ -28,7 +26,7 @@ public class Driver3xIntegrationTest {
 
   @Test
   public void testShouldCreateAndConnectToNode() throws Exception {
-    try (BoundNode node = server.register(node()).get(5, TimeUnit.SECONDS);
+    try (BoundNode node = server.register(node());
         Cluster cluster = defaultBuilder(node).build()) {
       cluster.connect();
 

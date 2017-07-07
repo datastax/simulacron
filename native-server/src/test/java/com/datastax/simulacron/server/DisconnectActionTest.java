@@ -46,7 +46,7 @@ public class DisconnectActionTest {
     // Validate that when a stub dictates to close a connection it does so and does not close the Node's channel so it
     // can remain accepting traffic.
     Node node = Node.builder().build();
-    BoundNode boundNode = localServer.register(node).get(5, TimeUnit.SECONDS);
+    BoundNode boundNode = localServer.register(node);
 
     stubCloseOnStartup(Scope.CONNECTION);
 
@@ -74,7 +74,7 @@ public class DisconnectActionTest {
   public void testMessageWithClose() throws Exception {
     // Validates that a stub that dictates to send a message and then close a connection does so.
     Node node = Node.builder().build();
-    Node boundNode = localServer.register(node).get(5, TimeUnit.SECONDS);
+    Node boundNode = localServer.register(node);
 
     localServer.stubStore.register(
         new StubMapping() {
@@ -115,7 +115,7 @@ public class DisconnectActionTest {
   public void testCloseNode() throws Exception {
     // Validates that a stub that dictates to close a node's connections does so.
     Cluster cluster = Cluster.builder().withNodes(2, 2).build();
-    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
+    Cluster boundCluster = localServer.register(cluster);
 
     DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
     Iterator<Node> nodes = dc0.getNodes().iterator();
@@ -169,7 +169,7 @@ public class DisconnectActionTest {
   public void testCloseDataCenter() throws Exception {
     // Validates that a stub that dictates to close a node's DC's connections does so.
     Cluster cluster = Cluster.builder().withNodes(2, 2).build();
-    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
+    Cluster boundCluster = localServer.register(cluster);
 
     DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
     Iterator<Node> nodes = dc0.getNodes().iterator();
@@ -224,7 +224,7 @@ public class DisconnectActionTest {
   public void testCloseCluster() throws Exception {
     // Validates that a stub that dictates to close a node's Cluster's connections does so.
     Cluster cluster = Cluster.builder().withNodes(2, 2).build();
-    Cluster boundCluster = localServer.register(cluster).get(5, TimeUnit.SECONDS);
+    Cluster boundCluster = localServer.register(cluster);
 
     DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
     Iterator<Node> nodes = dc0.getNodes().iterator();

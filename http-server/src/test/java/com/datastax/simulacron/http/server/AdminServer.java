@@ -42,17 +42,13 @@ public class AdminServer extends ExternalResource {
 
   private final Server.Builder serverBuilder;
 
-  Logger logger = LoggerFactory.getLogger(AdminServer.class);
+  private static final Logger logger = LoggerFactory.getLogger(AdminServer.class);
 
-  public AdminServer() {
-    this(null);
-  }
-
-  public AdminServer(Cluster cluster) {
+  AdminServer(Cluster cluster) {
     this(cluster, Server.builder());
   }
 
-  public AdminServer(Cluster cluster, Server.Builder serverBuilder) {
+  AdminServer(Cluster cluster, Server.Builder serverBuilder) {
     this.clusterRequest = cluster;
     this.serverBuilder = serverBuilder;
   }
@@ -64,7 +60,7 @@ public class AdminServer extends ExternalResource {
     nativeServer = serverBuilder.build();
 
     if (clusterRequest != null) {
-      cluster = nativeServer.register(clusterRequest).get(10, TimeUnit.SECONDS);
+      cluster = nativeServer.register(clusterRequest);
     }
 
     ClusterManager provisioner = new ClusterManager(nativeServer);
@@ -83,10 +79,7 @@ public class AdminServer extends ExternalResource {
   protected void after() {
     httpContainer.stop();
     CompletableFuture<Void> future = new CompletableFuture<>();
-    vertx.close(
-        res -> {
-          future.complete(null);
-        });
+    vertx.close(res -> future.complete(null));
     try {
       future.get(5, TimeUnit.SECONDS);
     } catch (Exception e) {
@@ -95,13 +88,13 @@ public class AdminServer extends ExternalResource {
     }
 
     try {
-      nativeServer.unregisterAll().get(5, TimeUnit.SECONDS);
+      nativeServer.unregisterAll();
     } catch (Exception e) {
       logger.error("Error encountered unregistering native server clusters", e);
     }
   }
 
-  public BoundCluster getCluster() {
+  BoundCluster getCluster() {
     return cluster;
   }
 
@@ -133,49 +126,45 @@ public class AdminServer extends ExternalResource {
     return future.get(10, TimeUnit.SECONDS);
   }
 
-  public HttpTestResponse get(String endpoint) throws Exception {
+  HttpTestResponse get(String endpoint) throws Exception {
     return request(HttpMethod.GET, endpoint, null);
   }
 
-  public HttpTestResponse post(String endpoint, String content) throws Exception {
+  HttpTestResponse post(String endpoint, String content) throws Exception {
     return request(HttpMethod.POST, endpoint, content);
   }
 
-  public HttpTestResponse delete(String endpoint) throws Exception {
+  HttpTestResponse delete(String endpoint) throws Exception {
     return request(HttpMethod.DELETE, endpoint, null);
   }
 
-  public HttpTestResponse put(String endpoint) throws Exception {
+  HttpTestResponse put(String endpoint) throws Exception {
     return request(HttpMethod.PUT, endpoint, null);
   }
 
-  public HttpTestResponse prime(PrimeDsl.PrimeBuilder primeBuilder) throws Exception {
+  HttpTestResponse prime(PrimeDsl.PrimeBuilder primeBuilder) throws Exception {
     return prime(primeBuilder.build());
   }
 
-  public HttpTestResponse prime(Prime prime) throws Exception {
+  HttpTestResponse prime(Prime prime) throws Exception {
     return prime(prime.getPrimedRequest());
   }
 
-  public HttpTestResponse prime(RequestPrime prime) throws Exception {
+  HttpTestResponse prime(RequestPrime prime) throws Exception {
     String jsonPrime = om.writerWithDefaultPrettyPrinter().writeValueAsString(prime);
     return post("/prime/" + cluster.getId(), jsonPrime);
   }
 
-  public <T> T mapTo(HttpTestResponse response, Class<T> clazz) throws IOException {
+  <T> T mapTo(HttpTestResponse response, Class<T> clazz) throws IOException {
     return om.readValue(response.body, clazz);
   }
 
-  public List<QueryLog> getLogs(AbstractNodeProperties topic) throws Exception {
+  List<QueryLog> getLogs(AbstractNodeProperties topic) throws Exception {
     String path = topic.resolveId();
     return om.readValue(get("/log/" + path).body, new TypeReference<List<QueryLog>>() {});
   }
 
-  public List<QueryLog> getLogs(String path) throws Exception {
+  List<QueryLog> getLogs(String path) throws Exception {
     return om.readValue(get("/log/" + path).body, new TypeReference<List<QueryLog>>() {});
-  }
-
-  public ObjectMapper getObjectMapper() {
-    return om;
   }
 }

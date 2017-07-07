@@ -11,6 +11,7 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -86,19 +87,19 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
   }
 
   @Override
-  public CompletableFuture<DataCenterConnectionReport> closeConnections(CloseType closeType) {
+  public CompletionStage<DataCenterConnectionReport> closeConnectionsAsync(CloseType closeType) {
     DataCenterConnectionReport report = getConnections();
     return CompletableFuture.allOf(
             this.getNodes()
                 .stream()
-                .map(n -> ((BoundNode) n).closeConnections(closeType))
+                .map(n -> ((BoundNode) n).closeConnectionsAsync(closeType).toCompletableFuture())
                 .collect(Collectors.toList())
                 .toArray(new CompletableFuture[] {}))
         .thenApply(v -> report);
   }
 
   @Override
-  public CompletableFuture<DataCenterConnectionReport> closeConnection(
+  public CompletionStage<DataCenterConnectionReport> closeConnectionAsync(
       SocketAddress connection, CloseType type) {
 
     for (Node node : this.getNodes()) {
@@ -107,7 +108,7 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
       for (SocketAddress address : boundNode.getConnections().getConnections()) {
         if (connection.equals(address)) {
           return boundNode
-              .closeConnection(address, type)
+              .closeConnectionAsync(address, type)
               .thenApply(n -> n.getRootReport().getDataCenters().iterator().next());
         }
       }
