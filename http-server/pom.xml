@@ -21,6 +21,28 @@
             <groupId>io.vertx</groupId>
             <artifactId>vertx-web</artifactId>
             <version>${vertx.version}</version>
+            <exclusions>
+                <!-- explicitly exclude netty dependencies as version may not be in sync -->
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http2</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-resolver-dns</artifactId>
+            <version>${netty.version}</version>
         </dependency>
         <dependency>
             <groupId>org.webjars</groupId>

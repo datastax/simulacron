@@ -10,9 +10,6 @@ import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
-import io.netty.channel.epoll.Epoll;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.AttributeKey;
@@ -422,6 +419,23 @@ public final class Server {
   }
 
   /**
+   * Wrapper method for using netty-transport-native-epoll if available, addresses classes directly
+   * without importing so if library isn't in environment this doesn't create any problems.
+   *
+   * @return Epoll-based event loop group is epoll is available, otherwise empty.
+   */
+  private static Optional<EventLoopGroup> epollEventLoopGroup(ThreadFactory threadFactory) {
+    if (io.netty.channel.epoll.Epoll.isAvailable()) {
+      return Optional.of(new io.netty.channel.epoll.EpollEventLoopGroup(0, threadFactory));
+    }
+    return Optional.empty();
+  }
+
+  private static Class<? extends ServerChannel> epollClass() {
+    return io.netty.channel.epoll.EpollServerSocketChannel.class;
+  }
+
+  /**
    * Convenience method that provides a {@link Builder} that uses NIO for networking traffic (or
    * epoll if available), which should be the typical case.
    *
@@ -436,12 +450,21 @@ public final class Server {
     ThreadFactory f = new DefaultThreadFactory("simulacron-io-worker");
     EventLoopGroup eventLoop;
     Class<? extends ServerChannel> channelClass;
-    if (Epoll.isAvailable()) {
-      logger.debug("Detected epoll support, using EpollEventLoopGroup");
-      eventLoop = new EpollEventLoopGroup(0, f);
-      channelClass = EpollServerSocketChannel.class;
-    } else {
-      logger.debug("Could not locate native transport (epoll), using NioEventLoopGroup");
+    try {
+      // try to resolve Epoll class, if throws Exception, fall back on nio
+      Class.forName("io.netty.channel.epoll.Epoll");
+      // if epoll event loop could be established, use it, otherwise use nio.
+      Optional<EventLoopGroup> epollEventLoop = epollEventLoopGroup(f);
+      if (epollEventLoop.isPresent()) {
+        eventLoop = epollEventLoop.get();
+        channelClass = epollClass();
+      } else {
+        logger.debug("Could not load native transport (epoll), using NioEventLoopGroup");
+        eventLoop = new NioEventLoopGroup(0, f);
+        channelClass = NioServerSocketChannel.class;
+      }
+    } catch (ClassNotFoundException ce) {
+      logger.debug("netty-transport-native-epoll not on classpath, using NioEventLoopGroup");
       eventLoop = new NioEventLoopGroup(0, f);
       channelClass = NioServerSocketChannel.class;
     }
