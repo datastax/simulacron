@@ -6,7 +6,7 @@ info:
 
     up clusters, stubbing queries and behaviors, and monitoring driver client
     connections.
-  version: 0.1.0
+  version: 0.1.1
   title: Simulacron REST API
 basePath: /
 tags:
