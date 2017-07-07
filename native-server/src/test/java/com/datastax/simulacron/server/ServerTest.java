@@ -308,6 +308,9 @@ public class ServerTest {
       client.connect(node.getAddress());
       client.write(new Startup());
 
+      // sleep a little bit as connected channels may not be registered immediately.
+      Thread.sleep(50);
+
       // Retrieve active connection
       NodeConnectionReport report = node.getConnections();
       assertThat(report.getConnections()).hasSize(1);
@@ -315,6 +318,9 @@ public class ServerTest {
       // Close connection
       report = node.closeConnections(CloseType.DISCONNECT);
       assertThat(report.getActiveConnections()).isEqualTo(1);
+
+      // sleep a little bit as connected channels may not be registered immediately.
+      Thread.sleep(50);
 
       report = node.getConnections();
       assertThat(report.getConnections()).hasSize(0);
@@ -328,6 +334,9 @@ public class ServerTest {
       client.connect(cluster.node(0, 1).getAddress());
       client.write(new Startup());
 
+      // sleep a little bit as connected channels may not be registered immediately.
+      Thread.sleep(50);
+
       // Retrieve active connection
       ClusterConnectionReport report = cluster.getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(1);
@@ -335,6 +344,9 @@ public class ServerTest {
       // Close connection
       report = cluster.closeConnections(CloseType.DISCONNECT);
       assertThat(report.getActiveConnections()).isEqualTo(1);
+
+      // sleep a little bit as connected channels may not be registered immediately.
+      Thread.sleep(50);
 
       report = cluster.getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(0);
@@ -349,6 +361,8 @@ public class ServerTest {
       client.write(new Startup());
 
       // Retrieve active connection - dc1 should have 1
+      // sleep a little bit as connected channels may not be registered immediately.
+      Thread.sleep(50);
       DataCenterConnectionReport report = cluster.dc(1).getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(1);
 
@@ -360,6 +374,9 @@ public class ServerTest {
       report = cluster.dc(1).closeConnections(CloseType.DISCONNECT);
       assertThat(report.getActiveConnections()).isEqualTo(1);
 
+      // sleep a little bit as connected channels may not be registered immediately.
+      Thread.sleep(50);
+      ;
       report = cluster.dc(1).getConnections();
       assertThat(report.getActiveConnections()).isEqualTo(0);
     }
@@ -372,6 +389,8 @@ public class ServerTest {
       client.connect(boundNode.getAddress());
       client.write(new Startup());
 
+      // sleep a little bit as connected channels may not be registered immediately.
+      Thread.sleep(50);
       NodeConnectionReport report = boundNode.getConnections();
       assertThat(report.getConnections()).hasSize(1);
 
@@ -905,6 +924,8 @@ public class ServerTest {
       client.connect(address);
     }
 
+    // sleep a little bit as connected channels may not be registered immediately.
+    Thread.sleep(50);
     assertThat(cluster.getActiveConnections()).isEqualTo(0);
     assertThat(client.channel.isOpen()).isFalse();
     // event loop should not have been closed.
