@@ -1,5 +1,6 @@
 package com.datastax.simulacron.http.server;
 
+import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.*;
@@ -27,6 +28,7 @@ import java.util.Map;
 import static com.datastax.simulacron.common.stubbing.PrimeDsl.*;
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 import static com.datastax.simulacron.http.server.FluentMatcher.match;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.*;
 
 public class ErrorResultIntegrationTest {
@@ -36,6 +38,14 @@ public class ErrorResultIntegrationTest {
   @Rule public ExpectedException thrown = ExpectedException.none();
 
   private final String query = "select * from foo";
+
+  @Test
+  public void testShouldReturnVoid() throws Exception {
+    // not technically an error, but this ensures void response work.
+    server.prime(when(query).then(void_()));
+
+    assertThat(query().getAvailableWithoutFetching()).isEqualTo(0);
+  }
 
   @Test
   public void testShouldReturnServerError() throws Exception {
@@ -283,17 +293,17 @@ public class ErrorResultIntegrationTest {
     query();
   }
 
-  private void query() throws Exception {
-    query(new SimpleStatement(query));
+  private ResultSet query() throws Exception {
+    return query(new SimpleStatement(query));
   }
 
-  private void query(Statement statement) throws Exception {
+  private ResultSet query(Statement statement) throws Exception {
     try (com.datastax.driver.core.Cluster driverCluster =
         defaultBuilder(server.getCluster())
             .allowBetaProtocolVersion()
             .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
             .build()) {
-      driverCluster.connect().execute(statement);
+      return driverCluster.connect().execute(statement);
     }
   }
 

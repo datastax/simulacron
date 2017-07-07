@@ -234,6 +234,15 @@ public class PrimeDsl {
   }
 
   /**
+   * Provides a 'void' response.
+   *
+   * @return The generated void result.
+   */
+  public static VoidResult void_() {
+    return new VoidResult();
+  }
+
+  /**
    * Provides a Read Failure error response instance.
    *
    * @param cl The consistency level data was read at.

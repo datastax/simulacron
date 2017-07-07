@@ -319,6 +319,7 @@ read failure error.
 * `writeFailure(Consistencylevel cl, int required, int blockFor, Map failureReasonByEndpoint, WriteType writeType)`: A
 write failure error.
 * `writeTimeout(ConsistencyLevel cl, int received, int blockFor, WriteType writeType)`: A write timeout error.
+* `void_()`: A 'void' result, which is the same result as having no prime, but is useful if you want to configure delays. 
 
 In addition, you may simply not provide a `then`.  This indicates to simulacron to not respond to the given request.
 

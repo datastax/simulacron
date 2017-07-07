@@ -30,7 +30,8 @@ import java.util.concurrent.TimeUnit;
   @JsonSubTypes.Type(value = UnpreparedResult.class, name = "unprepared"),
   @JsonSubTypes.Type(value = WriteFailureResult.class, name = "write_failure"),
   @JsonSubTypes.Type(value = WriteTimeoutResult.class, name = "write_timeout"),
-  @JsonSubTypes.Type(value = CloseConnectionResult.class, name = "close_connection")
+  @JsonSubTypes.Type(value = CloseConnectionResult.class, name = "close_connection"),
+  @JsonSubTypes.Type(value = VoidResult.class, name = "void")
 })
 public abstract class Result {
 

@@ -859,6 +859,8 @@ public class ServerTest {
       client.connect(address);
     }
 
+    // sleep a little bit as connected channels may not be registered immediately.
+    Thread.sleep(50);
     assertThat(cluster.getActiveConnections()).isEqualTo(0);
     assertThat(client.channel.isOpen()).isFalse();
     // event loop should not have been closed.
