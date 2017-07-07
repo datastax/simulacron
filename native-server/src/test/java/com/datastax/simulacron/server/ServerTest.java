@@ -878,10 +878,6 @@ public class ServerTest {
       client.connect(address);
     }
 
-    // sleep a little bit as connected channels may not be registered immediately.
-    Thread.sleep(50);
-    assertThat(cluster.getActiveConnections()).isEqualTo(0);
-    assertThat(client.channel.isOpen()).isFalse();
     // event loop should not have been closed.
     assertThat(eventLoop.isShutdown()).isFalse();
     // timer should have since a custom one was not provided.
@@ -924,10 +920,6 @@ public class ServerTest {
       client.connect(address);
     }
 
-    // sleep a little bit as connected channels may not be registered immediately.
-    Thread.sleep(50);
-    assertThat(cluster.getActiveConnections()).isEqualTo(0);
-    assertThat(client.channel.isOpen()).isFalse();
     // event loop should not have been closed.
     assertThat(eventLoop.isShutdown()).isFalse();
     // timer should not have since a custom one was not provided.
