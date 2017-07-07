@@ -456,6 +456,7 @@ public final class Server {
       // if epoll event loop could be established, use it, otherwise use nio.
       Optional<EventLoopGroup> epollEventLoop = epollEventLoopGroup(f);
       if (epollEventLoop.isPresent()) {
+        logger.debug("Detected epoll support, using EpollEventLoopGroup");
         eventLoop = epollEventLoop.get();
         channelClass = epollClass();
       } else {
