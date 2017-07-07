@@ -64,10 +64,12 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
       contents.skipBytes(9 + length);
       return null;
     }
-    try {
-      return frameCodec.decode(contents);
-    } finally {
-      buffer.release();
-    }
+    return frameCodec.decode(contents);
+  }
+
+  @Override
+  protected ByteBuf extractFrame(ChannelHandlerContext ctx, ByteBuf buffer, int index, int length) {
+    // use slice instead of retainedSlice (what super does) so don't need to release later.
+    return buffer.slice(index, length);
   }
 }
