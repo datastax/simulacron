@@ -389,6 +389,9 @@ public class ServerTest {
       // attempt to connect should succeed
       client.connect(boundNode.getAddress());
 
+      // sleep a little bit as connected channels may not be registered immediately.
+      Thread.sleep(50);
+
       report = boundNode.getConnections();
       assertThat(report.getConnections()).hasSize(1);
     }
