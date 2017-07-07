@@ -8,8 +8,6 @@ import com.datastax.oss.protocol.internal.response.result.RawType.RawTuple;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
@@ -41,16 +41,14 @@ public class CqlMapper {
   // TODO: Perhaps make these sizebound.
   // TODO: Follow optimizations that java driver makes in codec registry.
   // For resolving by cqlType.
-  private final LoadingCache<RawType, Codec<?>> cqlTypeCache =
-      Caffeine.newBuilder().build(this::loadCache);
+  private final ConcurrentMap<RawType, Codec<?>> cqlTypeCache = new ConcurrentHashMap<>();
 
   private final TypeFactory typeFactory = TypeFactory.defaultInstance();
 
-  private static final LoadingCache<Integer, CqlMapper> mapperCache =
-      Caffeine.newBuilder().build(CqlMapper::new);
+  private static final ConcurrentMap<Integer, CqlMapper> mapperCache = new ConcurrentHashMap<>();
 
   public static CqlMapper forVersion(int protocolVersion) {
-    return mapperCache.get(protocolVersion);
+    return mapperCache.computeIfAbsent(protocolVersion, CqlMapper::new);
   }
 
   private CqlMapper(int protocolVersion) {
@@ -65,23 +63,23 @@ public class CqlMapper {
   private Codec<?> loadCache(RawType key) {
     if (key instanceof RawSet) {
       RawSet s = (RawSet) key;
-      Codec<?> elementCodec = cqlTypeCache.get(s.elementType);
+      Codec<?> elementCodec = cqlTypeCache.computeIfAbsent(s.elementType, this::loadCache);
       return new SetCodec(elementCodec);
     } else if (key instanceof RawList) {
       RawList l = (RawList) key;
-      Codec<?> elementCodec = cqlTypeCache.get(l.elementType);
+      Codec<?> elementCodec = cqlTypeCache.computeIfAbsent(l.elementType, this::loadCache);
       return new ListCodec(elementCodec);
     } else if (key instanceof RawMap) {
       RawMap m = (RawMap) key;
-      Codec<?> keyCodec = cqlTypeCache.get(m.keyType);
-      Codec<?> valueCodec = cqlTypeCache.get(m.valueType);
+      Codec<?> keyCodec = cqlTypeCache.computeIfAbsent(m.keyType, this::loadCache);
+      Codec<?> valueCodec = cqlTypeCache.computeIfAbsent(m.valueType, this::loadCache);
       return new MapCodec(keyCodec, valueCodec);
     } else if (key instanceof RawTuple) {
       RawTuple t = (RawTuple) key;
       List<Codec<Object>> codecs =
           t.fieldTypes
               .stream()
-              .map(f -> (Codec<Object>) cqlTypeCache.get(f))
+              .map(f -> (Codec<Object>) cqlTypeCache.computeIfAbsent(f, this::loadCache))
               .collect(Collectors.toList());
       return new TupleCodec(t, codecs);
     } else {
@@ -93,7 +91,7 @@ public class CqlMapper {
 
   @SuppressWarnings("unchecked")
   public <T> Codec<T> codecFor(RawType cqlType) {
-    return (Codec<T>) cqlTypeCache.get(cqlType);
+    return (Codec<T>) cqlTypeCache.computeIfAbsent(cqlType, this::loadCache);
   }
 
   abstract class AbstractCodec<T> implements Codec<T> {

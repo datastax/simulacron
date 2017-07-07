@@ -33,7 +33,6 @@
         <native-protocol.version>1.4.0-SNAPSHOT</native-protocol.version>
         <vertx.version>3.4.1</vertx.version>
         <jackson-databind.version>2.8.9</jackson-databind.version>
-        <caffeine.version>2.4.0</caffeine.version>
         <java-driver.version>3.2.0</java-driver.version>
         <swagger-ui.version>3.0.14</swagger-ui.version>
         <jcommander.version>1.64</jcommander.version>

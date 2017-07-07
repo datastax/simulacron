@@ -5,14 +5,14 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.simulacron.common.cluster.Node;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
@@ -24,7 +24,7 @@ public class CodecUtils {
 
   public static Logger logger = LoggerFactory.getLogger(CodecUtils.class);
 
-  public static final Map<String, RawType> nativeTypeMap = new HashMap<>();
+  static final Map<String, RawType> nativeTypeMap = new HashMap<>();
 
   static {
     // preload primitive types
@@ -53,8 +53,7 @@ public class CodecUtils {
     }
   }
 
-  private static final LoadingCache<String, RawType> typeCache =
-      Caffeine.newBuilder().build(RawTypeParser::resolveRawTypeFromName);
+  private static final ConcurrentMap<String, RawType> typeCache = new ConcurrentHashMap<>();
 
   /**
    * Convenience wrapper for producing a row from a variable number of column values.
@@ -131,7 +130,7 @@ public class CodecUtils {
     }
     RawType rawType = nativeTypeMap.get(name);
     if (rawType == null) {
-      rawType = typeCache.get(name);
+      rawType = typeCache.computeIfAbsent(name, RawTypeParser::resolveRawTypeFromName);
     }
     return rawType;
   }
