@@ -61,7 +61,7 @@ If you'd like to build simulacron, follow these instructions:
 
 0. Set up your maven settings.xml to use artifactory ([see java-api doc](doc/java_api#getting-simulacron))
 1. `mvn package` - Compiles, Tests, and packages the project.  Produces standalone jar in `standalone/target/`
-2. `java -jar standalone/target/standalone-<VERSION>.jar` -  Runs the standalone app.
+2. `java -jar standalone/target/simulacron-standalone-<VERSION>.jar` -  Runs the standalone app.
 3. Navigate to [http://localhost:8187/doc](http://localhost:8187/doc) to access the interactive documentation.
 
 ### Usage

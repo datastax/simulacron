@@ -38,6 +38,7 @@
     </dependencies>
 
     <build>
+        <finalName>simulacron-standalone-${project.parent.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
