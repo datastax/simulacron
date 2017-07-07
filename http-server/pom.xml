@@ -3,7 +3,7 @@
     <parent>
         <groupId>com.datastax.simulacron</groupId>
         <artifactId>simulacron-parent</artifactId>
-        <version>0.1.2-SNAPSHOT</version>
+        <version>0.1.2</version>
     </parent>
 
     <artifactId>http-server</artifactId>
