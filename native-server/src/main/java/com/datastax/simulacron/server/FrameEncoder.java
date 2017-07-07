@@ -16,6 +16,8 @@ public class FrameEncoder extends MessageToByteEncoder<Frame> {
 
   @Override
   protected void encode(ChannelHandlerContext ctx, Frame msg, ByteBuf out) throws Exception {
-    out.writeBytes(frameCodec.encode(msg));
+    ByteBuf data = frameCodec.encode(msg);
+    out.writeBytes(data);
+    data.release();
   }
 }
