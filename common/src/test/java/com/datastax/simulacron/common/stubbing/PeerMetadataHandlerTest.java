@@ -123,19 +123,20 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(12)
+        .hasColumnSpecs(13)
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, ((InetSocketAddress) node0.getAddress()).getAddress())
-        .hasColumn(0, 3, cluster.getName())
-        .hasColumn(0, 4, "3.2.0")
-        .hasColumn(0, 5, node0.getDataCenter().getName())
-        .hasColumn(0, 6, ((InetSocketAddress) node0.getAddress()).getAddress())
-        .hasColumn(0, 7, "org.apache.cassandra.dht.Murmur3Partitioner")
-        .hasColumn(0, 8, "rack1")
-        .hasColumn(0, 9, "3.0.12")
-        .hasColumn(0, 10, Collections.singleton("0"))
-        .hasColumn(0, 11, PeerMetadataHandler.schemaVersion);
+        .hasColumn(0, 3, ((InetSocketAddress) node0.getAddress()).getAddress())
+        .hasColumn(0, 4, cluster.getName())
+        .hasColumn(0, 5, "3.2.0")
+        .hasColumn(0, 6, node0.getDataCenter().getName())
+        .hasColumn(0, 7, ((InetSocketAddress) node0.getAddress()).getAddress())
+        .hasColumn(0, 8, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 9, "rack1")
+        .hasColumn(0, 10, "3.0.12")
+        .hasColumn(0, 11, Collections.singleton("0"))
+        .hasColumn(0, 12, PeerMetadataHandler.schemaVersion);
   }
 
   @Test
@@ -153,21 +154,22 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(14) // should include dse_version and graph columns
+        .hasColumnSpecs(15) // should include dse_version and graph columns
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, InetAddress.getLoopbackAddress())
-        .hasColumn(0, 3, dseCluster.getName())
-        .hasColumn(0, 4, "3.2.0")
-        .hasColumn(0, 5, dseNode0.getDataCenter().getName())
-        .hasColumn(0, 6, InetAddress.getLoopbackAddress())
-        .hasColumn(0, 7, "org.apache.cassandra.dht.Murmur3Partitioner")
-        .hasColumn(0, 8, "rack1")
-        .hasColumn(0, 9, "3.0.12")
-        .hasColumn(0, 10, Collections.singleton("0"))
-        .hasColumn(0, 11, PeerMetadataHandler.schemaVersion)
-        .hasColumn(0, 12, "5.0.8")
-        .hasColumn(0, 13, true);
+        .hasColumn(0, 3, InetAddress.getLoopbackAddress())
+        .hasColumn(0, 4, dseCluster.getName())
+        .hasColumn(0, 5, "3.2.0")
+        .hasColumn(0, 6, dseNode0.getDataCenter().getName())
+        .hasColumn(0, 7, InetAddress.getLoopbackAddress())
+        .hasColumn(0, 8, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 9, "rack1")
+        .hasColumn(0, 10, "3.0.12")
+        .hasColumn(0, 11, Collections.singleton("0"))
+        .hasColumn(0, 12, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 13, "5.0.8")
+        .hasColumn(0, 14, true);
   }
 
   @Test
@@ -185,19 +187,20 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(12)
+        .hasColumnSpecs(13)
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, ((InetSocketAddress) node1.getAddress()).getAddress())
-        .hasColumn(0, 3, cluster.getName())
-        .hasColumn(0, 4, "3.2.0")
-        .hasColumn(0, 5, node1.getDataCenter().getName())
-        .hasColumn(0, 6, ((InetSocketAddress) node1.getAddress()).getAddress())
-        .hasColumn(0, 7, "org.apache.cassandra.dht.Murmur3Partitioner")
-        .hasColumn(0, 8, "rack1")
-        .hasColumn(0, 9, "3.0.12")
-        .hasColumn(0, 10, Collections.singleton("0"))
-        .hasColumn(0, 11, PeerMetadataHandler.schemaVersion);
+        .hasColumn(0, 3, ((InetSocketAddress) node1.getAddress()).getAddress())
+        .hasColumn(0, 4, cluster.getName())
+        .hasColumn(0, 5, "3.2.0")
+        .hasColumn(0, 6, node1.getDataCenter().getName())
+        .hasColumn(0, 7, ((InetSocketAddress) node1.getAddress()).getAddress())
+        .hasColumn(0, 8, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 9, "rack1")
+        .hasColumn(0, 10, "3.0.12")
+        .hasColumn(0, 11, Collections.singleton("0"))
+        .hasColumn(0, 12, PeerMetadataHandler.schemaVersion);
   }
 
   @Test

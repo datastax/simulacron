@@ -131,7 +131,8 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
         CodecUtils.row(
             encodePeerInfo(node, mapper.ascii::encode, "key", "local"),
             encodePeerInfo(node, mapper.ascii::encode, "bootstrapped", "COMPLETED"),
-            mapper.inet.encode(address),
+            mapper.inet.encode(node.resolvePeerInfo("rpc_address", address)),
+            mapper.inet.encode(node.resolvePeerInfo("broadcast_address", address)),
             mapper.ascii.encode(node.getCluster().getName()),
             encodePeerInfo(node, mapper.ascii::encode, "cql_version", "3.2.0"),
             mapper.ascii.encode(node.getDataCenter().getName()),
@@ -241,6 +242,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
         columnSpecs(
             systemLocal.apply("key", primitive(ASCII)),
             systemLocal.apply("bootstrapped", primitive(ASCII)),
+            systemLocal.apply("rpc_address", primitive(INET)),
             systemLocal.apply("broadcast_address", primitive(INET)),
             systemLocal.apply("cluster_name", primitive(ASCII)),
             systemLocal.apply("cql_version", primitive(ASCII)),
