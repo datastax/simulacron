@@ -46,7 +46,7 @@ class Test {
 Constructing a `Server` will register a netty `EventLoopGroup` and `Timer` under the covers.  Alternatively you may
 provide your own `EventLoopGroup` as input to the builder.
 
-By default nodes provisioned by Server will use socket addresses starting with 127.0.0.1:9042, 127.0.0.2:9042, and so
+By default nodes provisioned by Server will use socket addresses starting with 127.0.1.1:9042, 127.0.1.2:9042, and so
 on.   To alter this behavior you may pass in a custom `AddressResolver` by using
 `Server.Builder.withAddressResolver(AddressResolver)`.
 
