@@ -432,7 +432,7 @@ To simply retrieve the number of active connections, one could use `getActiveCon
 ```java
 import com.datastax.simulacron.common.stubbing.CloseType;
 
-// Request to close connections and join until connections are closed.
+// Request to close connections.
 // The connections that were closed are returned.
 ClusterConnectionReport report = cluster.closeConnections(CloseType.DISCONNECT);
 ```
@@ -469,7 +469,7 @@ import com.datastax.simulacron.server.RejectScope;
 cluster.dc(1).rejectConnections(0, RejectScope.STOP);
 
 // alias for stopping immediately as done in previous instance
-cluster.dc(1).stop().join();
+cluster.dc(1).stop();
 
 // tell node to unbind listening for new connections after 1 successful connection while keeping existing connections open.
 cluster.node(2).rejectConnections(1, RejectScope.UNBIND);
