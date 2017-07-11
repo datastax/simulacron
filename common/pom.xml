@@ -1,27 +1,29 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>com.datastax.simulacron</groupId>
-        <artifactId>simulacron-parent</artifactId>
-        <version>0.2.2-SNAPSHOT</version>
-    </parent>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.datastax.simulacron</groupId>
+    <artifactId>simulacron-parent</artifactId>
+    <version>0.2.2-SNAPSHOT</version>
+  </parent>
 
-    <artifactId>common</artifactId>
-    <packaging>jar</packaging>
+  <artifactId>common</artifactId>
+  <packaging>jar</packaging>
 
-    <name>simulacron common</name>
+  <name>simulacron common</name>
 
-    <dependencies>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson-databind.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.datastax.oss</groupId>
-            <artifactId>native-protocol</artifactId>
-            <version>1.4.0-SNAPSHOT</version>
-        </dependency>
-    </dependencies>
+  <dependencies>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson-databind.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>native-protocol</artifactId>
+      <version>1.4.0-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
 
 </project>

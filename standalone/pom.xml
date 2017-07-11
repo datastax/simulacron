@@ -1,112 +1,115 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>com.datastax.simulacron</groupId>
-        <artifactId>simulacron-parent</artifactId>
-        <version>0.2.2-SNAPSHOT</version>
-    </parent>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.datastax.simulacron</groupId>
+    <artifactId>simulacron-parent</artifactId>
+    <version>0.2.2-SNAPSHOT</version>
+  </parent>
 
-    <artifactId>standalone</artifactId>
-    <packaging>jar</packaging>
+  <artifactId>standalone</artifactId>
+  <packaging>jar</packaging>
 
-    <name>simulacron standalone jar</name>
+  <name>simulacron standalone jar</name>
 
-    <properties>
-        <mainClass>com.datastax.simulacron.standalone.App</mainClass>
-    </properties>
+  <properties>
+    <mainClass>com.datastax.simulacron.standalone.App</mainClass>
+  </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>com.datastax.simulacron</groupId>
-            <artifactId>http-server</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>${jcommander.version}</version>
-        </dependency>
-        <dependency>
-            <!-- declare netty-transport-native-epoll in standalone module as possible netty versioning clash
-            is unlikely as this module should be used as standalone jar only. -->
-            <groupId>io.netty</groupId>
-            <artifactId>netty-transport-native-epoll</artifactId>
-            <version>${netty.version}</version>
-            <!-- hard code classifier for 64 bit platforms as this will usually be the case -->
-            <classifier>linux-x86_64</classifier>
-        </dependency>
-    </dependencies>
+  <dependencies>
+    <dependency>
+      <groupId>com.datastax.simulacron</groupId>
+      <artifactId>http-server</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.beust</groupId>
+      <artifactId>jcommander</artifactId>
+      <version>${jcommander.version}</version>
+    </dependency>
+    <dependency>
+      <!-- declare netty-transport-native-epoll in standalone module as possible netty versioning clash
+      is unlikely as this module should be used as standalone jar only. -->
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-epoll</artifactId>
+      <version>${netty.version}</version>
+      <!-- hard code classifier for 64 bit platforms as this will usually be the case -->
+      <classifier>linux-x86_64</classifier>
+    </dependency>
+  </dependencies>
 
-    <build>
-        <finalName>simulacron-standalone-${project.parent.version}</finalName>
+  <build>
+    <finalName>simulacron-standalone-${project.parent.version}</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <transformers>
+                <transformer
+                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>${mainClass}</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <configuration>
+          <mainClass>${mainClass}</mainClass>
+          <cleanupDaemonThreads>true</cleanupDaemonThreads>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>${mainClass}</mainClass>
-                                </transformer>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <configuration>
-                    <mainClass>${mainClass}</mainClass>
-                    <cleanupDaemonThreads>true</cleanupDaemonThreads>
-                </configuration>
-            </plugin>
+          <plugin>
+            <groupId>de.jutzig</groupId>
+            <artifactId>github-release-plugin</artifactId>
+            <version>1.2.0</version>
+            <configuration>
+              <prerelease>true</prerelease>
+              <draft>true</draft>
+              <repositoryId>riptano/simulacron</repositoryId>
+              <tag>${project.version}</tag>
+              <fileSets>
+                <fileSet>
+                  <directory>${project.build.directory}</directory>
+                  <includes>
+                    <include>simulacron-standalone-${project.version}.jar</include>
+                  </includes>
+                </fileSet>
+              </fileSets>
+            </configuration>
+            <executions>
+              <execution>
+                <id>release-at-deploy</id>
+                <phase>deploy</phase>
+                <goals>
+                  <goal>release</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
-    </build>
-
-    <profiles>
-        <profile>
-            <id>release</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>de.jutzig</groupId>
-                        <artifactId>github-release-plugin</artifactId>
-                        <version>1.2.0</version>
-                        <configuration>
-                            <prerelease>true</prerelease>
-                            <draft>true</draft>
-                            <repositoryId>riptano/simulacron</repositoryId>
-                            <tag>${project.version}</tag>
-                            <fileSets>
-                                <fileSet>
-                                    <directory>${project.build.directory}</directory>
-                                    <includes>
-                                        <include>simulacron-standalone-${project.version}.jar</include>
-                                    </includes>
-                                </fileSet>
-                            </fileSets>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>release-at-deploy</id>
-                                <phase>deploy</phase>
-                                <goals>
-                                    <goal>release</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+      </build>
+    </profile>
+  </profiles>
 </project>
