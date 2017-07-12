@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.channel.Channel;
 
 import java.net.SocketAddress;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -124,10 +123,36 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
     return getNodes().stream().map(n -> (BoundNode) n);
   }
 
+  /**
+   * Returns a QueryLogReport that contains filtered logs for this datacenter
+   *
+   * @return QueryLogReport
+   */
   @Override
   @JsonIgnore
-  public List<QueryLog> getLogs() {
-    return getBoundNodes().flatMap(n -> n.getLogs().stream()).collect(Collectors.toList());
+  public QueryLogReport getLogs(boolean primed) {
+    ClusterQueryLogReport clusterQueryLogReport = new ClusterQueryLogReport(cluster.getId());
+    for (Node node : this.getNodes()) {
+      BoundNode boundNode = (BoundNode) node;
+      clusterQueryLogReport.addNode(node, boundNode.getActivityLogsWithFiltering(primed));
+    }
+    return clusterQueryLogReport.getDataCenters().iterator().next();
+  }
+
+  /**
+   * Returns a QueryLogReport that contains all the logs for this datacenter
+   *
+   * @return QueryLogReport
+   */
+  @Override
+  @JsonIgnore
+  public QueryLogReport getLogs() {
+    ClusterQueryLogReport clusterQueryLogReport = new ClusterQueryLogReport(cluster.getId());
+    for (Node node : this.getNodes()) {
+      BoundNode boundNode = (BoundNode) node;
+      clusterQueryLogReport.addNode(node, boundNode.getActivityLogs());
+    }
+    return clusterQueryLogReport.getDataCenters().iterator().next();
   }
 
   @Override

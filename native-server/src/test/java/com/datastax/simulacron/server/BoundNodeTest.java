@@ -160,7 +160,11 @@ public class BoundNodeTest {
     // Should be recorded in activity log
     try {
       assertThat(
-              loggedNode.getLogs().stream().filter(ql -> ql.getQuery().equals(query)).findFirst())
+              loggedNode
+                  .getActivityLogs()
+                  .stream()
+                  .filter(ql -> ql.getQuery().equals(query))
+                  .findFirst())
           .isPresent();
     } finally {
       loggedNode.clearLogs();
@@ -267,7 +271,7 @@ public class BoundNodeTest {
     loggedChannel.writeInbound(request2);
     loggedChannel.readOutbound();
 
-    List<QueryLog> logs = loggedNode.getLogs();
+    List<QueryLog> logs = loggedNode.getActivityLogs();
     assertThat(logs.size()).isEqualTo(2);
     QueryLog log1 = logs.get(0);
     assertThat(log1.getQuery()).isEqualTo("use myks");
@@ -288,6 +292,6 @@ public class BoundNodeTest {
     channel.writeInbound(request2);
     channel.readOutbound();
 
-    assertThat(node.getLogs()).hasSize(0);
+    assertThat(node.getActivityLogs()).hasSize(0);
   }
 }

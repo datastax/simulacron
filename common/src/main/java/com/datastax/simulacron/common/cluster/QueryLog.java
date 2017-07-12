@@ -4,11 +4,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class QueryLog {
-  @JsonProperty("datacenter_id")
-  private long datacenterId;
-
-  @JsonProperty("node_id")
-  private long nodeId;
 
   @JsonProperty("query")
   private String query;
@@ -30,26 +25,18 @@ public class QueryLog {
 
   @JsonCreator
   public QueryLog(
-      @JsonProperty("datacenter_id") long datacenterId,
-      @JsonProperty("node_id") long nodeId,
       @JsonProperty("query") String query,
       @JsonProperty("consistency_level") String consistency,
       @JsonProperty("serial_consistency_level") String serialConsistency,
       @JsonProperty("connection") String connection,
       @JsonProperty("timestamp") long timestamp,
       @JsonProperty("primed") boolean primed) {
-    this.datacenterId = datacenterId;
-    this.nodeId = nodeId;
     this.query = query;
     this.consistency = consistency;
     this.serialConsistency = serialConsistency;
     this.connection = connection;
     this.timestamp = timestamp;
     this.primed = primed;
-  }
-
-  public long getNodeId() {
-    return nodeId;
   }
 
   public String getQuery() {
@@ -62,10 +49,6 @@ public class QueryLog {
 
   public String getSerialConsistency() {
     return serialConsistency;
-  }
-
-  public long getDatacenterId() {
-    return datacenterId;
   }
 
   public String getConnection() {

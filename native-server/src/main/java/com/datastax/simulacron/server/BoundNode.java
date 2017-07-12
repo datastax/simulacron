@@ -195,10 +195,45 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
     }
   }
 
+  /**
+   * This is used to fetch the QueryLogReport with unfiltered activity logs
+   *
+   * @return QueryLogReport containing all the logs for the node
+   */
   @Override
   @JsonIgnore
-  public List<QueryLog> getLogs() {
-    return activityLog.getLogs();
+  public QueryLogReport getLogs() {
+    ClusterQueryLogReport clusterQueryLogReportReport = new ClusterQueryLogReport(cluster.getId());
+    return clusterQueryLogReportReport.addNode(this, this.activityLog.getLogs());
+  }
+
+  /**
+   * This is used to fetch the QueryLogReport with filtered activity logs
+   *
+   * @return QueryLogReport containing all the logs for the node
+   */
+  @Override
+  @JsonIgnore
+  public QueryLogReport getLogs(boolean primed) {
+    ClusterQueryLogReport clusterQueryLogReportReport = new ClusterQueryLogReport(cluster.getId());
+    return clusterQueryLogReportReport.addNode(this, this.activityLog.getLogs(primed));
+  }
+
+  /**
+   * This is used to fetch all the QueryLogs from the nodes activity logs
+   *
+   * @return List of QueryLog for the node
+   */
+  public List<QueryLog> getActivityLogs() {
+    return this.activityLog.getLogs();
+  }
+  /**
+   * This is used to fetch filtered QueryLogs from the nodes activity logs
+   *
+   * @return List of QueryLog for the node
+   */
+  public List<QueryLog> getActivityLogsWithFiltering(boolean primed) {
+    return this.activityLog.getLogs(primed);
   }
 
   @Override

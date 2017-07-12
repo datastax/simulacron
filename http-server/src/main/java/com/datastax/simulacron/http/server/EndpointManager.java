@@ -31,7 +31,7 @@ public class EndpointManager implements HttpListener {
   }
 
   /**
-   * This is an async callback that will be invoked in order to get the exisiting connections of a
+   * This is an async callback that will be invoked in order to get the existing connections of a
    * particular scope or the whole of the connections that have been created by simulacron (all the
    * connections of all the clusters) if the scope is not set. The scope will be specified in a
    * similar way to other requests, adding /clusterIdOrName/datacenterIdOrName/nodeIdOrName to the

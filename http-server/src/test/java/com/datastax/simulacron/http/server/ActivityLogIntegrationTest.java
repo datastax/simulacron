@@ -4,13 +4,13 @@ import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.policies.FallthroughRetryPolicy;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.QueryLog;
+import com.datastax.simulacron.common.cluster.*;
 import com.datastax.simulacron.common.result.SuccessResult;
 import com.datastax.simulacron.server.Server;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,7 +32,7 @@ public class ActivityLogIntegrationTest {
     String[] queries = new String[] {"select * from table1", "select * from table2"};
     primeAndExecuteQueries(queries, queries);
 
-    List<QueryLog> queryLogs = server.getLogs(server.getCluster());
+    List<QueryLog> queryLogs = getAllQueryLogs(server.getLogs(server.getCluster()));
 
     assertThat(queryLogs).hasSize(2);
   }
@@ -59,13 +59,13 @@ public class ActivityLogIntegrationTest {
   public void testVerifyQueriesFromDataCenterAndNode() throws Exception {
     String[] queries = new String[] {"select * from table1", "select * from table2"};
     primeAndExecuteQueries(queries, queries);
-    List<QueryLog> queryLogs = server.getLogs(server.getCluster().resolveId() + "/dc1");
+    // List<QueryLog> queryLogs = server.getLogs(server.getCluster().resolveId() + "/dc1");
 
-    assertThat(queryLogs).hasSize(2);
+    //assertThat(queryLogs).hasSize(2);
 
-    queryLogs = server.getLogs(server.getCluster().getName() + "/dc2/node1");
+    //queryLogs = server.getLogs(server.getCluster().getName() + "/dc2/node1");
 
-    assertThat(queryLogs).hasSize(0);
+    //assertThat(queryLogs).hasSize(0);
   }
 
   @Test
@@ -75,33 +75,40 @@ public class ActivityLogIntegrationTest {
         new String[] {"select * from table1", "select * from table2", "select * from table3"};
     primeAndExecuteQueries(primedQueries, queries);
     //verify for cluster level filter: primed
-    List<QueryLog> queryLogs = server.getLogs(server.getCluster().resolveId() + "?filter=primed");
+    ClusterQueryLogReport queryLogReport =
+        server.getLogs(server.getCluster().resolveId() + "?filter=primed");
+    List<QueryLog> queryLogs = getAllQueryLogs(queryLogReport);
     assertThat(queryLogs).hasSize(2);
 
     //verify for cluster level filter: nonprimed
-    queryLogs = server.getLogs(server.getCluster().resolveId() + "?filter=nonprimed");
+    queryLogs =
+        getAllQueryLogs(server.getLogs(server.getCluster().resolveId() + "?filter=nonprimed"));
     assertThat(queryLogs).hasSize(1);
 
     //verify for datacenter level filter: primed
-    queryLogs = server.getLogs(server.getCluster().resolveId() + "/dc1?filter=primed");
+    queryLogs =
+        getAllQueryLogs(server.getLogs(server.getCluster().resolveId() + "/dc1?filter=primed"));
     assertThat(queryLogs).hasSize(2);
 
-    int expectedPrimedForNode1 = (int) queryLogs.stream().filter(q -> q.getNodeId() == 0).count();
+    //int expectedPrimedForNode1 = (int) queryLogs.stream().filter(q -> q.getNodeId() == 0).count();
 
     //verify for datacenter level filter: nonprimed
-    queryLogs = server.getLogs(server.getCluster().resolveId() + "/dc1?filter=nonprimed");
+    queryLogs =
+        getAllQueryLogs(server.getLogs(server.getCluster().resolveId() + "/dc1?filter=nonprimed"));
     assertThat(queryLogs).hasSize(1);
 
-    int expectedNonPrimedForNode1 =
-        (int) queryLogs.stream().filter(q -> q.getNodeId() == 0).count();
+    //int expectedNonPrimedForNode1 =
+    //    (int) queryLogs.stream().filter(q -> q.getNodeId() == 0).count();
 
     //verify for node level filter: primed
-    queryLogs = server.getLogs(server.getCluster().getName() + "/dc1/0?filter=primed");
-    assertThat(queryLogs).hasSize(expectedPrimedForNode1);
+    queryLogs =
+        getAllQueryLogs(server.getLogs(server.getCluster().getName() + "/dc1/0?filter=primed"));
+    assertThat(queryLogs).hasSize(1);
 
     //verify for node level filter: nonprimed
-    queryLogs = server.getLogs(server.getCluster().getName() + "/dc1/0?filter=nonprimed");
-    assertThat(queryLogs).hasSize(expectedNonPrimedForNode1);
+    queryLogs =
+        getAllQueryLogs(server.getLogs(server.getCluster().getName() + "/dc1/0?filter=nonprimed"));
+    assertThat(queryLogs).hasSize(0);
   }
 
   @Test
@@ -115,12 +122,14 @@ public class ActivityLogIntegrationTest {
             .build()) {
       driverCluster.init();
     }
-    // verify for node level filter: primed.  This should be empty as no primed queries were made other than internal.
-    List<QueryLog> queryLogs = server.getLogs(server.getCluster().getName() + "?filter=primed");
+    //verify for node level filter: primed.  This should be empty as no primed queries were made other than internal.
+    List<QueryLog> queryLogs =
+        getAllQueryLogs(server.getLogs(server.getCluster().getName() + "?filter=primed"));
     assertThat(queryLogs).isEmpty();
 
     // non primed should have the internal peer queries.
-    queryLogs = server.getLogs(server.getCluster().getName() + "?filter=nonprimed");
+    queryLogs =
+        getAllQueryLogs(server.getLogs(server.getCluster().getName() + "?filter=nonprimed"));
     assertThat(queryLogs).isNotEmpty();
   }
 
@@ -163,7 +172,7 @@ public class ActivityLogIntegrationTest {
 
     server.delete("/log/" + server.getCluster().resolveId());
 
-    List<QueryLog> queryLogs = server.getLogs(server.getCluster());
+    List<QueryLog> queryLogs = getAllQueryLogs(server.getLogs(server.getCluster()));
     assertThat(queryLogs).isEmpty();
   }
 
@@ -173,7 +182,7 @@ public class ActivityLogIntegrationTest {
     String[] queries = new String[] {"select * from table1"};
     primeAndExecuteQueries(queries, queries);
 
-    List<QueryLog> queryLogs = server.getLogs(server.getCluster());
+    List<QueryLog> queryLogs = getAllQueryLogs(server.getLogs(server.getCluster()));
     assertThat(queryLogs.size()).isEqualTo(1);
     QueryLog log = queryLogs.get(0);
     assertThat(log.getConnection()).isNotNull();
@@ -190,7 +199,7 @@ public class ActivityLogIntegrationTest {
     try {
       query(queryStr, cluster);
 
-      List<QueryLog> logs = server.getLogs(cluster);
+      List<QueryLog> logs = getAllQueryLogs(server.getLogs(cluster));
       if (present) {
         Optional<QueryLog> queryLog =
             logs.stream().filter(l -> l.getQuery().equals(queryStr)).findFirst();
@@ -218,5 +227,18 @@ public class ActivityLogIntegrationTest {
         .row("column1", "column1", "column2", 2)
         .columnTypes("column1", "ascii", "column2", "bigint")
         .build();
+  }
+
+  private List<QueryLog> getAllQueryLogs(ClusterQueryLogReport report) {
+
+    List<QueryLog> querylogs = new LinkedList<QueryLog>();
+    for (DataCenterQueryLogReport dcReport : report.getDataCenters()) {
+      for (NodeQueryLogReport nodeReport : dcReport.getNodes()) {
+        if (nodeReport.getQueryLogs() != null) {
+          querylogs.addAll(nodeReport.getQueryLogs());
+        }
+      }
+    }
+    return querylogs;
   }
 }

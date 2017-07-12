@@ -1,15 +1,13 @@
 package com.datastax.simulacron.http.server;
 
+import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
-import com.datastax.simulacron.common.cluster.QueryLog;
+import com.datastax.simulacron.common.cluster.QueryLogReport;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.datastax.simulacron.http.server.HttpUtils.handleError;
 
@@ -55,18 +53,13 @@ public class ActivityLogManager implements HttpListener {
                 if (scope == null) {
                   return;
                 }
+                QueryLogReport logReport;
+                if (filter != null) logReport = HttpUtils.find(server, scope).getLogs(filter);
+                else logReport = HttpUtils.find(server, scope).getLogs();
 
-                HttpUtils.find(server, scope).getLogs();
-
-                List<QueryLog> logs = HttpUtils.find(server, scope).getLogs();
-                if (filter != null) {
-                  logs =
-                      logs.stream()
-                          .filter(l -> l.isPrimed() == filter)
-                          .collect(Collectors.toList());
-                }
+                ClusterQueryLogReport rootReport = logReport.getRootReport();
                 String activityLogStr =
-                    om.writerWithDefaultPrettyPrinter().writeValueAsString(logs);
+                    om.writerWithDefaultPrettyPrinter().writeValueAsString(rootReport);
                 response.append(activityLogStr);
                 context
                     .request()

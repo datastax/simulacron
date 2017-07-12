@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -159,12 +158,12 @@ public class AdminServer extends ExternalResource {
     return om.readValue(response.body, clazz);
   }
 
-  List<QueryLog> getLogs(AbstractNodeProperties topic) throws Exception {
+  public ClusterQueryLogReport getLogs(AbstractNodeProperties topic) throws Exception {
     String path = topic.resolveId();
-    return om.readValue(get("/log/" + path).body, new TypeReference<List<QueryLog>>() {});
+    return om.readValue(get("/log/" + path).body, new TypeReference<ClusterQueryLogReport>() {});
   }
 
-  List<QueryLog> getLogs(String path) throws Exception {
-    return om.readValue(get("/log/" + path).body, new TypeReference<List<QueryLog>>() {});
+  public ClusterQueryLogReport getLogs(String path) throws Exception {
+    return om.readValue(get("/log/" + path).body, new TypeReference<ClusterQueryLogReport>() {});
   }
 }

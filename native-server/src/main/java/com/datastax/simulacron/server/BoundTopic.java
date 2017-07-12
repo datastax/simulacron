@@ -2,14 +2,13 @@ package com.datastax.simulacron.server;
 
 import com.datastax.simulacron.common.cluster.ConnectionReport;
 import com.datastax.simulacron.common.cluster.NodeProperties;
-import com.datastax.simulacron.common.cluster.QueryLog;
+import com.datastax.simulacron.common.cluster.QueryLogReport;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.Prime;
 import com.datastax.simulacron.common.stubbing.PrimeDsl;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.net.SocketAddress;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
@@ -166,7 +165,10 @@ public interface BoundTopic<C extends ConnectionReport> extends AutoCloseable, N
 
   /** @return recorded query logs for this. */
   @JsonIgnore
-  List<QueryLog> getLogs();
+  QueryLogReport getLogs();
+
+  @JsonIgnore
+  QueryLogReport getLogs(boolean primed);
 
   /** clears the query logs for this. */
   void clearLogs();

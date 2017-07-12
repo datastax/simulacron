@@ -12,6 +12,7 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class ActivityLog {
 
@@ -35,8 +36,6 @@ public class ActivityLog {
 
       queryLog.add(
           new QueryLog(
-              node.getDataCenter().getId(),
-              node.getId(),
               query.query,
               ConsistencyLevel.fromCode(query.options.consistency).name(),
               ConsistencyLevel.fromCode(query.options.serialConsistency).name(),
@@ -55,8 +54,6 @@ public class ActivityLog {
                 (com.datastax.simulacron.common.request.Query) prime.getPrimedRequest().when;
             queryLog.add(
                 new QueryLog(
-                    node.getDataCenter().getId(),
-                    node.getId(),
                     query.query,
                     ConsistencyLevel.fromCode(execute.options.consistency).name(),
                     ConsistencyLevel.fromCode(execute.options.serialConsistency).name(),
@@ -81,5 +78,9 @@ public class ActivityLog {
 
   public List<QueryLog> getLogs() {
     return queryLog;
+  }
+
+  public List<QueryLog> getLogs(boolean primed) {
+    return queryLog.stream().filter(l -> l.isPrimed() == primed).collect(Collectors.toList());
   }
 }
