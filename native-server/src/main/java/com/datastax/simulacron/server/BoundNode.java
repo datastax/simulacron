@@ -2,14 +2,32 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
-import com.datastax.oss.protocol.internal.request.*;
+import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Options;
+import com.datastax.oss.protocol.internal.request.Prepare;
+import com.datastax.oss.protocol.internal.request.Query;
+import com.datastax.oss.protocol.internal.request.Register;
+import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.error.Unprepared;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
-import com.datastax.simulacron.common.cluster.*;
-import com.datastax.simulacron.common.stubbing.*;
+import com.datastax.simulacron.common.cluster.ActivityLog;
+import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
+import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
+import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.NodeConnectionReport;
+import com.datastax.simulacron.common.cluster.NodeProperties;
+import com.datastax.simulacron.common.cluster.NodeQueryLogReport;
+import com.datastax.simulacron.common.stubbing.Action;
+import com.datastax.simulacron.common.stubbing.CloseType;
+import com.datastax.simulacron.common.stubbing.DisconnectAction;
+import com.datastax.simulacron.common.stubbing.MessageResponseAction;
+import com.datastax.simulacron.common.stubbing.NoResponseAction;
+import com.datastax.simulacron.common.stubbing.Prime;
 import com.datastax.simulacron.common.stubbing.PrimeDsl.PrimeBuilder;
+import com.datastax.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -28,7 +46,14 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.net.SocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +72,8 @@ import static com.datastax.simulacron.common.stubbing.PrimeDsl.when;
 import static com.datastax.simulacron.common.utils.FrameUtils.wrapResponse;
 import static com.datastax.simulacron.server.ChannelUtils.completable;
 
-public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> {
+public class BoundNode extends Node
+    implements BoundTopic<NodeConnectionReport, NodeQueryLogReport> {
 
   private static Logger logger = LoggerFactory.getLogger(BoundNode.class);
 
@@ -78,7 +104,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
 
   private final BoundCluster cluster;
 
-  private final transient ActivityLog activityLog = new ActivityLog();
+  final transient ActivityLog activityLog = new ActivityLog();
 
   private static class RejectState {
     private final RejectScope scope;
@@ -202,7 +228,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
    */
   @Override
   @JsonIgnore
-  public QueryLogReport getLogs() {
+  public NodeQueryLogReport getLogs() {
     ClusterQueryLogReport clusterQueryLogReportReport = new ClusterQueryLogReport(cluster.getId());
     return clusterQueryLogReportReport.addNode(this, this.activityLog.getLogs());
   }
@@ -214,26 +240,9 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
    */
   @Override
   @JsonIgnore
-  public QueryLogReport getLogs(boolean primed) {
+  public NodeQueryLogReport getLogs(boolean primed) {
     ClusterQueryLogReport clusterQueryLogReportReport = new ClusterQueryLogReport(cluster.getId());
     return clusterQueryLogReportReport.addNode(this, this.activityLog.getLogs(primed));
-  }
-
-  /**
-   * This is used to fetch all the QueryLogs from the nodes activity logs
-   *
-   * @return List of QueryLog for the node
-   */
-  public List<QueryLog> getActivityLogs() {
-    return this.activityLog.getLogs();
-  }
-  /**
-   * This is used to fetch filtered QueryLogs from the nodes activity logs
-   *
-   * @return List of QueryLog for the node
-   */
-  public List<QueryLog> getActivityLogsWithFiltering(boolean primed) {
-    return this.activityLog.getLogs(primed);
   }
 
   @Override
@@ -368,7 +377,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
         // TODO: Maybe attempt to identify bind parameters
         String query = prepare.cqlQuery;
         Prime prime = whenWithInferredParams(query).then(noRows()).build();
-        this.getBoundCluster().getStubStore().registerInternal(prime);
+        this.getCluster().getStubStore().registerInternal(prime);
         response = prime.toPrepared();
       }
       if (response != null) {
@@ -450,7 +459,7 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
                 cAction.getScope() == NODE
                     ? Stream.of(BoundNode.this)
                     : cAction.getScope() == CLUSTER
-                        ? getBoundCluster().getNodes().stream()
+                        ? getCluster().getNodes().stream()
                         : getDataCenter().getNodes().stream();
             future = closeNodes(nodes, cAction.getCloseType());
             break;
@@ -496,6 +505,16 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
   @Override
   public StubStore getStubStore() {
     return stubStore;
+  }
+
+  @Override
+  public int clearPrimes(boolean nested) {
+    return stubStore.clear();
+  }
+
+  /** See {@link #clearPrimes(boolean)} */
+  public int clearPrimes() {
+    return stubStore.clear();
   }
 
   @Override
@@ -571,12 +590,12 @@ public class BoundNode extends Node implements BoundTopic<NodeConnectionReport> 
   }
 
   @Override
-  public Stream<BoundNode> getBoundNodes() {
-    return Stream.of(this);
+  public List<BoundNode> getBoundNodes() {
+    return Collections.singletonList(this);
   }
 
   @Override
-  public BoundCluster getBoundCluster() {
+  public BoundCluster getCluster() {
     return cluster;
   }
 

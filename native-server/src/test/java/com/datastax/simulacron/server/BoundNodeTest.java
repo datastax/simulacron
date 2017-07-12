@@ -3,12 +3,19 @@ package com.datastax.simulacron.server;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.ProtocolConstants;
-import com.datastax.oss.protocol.internal.request.*;
+import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Options;
+import com.datastax.oss.protocol.internal.request.Prepare;
+import com.datastax.oss.protocol.internal.request.Query;
+import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.request.query.QueryOptions;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.error.Unprepared;
-import com.datastax.oss.protocol.internal.response.result.*;
+import com.datastax.oss.protocol.internal.response.result.Prepared;
+import com.datastax.oss.protocol.internal.response.result.Rows;
+import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
+import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.oss.protocol.internal.response.result.Void;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
@@ -161,7 +168,8 @@ public class BoundNodeTest {
     try {
       assertThat(
               loggedNode
-                  .getActivityLogs()
+                  .getLogs()
+                  .getQueryLogs()
                   .stream()
                   .filter(ql -> ql.getQuery().equals(query))
                   .findFirst())
@@ -271,7 +279,7 @@ public class BoundNodeTest {
     loggedChannel.writeInbound(request2);
     loggedChannel.readOutbound();
 
-    List<QueryLog> logs = loggedNode.getActivityLogs();
+    List<QueryLog> logs = loggedNode.getLogs().getQueryLogs();
     assertThat(logs.size()).isEqualTo(2);
     QueryLog log1 = logs.get(0);
     assertThat(log1.getQuery()).isEqualTo("use myks");
@@ -292,6 +300,6 @@ public class BoundNodeTest {
     channel.writeInbound(request2);
     channel.readOutbound();
 
-    assertThat(node.getActivityLogs()).hasSize(0);
+    assertThat(node.getLogs().getQueryLogs()).hasSize(0);
   }
 }

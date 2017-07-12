@@ -1,6 +1,5 @@
 package com.datastax.simulacron.common.cluster;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -71,9 +70,6 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   @Override
   @JsonProperty("active_connections")
   public abstract Long getActiveConnections();
-
-  @JsonIgnore
-  public abstract Cluster getCluster();
 
   String toStringWith(String extras) {
     StringBuilder str = new StringBuilder(this.getClass().getSimpleName());

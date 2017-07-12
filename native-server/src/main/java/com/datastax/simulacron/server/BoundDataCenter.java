@@ -1,20 +1,26 @@
 package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
+import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
+import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.DataCenterConnectionReport;
+import com.datastax.simulacron.common.cluster.DataCenterQueryLogReport;
+import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.channel.Channel;
 
 import java.net.SocketAddress;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenterConnectionReport> {
+public class BoundDataCenter extends DataCenter
+    implements BoundTopic<DataCenterConnectionReport, DataCenterQueryLogReport> {
 
   private final transient Server server;
 
@@ -69,6 +75,17 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
   }
 
   @Override
+  public int clearPrimes(boolean nested) {
+    int cleared = getStubStore().clear();
+    if (nested) {
+      for (BoundNode node : getBoundNodes()) {
+        cleared += node.clearPrimes(true);
+      }
+    }
+    return cleared;
+  }
+
+  @Override
   public DataCenterConnectionReport getConnections() {
     ClusterConnectionReport clusterConnectionReport = new ClusterConnectionReport(cluster.getId());
     for (Node node : this.getNodes()) {
@@ -119,8 +136,8 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
   }
 
   @Override
-  public Stream<BoundNode> getBoundNodes() {
-    return getNodes().stream().map(n -> (BoundNode) n);
+  public List<BoundNode> getBoundNodes() {
+    return getNodes().stream().map(n -> (BoundNode) n).collect(Collectors.toList());
   }
 
   /**
@@ -130,12 +147,10 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
    */
   @Override
   @JsonIgnore
-  public QueryLogReport getLogs(boolean primed) {
+  public DataCenterQueryLogReport getLogs(boolean primed) {
     ClusterQueryLogReport clusterQueryLogReport = new ClusterQueryLogReport(cluster.getId());
-    for (Node node : this.getNodes()) {
-      BoundNode boundNode = (BoundNode) node;
-      clusterQueryLogReport.addNode(node, boundNode.getActivityLogsWithFiltering(primed));
-    }
+    this.getBoundNodes()
+        .forEach(n -> clusterQueryLogReport.addNode(n, n.activityLog.getLogs(primed)));
     return clusterQueryLogReport.getDataCenters().iterator().next();
   }
 
@@ -146,12 +161,9 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
    */
   @Override
   @JsonIgnore
-  public QueryLogReport getLogs() {
+  public DataCenterQueryLogReport getLogs() {
     ClusterQueryLogReport clusterQueryLogReport = new ClusterQueryLogReport(cluster.getId());
-    for (Node node : this.getNodes()) {
-      BoundNode boundNode = (BoundNode) node;
-      clusterQueryLogReport.addNode(node, boundNode.getActivityLogs());
-    }
+    this.getBoundNodes().forEach(n -> clusterQueryLogReport.addNode(n, n.activityLog.getLogs()));
     return clusterQueryLogReport.getDataCenters().iterator().next();
   }
 
@@ -161,7 +173,7 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
   }
 
   @Override
-  public BoundCluster getBoundCluster() {
+  public BoundCluster getCluster() {
     return cluster;
   }
 
@@ -173,7 +185,7 @@ public class BoundDataCenter extends DataCenter implements BoundTopic<DataCenter
   Optional<StubMapping> find(Node node, Frame frame) {
     Optional<StubMapping> stub = stubStore.find(node, frame);
     if (!stub.isPresent()) {
-      stub = getBoundCluster().find(node, frame);
+      stub = getCluster().find(node, frame);
     }
     return stub;
   }

@@ -361,6 +361,20 @@ cluster.prime(
 );
 ```
 
+### Clearing Primes
+
+Primes may be cleared by calling `clearPrimes(boolean nested)`, i.e.:
+
+```java
+// Clear primes for a node.
+cluster.node(1).clearPrimes();
+
+// Clear primes for a DC and all of its underlying nodes.
+cluster.dc(1).clearPrimes(true);
+
+// Clear primes, but only at the DC level.
+cluster.dc(1).clearPrimes(false);
+```
 
 ## Using the Activity Log
 

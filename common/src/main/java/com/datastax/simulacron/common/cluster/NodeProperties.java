@@ -1,5 +1,7 @@
 package com.datastax.simulacron.common.cluster;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -169,6 +171,10 @@ public interface NodeProperties extends Comparable<NodeProperties> {
       }
     }
   }
+
+  /** @return The cluster associated with these properties. */
+  @JsonIgnore
+  Cluster getCluster();
 
   @Override
   default int compareTo(NodeProperties other) {

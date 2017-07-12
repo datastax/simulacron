@@ -9,15 +9,16 @@ import com.datastax.simulacron.common.stubbing.PrimeDsl;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.net.SocketAddress;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.datastax.simulacron.server.CompletableFutures.getUninterruptibly;
 
-public interface BoundTopic<C extends ConnectionReport> extends AutoCloseable, NodeProperties {
+public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport>
+    extends AutoCloseable, NodeProperties {
 
   StubStore getStubStore();
 
@@ -39,7 +40,15 @@ public interface BoundTopic<C extends ConnectionReport> extends AutoCloseable, N
     prime(prime.build());
   }
 
-  /** synchronous version of {@link #unregister()} */
+  /**
+   * Clears all primes associated with this.
+   *
+   * @param nested Also clears primes for underlying members (i.e. for a DC, also clears it's node's
+   *     primes.)
+   */
+  int clearPrimes(boolean nested);
+
+  /** synchronous version of {@link #unregisterAsync()} */
   default BoundCluster unregister() {
     return getUninterruptibly(unregisterAsync());
   }
@@ -50,7 +59,7 @@ public interface BoundTopic<C extends ConnectionReport> extends AutoCloseable, N
    * @return unregistered Cluster
    */
   default CompletionStage<BoundCluster> unregisterAsync() {
-    return getServer().unregisterAsync(getBoundCluster());
+    return getServer().unregisterAsync(getCluster());
   }
 
   @JsonIgnore
@@ -85,7 +94,7 @@ public interface BoundTopic<C extends ConnectionReport> extends AutoCloseable, N
 
   /** @return All nodes belonging to this topic. */
   @JsonIgnore
-  Stream<BoundNode> getBoundNodes();
+  List<BoundNode> getBoundNodes();
 
   /**
    * Apply a function that returns a CompletableFuture on each node.
@@ -96,6 +105,7 @@ public interface BoundTopic<C extends ConnectionReport> extends AutoCloseable, N
   default CompletionStage<Void> forEachNode(Function<BoundNode, CompletionStage<Void>> fun) {
     return CompletableFuture.allOf(
             this.getBoundNodes()
+                .stream()
                 .map(i -> fun.apply(i).toCompletableFuture())
                 .collect(Collectors.toList())
                 .toArray(new CompletableFuture[] {}))
@@ -165,19 +175,23 @@ public interface BoundTopic<C extends ConnectionReport> extends AutoCloseable, N
 
   /** @return recorded query logs for this. */
   @JsonIgnore
-  QueryLogReport getLogs();
+  Q getLogs();
 
+  /**
+   * @param primed whether or not query had a matching prime.
+   * @return recorded query logs for this filtered by whether or not query had a matching prime.
+   */
   @JsonIgnore
-  QueryLogReport getLogs(boolean primed);
+  Q getLogs(boolean primed);
 
   /** clears the query logs for this. */
   void clearLogs();
 
   @JsonIgnore
-  BoundCluster getBoundCluster();
-
-  @JsonIgnore
   Server getServer();
+
+  @Override
+  BoundCluster getCluster();
 
   @Override
   default void close() {

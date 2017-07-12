@@ -1,15 +1,45 @@
 package com.datastax.simulacron.server;
 
-import com.datastax.oss.protocol.internal.*;
-import com.datastax.oss.protocol.internal.request.*;
-import com.datastax.oss.protocol.internal.response.*;
+import com.datastax.oss.protocol.internal.Compressor;
+import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.oss.protocol.internal.FrameCodec;
+import com.datastax.oss.protocol.internal.ProtocolConstants;
+import com.datastax.oss.protocol.internal.ProtocolV3ClientCodecs;
+import com.datastax.oss.protocol.internal.ProtocolV4ClientCodecs;
+import com.datastax.oss.protocol.internal.ProtocolV5ClientCodecs;
+import com.datastax.oss.protocol.internal.request.AuthResponse;
+import com.datastax.oss.protocol.internal.request.Batch;
+import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Options;
+import com.datastax.oss.protocol.internal.request.Prepare;
+import com.datastax.oss.protocol.internal.request.Query;
+import com.datastax.oss.protocol.internal.request.Register;
+import com.datastax.oss.protocol.internal.request.Startup;
+import com.datastax.oss.protocol.internal.response.AuthChallenge;
+import com.datastax.oss.protocol.internal.response.AuthSuccess;
+import com.datastax.oss.protocol.internal.response.Authenticate;
 import com.datastax.oss.protocol.internal.response.Error;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.oss.protocol.internal.response.Event;
+import com.datastax.oss.protocol.internal.response.Ready;
+import com.datastax.oss.protocol.internal.response.Result;
+import com.datastax.oss.protocol.internal.response.Supported;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
+import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.DataCenterConnectionReport;
+import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.DefaultEventLoopGroup;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.local.LocalServerChannel;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
@@ -25,7 +55,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import static com.datastax.simulacron.server.AddressResolver.localAddressResolver;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -224,7 +253,7 @@ public class ServerTest {
       assertThat(localServer.getCluster(boundCluster.getId())).isSameAs(boundCluster);
 
       // Should be 4 nodes total.
-      List<BoundNode> nodes = boundCluster.getBoundNodes().collect(Collectors.toList());
+      List<BoundNode> nodes = boundCluster.getBoundNodes();
       assertThat(nodes).hasSize(4);
       for (BoundNode node : nodes) {
         // Each node's channel should be open.

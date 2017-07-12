@@ -1,24 +1,29 @@
 package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
+import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
+import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.channel.Channel;
 
 import java.net.SocketAddress;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * A wrapper around {@link Cluster} that is bound to a {@link Server}. If used as {@link
  * java.io.Closeable} will unbind itself form its bound server.
  */
-public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectionReport> {
+public class BoundCluster extends Cluster
+    implements BoundTopic<ClusterConnectionReport, ClusterQueryLogReport> {
 
   private final transient Server server;
 
@@ -83,6 +88,17 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
   }
 
   @Override
+  public int clearPrimes(boolean nested) {
+    int cleared = getStubStore().clear();
+    if (nested) {
+      for (BoundDataCenter dc : getBoundDataCenters()) {
+        cleared += dc.clearPrimes(true);
+      }
+    }
+    return cleared;
+  }
+
+  @Override
   public ClusterConnectionReport getConnections() {
     ClusterConnectionReport clusterConnectionReport = new ClusterConnectionReport(getId());
     for (Node node : this.getNodes()) {
@@ -132,10 +148,16 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
     return failedFuture;
   }
 
-  @Override
-  public Stream<BoundNode> getBoundNodes() {
-    return getNodes().stream().map(n -> (BoundNode) n);
+  @JsonIgnore
+  public List<BoundDataCenter> getBoundDataCenters() {
+    return getDataCenters().stream().map(d -> (BoundDataCenter) d).collect(Collectors.toList());
   }
+
+  @Override
+  public List<BoundNode> getBoundNodes() {
+    return getNodes().stream().map(n -> (BoundNode) n).collect(Collectors.toList());
+  }
+
   /**
    * Returns a QueryLogReport that contains all the logs for this cluster
    *
@@ -143,14 +165,12 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
    */
   @Override
   @JsonIgnore
-  public QueryLogReport getLogs() {
+  public ClusterQueryLogReport getLogs() {
     ClusterQueryLogReport clusterQueryLogReport = new ClusterQueryLogReport(getId());
-    for (Node node : this.getNodes()) {
-      BoundNode boundNode = (BoundNode) node;
-      clusterQueryLogReport.addNode(boundNode, boundNode.getActivityLogs());
-    }
+    this.getBoundNodes().forEach(n -> clusterQueryLogReport.addNode(n, n.activityLog.getLogs()));
     return clusterQueryLogReport;
   }
+
   /**
    * Returns a QueryLogReport that contains filtered logs for this cluster
    *
@@ -158,23 +178,21 @@ public class BoundCluster extends Cluster implements BoundTopic<ClusterConnectio
    */
   @Override
   @JsonIgnore
-  public QueryLogReport getLogs(boolean primed) {
+  public ClusterQueryLogReport getLogs(boolean primed) {
     ClusterQueryLogReport clusterQueryLogReport = new ClusterQueryLogReport(getId());
-    for (Node node : this.getNodes()) {
-      BoundNode boundNode = (BoundNode) node;
-      clusterQueryLogReport.addNode(boundNode, boundNode.getActivityLogsWithFiltering(primed));
-    }
+    this.getBoundNodes()
+        .forEach(n -> clusterQueryLogReport.addNode(n, n.activityLog.getLogs(primed)));
     return clusterQueryLogReport;
+  }
+
+  @Override
+  public BoundCluster getCluster() {
+    return this;
   }
 
   @Override
   public void clearLogs() {
     getBoundNodes().forEach(BoundNode::clearLogs);
-  }
-
-  @Override
-  public BoundCluster getBoundCluster() {
-    return this;
   }
 
   @Override

@@ -187,7 +187,7 @@ class HttpUtils {
    * @param scope Scope to resolve from.
    * @return Resolved topic.
    */
-  static BoundTopic<?> find(Server server, Scope scope) {
+  static BoundTopic<?, ?> find(Server server, Scope scope) {
     if (scope.getClusterId() != null) {
       BoundCluster cluster = server.getCluster(scope.getClusterId());
       if (scope.getDataCenterId() != null) {
