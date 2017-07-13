@@ -1,6 +1,10 @@
 package com.datastax.simulacron.http.server;
 
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.AbstractNodeProperties;
+import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
+import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
+import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.datastax.simulacron.common.stubbing.Prime;
 import com.datastax.simulacron.common.stubbing.PrimeDsl;
 import com.datastax.simulacron.server.BoundCluster;
@@ -31,7 +35,7 @@ public class AdminServer extends ExternalResource {
 
   private static int port = 8187;
 
-  private final Cluster clusterRequest;
+  private final ClusterSpec clusterRequest;
 
   private BoundCluster cluster;
 
@@ -43,11 +47,11 @@ public class AdminServer extends ExternalResource {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminServer.class);
 
-  AdminServer(Cluster cluster) {
+  AdminServer(ClusterSpec cluster) {
     this(cluster, Server.builder());
   }
 
-  AdminServer(Cluster cluster, Server.Builder serverBuilder) {
+  AdminServer(ClusterSpec cluster, Server.Builder serverBuilder) {
     this.clusterRequest = cluster;
     this.serverBuilder = serverBuilder;
   }

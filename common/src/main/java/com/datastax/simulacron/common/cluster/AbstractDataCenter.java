@@ -45,7 +45,8 @@ public abstract class AbstractDataCenter<C extends AbstractCluster, N extends Ab
   }
 
   /**
-   * Intended to be called in {@link Node} construction to add the {@link Node} to this data center.
+   * Intended to be called in {@link AbstractNode} construction to add the {@link AbstractNode} to
+   * this data center.
    *
    * @param node The node to tie to this data center.
    */

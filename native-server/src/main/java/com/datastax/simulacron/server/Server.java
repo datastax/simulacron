@@ -2,9 +2,9 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.FrameCodec;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
+import com.datastax.simulacron.common.cluster.DataCenterSpec;
+import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.common.stubbing.EmptyReturnMetadataHandler;
 import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
 import io.netty.bootstrap.ServerBootstrap;
@@ -65,8 +65,8 @@ public final class Server implements AutoCloseable {
   final ServerBootstrap serverBootstrap;
 
   /**
-   * A resolver for deriving the next {@link SocketAddress} to assign a {@link Node} if it does not
-   * provide one.
+   * A resolver for deriving the next {@link SocketAddress} to assign a {@link NodeSpec} if it does
+   * not provide one.
    */
   private final AddressResolver addressResolver;
 
@@ -88,7 +88,7 @@ public final class Server implements AutoCloseable {
   /** Counter used to assign incrementing ids to clusters. */
   private final AtomicLong clusterCounter = new AtomicLong();
 
-  /** Mapping of registered {@link Cluster} instances to their identifier. */
+  /** Mapping of registered {@link BoundCluster} instances to their identifier. */
   private final Map<Long, BoundCluster> clusters = new ConcurrentHashMap<>();
 
   /** Whether or not activity logging is enabled. */
@@ -166,38 +166,38 @@ public final class Server implements AutoCloseable {
    * @param cluster Cluster to wrap in a bound cluster.
    */
   @SuppressWarnings("unchecked")
-  private BoundCluster boundCluster(Cluster cluster) {
+  private BoundCluster boundCluster(ClusterSpec cluster) {
     long clusterId = cluster.getId() == null ? clusterCounter.getAndIncrement() : cluster.getId();
     return new BoundCluster(cluster, clusterId, this);
   }
 
-  /** synchronous version of {@link #registerAsync(Cluster.Builder)} */
-  public BoundCluster register(Cluster.Builder builder) {
+  /** synchronous version of {@link #registerAsync(ClusterSpec.Builder)} */
+  public BoundCluster register(ClusterSpec.Builder builder) {
     return getUninterruptibly(registerAsync(builder));
   }
 
-  /** see {@link #registerAsync(Cluster, ServerOptions)} */
-  public CompletionStage<BoundCluster> registerAsync(Cluster.Builder builder) {
+  /** see {@link #registerAsync(ClusterSpec, ServerOptions)} */
+  public CompletionStage<BoundCluster> registerAsync(ClusterSpec.Builder builder) {
     return registerAsync(builder.build(), ServerOptions.DEFAULT);
   }
 
-  /** synchronous version of {@link #registerAsync(Cluster)} */
-  public BoundCluster register(Cluster cluster) {
+  /** synchronous version of {@link #registerAsync(ClusterSpec)} */
+  public BoundCluster register(ClusterSpec cluster) {
     return getUninterruptibly(registerAsync(cluster));
   }
 
-  /** see {@link #registerAsync(Cluster, ServerOptions)} */
-  public CompletionStage<BoundCluster> registerAsync(Cluster cluster) {
+  /** see {@link #registerAsync(ClusterSpec, ServerOptions)} */
+  public CompletionStage<BoundCluster> registerAsync(ClusterSpec cluster) {
     return registerAsync(cluster, ServerOptions.DEFAULT);
   }
 
-  /** synchronous version of {@link #registerAsync(Cluster, ServerOptions)} */
-  public BoundCluster register(Cluster cluster, ServerOptions serverOptions) {
+  /** synchronous version of {@link #registerAsync(ClusterSpec, ServerOptions)} */
+  public BoundCluster register(ClusterSpec cluster, ServerOptions serverOptions) {
     return getUninterruptibly(registerAsync(cluster, serverOptions));
   }
 
   /**
-   * Registers a {@link Cluster} and binds it's {@link Node} instances to their respective
+   * Registers a {@link BoundCluster} and binds its {@link BoundNode} instances to their respective
    * interfaces. If any members of the cluster lack an id, this will assign a random one for them.
    * If any nodes lack an address, this will assign one based on the configured {@link
    * AddressResolver}.
@@ -207,11 +207,12 @@ public final class Server implements AutoCloseable {
    *
    * @param cluster cluster to register
    * @param serverOptions custom server options to use when registering this cluster.
-   * @return A future that when it completes provides an updated {@link Cluster} with ids and
-   *     addresses assigned. Note that the return value is not the same object as the input.
+   * @return A future that when it completes provides a {@link BoundCluster} with ids and addresses
+   *     assigned. Note that the return value is not the same object as the input.
    */
   @SuppressWarnings("unchecked")
-  public CompletionStage<BoundCluster> registerAsync(Cluster cluster, ServerOptions serverOptions) {
+  public CompletionStage<BoundCluster> registerAsync(
+      ClusterSpec cluster, ServerOptions serverOptions) {
     if (isClosed()) {
       return failByClose();
     }
@@ -225,12 +226,12 @@ public final class Server implements AutoCloseable {
             : this.activityLogging;
     int dcPos = 0;
     int nPos = 0;
-    for (DataCenter dataCenter : cluster.getDataCenters()) {
+    for (DataCenterSpec dataCenter : cluster.getDataCenters()) {
       long dcOffset = dcPos * 100;
       long nodeBase = ((long) Math.pow(2, 64) / dataCenter.getNodes().size());
       BoundDataCenter dc = new BoundDataCenter(dataCenter, c);
 
-      for (Node node : dataCenter.getNodes()) {
+      for (NodeSpec node : dataCenter.getNodes()) {
         Optional<String> token = node.resolvePeerInfo("token", String.class);
         String tokenStr;
         if (token.isPresent()) {
@@ -310,10 +311,10 @@ public final class Server implements AutoCloseable {
   }
 
   /**
-   * Convenience method for unregistering Node's cluster by object instead of by id as in {@link
+   * Convenience method for unregistering NodeSpec's cluster by object instead of by id as in {@link
    * #unregisterAsync(Long)}.
    *
-   * @param node Node to unregister
+   * @param node NodeSpec to unregister
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
@@ -388,7 +389,7 @@ public final class Server implements AutoCloseable {
                   }
                 });
       } else {
-        future.completeExceptionally(new IllegalArgumentException("Cluster not found."));
+        future.completeExceptionally(new IllegalArgumentException("ClusterSpec not found."));
       }
     }
 
@@ -421,44 +422,44 @@ public final class Server implements AutoCloseable {
         .thenApply(__ -> futures.size());
   }
 
-  /** synchronous version of {@link #registerAsync(Node.Builder)} */
-  public BoundNode register(Node.Builder builder) {
+  /** synchronous version of {@link #registerAsync(NodeSpec.Builder)} */
+  public BoundNode register(NodeSpec.Builder builder) {
     return getUninterruptibly(registerAsync(builder));
   }
 
-  /** see {@link #registerAsync(Node, ServerOptions)} */
-  public CompletionStage<BoundNode> registerAsync(Node.Builder builder) {
+  /** see {@link #registerAsync(NodeSpec, ServerOptions)} */
+  public CompletionStage<BoundNode> registerAsync(NodeSpec.Builder builder) {
     return registerAsync(builder.build());
   }
 
-  /** see {@link #registerAsync(Node, ServerOptions)} */
-  public BoundNode register(Node node) {
+  /** see {@link #registerAsync(NodeSpec, ServerOptions)} */
+  public BoundNode register(NodeSpec node) {
     return getUninterruptibly(registerAsync(node));
   }
 
-  /** see {@link #registerAsync(Node, ServerOptions)} */
-  public CompletionStage<BoundNode> registerAsync(Node node) {
+  /** see {@link #registerAsync(NodeSpec, ServerOptions)} */
+  public CompletionStage<BoundNode> registerAsync(NodeSpec node) {
     return registerAsync(node, ServerOptions.DEFAULT);
   }
 
-  /** synchronous version of {@link #registerAsync(Node, ServerOptions)} */
-  public BoundNode register(Node node, ServerOptions serverOptions) {
+  /** synchronous version of {@link #registerAsync(NodeSpec, ServerOptions)} */
+  public BoundNode register(NodeSpec node, ServerOptions serverOptions) {
     return getUninterruptibly(registerAsync(node, serverOptions));
   }
 
   /**
-   * Convenience method that registers a {@link Node} by wrapping it in a 'dummy' {@link Cluster}
-   * and registering that.
+   * Convenience method that registers a {@link NodeSpec} by wrapping it in a 'dummy' {@link
+   * ClusterSpec} and registering that.
    *
-   * <p>Note that if the given {@link Node} belongs to a {@link Cluster}, the returned future will
-   * fail with an {@link IllegalArgumentException}.
+   * <p>Note that if the given {@link NodeSpec} belongs to a {@link ClusterSpec}, the returned
+   * future will fail with an {@link IllegalArgumentException}.
    *
    * @param node node to register.
    * @param serverOptions custom server options to use when registering this node.
-   * @return A future that when it completes provides an updated {@link Cluster} with ids and
+   * @return A future that when it completes provides an updated {@link ClusterSpec} with ids and
    *     addresses assigned. Note that the return value is not the same object as the input.
    */
-  public CompletionStage<BoundNode> registerAsync(Node node, ServerOptions serverOptions) {
+  public CompletionStage<BoundNode> registerAsync(NodeSpec node, ServerOptions serverOptions) {
     if (isClosed()) {
       return failByClose();
     }
@@ -471,7 +472,7 @@ public final class Server implements AutoCloseable {
     // Wrap node in dummy cluster
     Long clusterId = clusterCounter.getAndIncrement();
     BoundCluster dummyCluster =
-        boundCluster(Cluster.builder().withId(clusterId).withName("dummy").build());
+        boundCluster(ClusterSpec.builder().withId(clusterId).withName("dummy").build());
     BoundDataCenter dummyDataCenter = new BoundDataCenter(dummyCluster);
 
     clusters.put(clusterId, dummyCluster);
@@ -505,7 +506,7 @@ public final class Server implements AutoCloseable {
   }
 
   private CompletionStage<BoundNode> bindInternal(
-      Node refNode,
+      NodeSpec refNode,
       BoundCluster cluster,
       BoundDataCenter parent,
       String token,
@@ -679,8 +680,8 @@ public final class Server implements AutoCloseable {
     }
 
     /**
-     * Sets the address resolver to use when assigning {@link SocketAddress} to {@link Node}'s that
-     * don't have previously provided addresses.
+     * Sets the address resolver to use when assigning {@link SocketAddress} to {@link NodeSpec}'s
+     * that don't have previously provided addresses.
      *
      * @param addressResolver resolver to use.
      * @return This builder.

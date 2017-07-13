@@ -6,7 +6,7 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.datastax.simulacron.common.request.Batch;
 import com.datastax.simulacron.common.request.Query;
@@ -163,7 +163,7 @@ public class HttpTestUtil {
         Arrays.asList(query), Arrays.asList(paramTypes), Arrays.asList(params));
   }
 
-  public static String getContactPointStringByNodeID(Node node) {
+  public static String getContactPointStringByNodeID(NodeSpec node) {
     String rawaddress = node.getAddress().toString();
     return rawaddress.substring(1, rawaddress.length() - 5);
   }

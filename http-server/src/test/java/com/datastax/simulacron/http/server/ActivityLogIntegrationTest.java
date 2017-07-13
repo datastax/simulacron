@@ -4,8 +4,8 @@ import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.policies.FallthroughRetryPolicy;
-import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.DataCenterQueryLogReport;
 import com.datastax.simulacron.common.cluster.NodeQueryLogReport;
 import com.datastax.simulacron.common.cluster.QueryLog;
@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ActivityLogIntegrationTest {
 
-  @Rule public AdminServer server = new AdminServer(Cluster.builder().withNodes(3, 3).build());
+  @Rule public AdminServer server = new AdminServer(ClusterSpec.builder().withNodes(3, 3).build());
 
   @Rule
   public AdminServer noActivityLogServer =
@@ -200,7 +200,7 @@ public class ActivityLogIntegrationTest {
 
   private void shouldLogQuery(AdminServer server, String uri, String queryStr, boolean present)
       throws Exception {
-    Cluster cluster = server.mapTo(server.post(uri, null), Cluster.class);
+    ClusterSpec cluster = server.mapTo(server.post(uri, null), ClusterSpec.class);
     try {
       query(queryStr, cluster);
 
@@ -217,7 +217,7 @@ public class ActivityLogIntegrationTest {
     }
   }
 
-  private void query(String statement, Cluster cluster) throws Exception {
+  private void query(String statement, ClusterSpec cluster) throws Exception {
     try (com.datastax.driver.core.Cluster driverCluster =
         com.datastax.driver.core.Cluster.builder()
             .addContactPointsWithPorts(cluster.node(0).inetSocketAddress())

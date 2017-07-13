@@ -2,7 +2,7 @@ package com.datastax.simulacron.http.server;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
-import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,7 +19,7 @@ import static org.junit.Assert.assertNotNull;
 
 public class HttpPrimeQueryIntegrationTest {
 
-  @Rule public AdminServer server = new AdminServer(Cluster.builder().withNodes(1).build());
+  @Rule public AdminServer server = new AdminServer(ClusterSpec.builder().withNodes(1).build());
 
   ObjectMapper om = ObjectMapperHolder.getMapper();
 

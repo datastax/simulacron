@@ -2,14 +2,15 @@ package com.datastax.simulacron.driver;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.NettyOptions;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
+import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.server.BoundCluster;
 import com.datastax.simulacron.server.BoundNode;
 import io.netty.channel.EventLoopGroup;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-/** Convenience class for creating Cluster and Node builders with ideal defaults. */
+/** Convenience class for creating ClusterSpec and NodeSpec builders with ideal defaults. */
 public class SimulacronDriverSupport {
 
   /**
@@ -50,12 +51,12 @@ public class SimulacronDriverSupport {
   }
 
   /** @return A default node builder */
-  public static Node.Builder node() {
-    return Node.builder();
+  public static NodeSpec.Builder node() {
+    return NodeSpec.builder();
   }
 
   /** @return a default {@link Cluster} builder * */
-  public static com.datastax.simulacron.common.cluster.Cluster.Builder cluster() {
-    return com.datastax.simulacron.common.cluster.Cluster.builder();
+  public static ClusterSpec.Builder cluster() {
+    return ClusterSpec.builder();
   }
 }

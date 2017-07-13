@@ -15,9 +15,9 @@ public class NodeTest {
 
   @Test
   public void testShouldSetDCToParent() {
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dataCenter = cluster.addDataCenter().build();
-    Node node = dataCenter.addNode().build();
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dataCenter = cluster.addDataCenter().build();
+    NodeSpec node = dataCenter.addNode().build();
     assertThat(node.getDataCenter()).isSameAs(dataCenter);
     assertThat(node.getCluster()).isSameAs(cluster);
     assertThat(node.getParent()).isEqualTo(Optional.of(dataCenter));
@@ -25,7 +25,7 @@ public class NodeTest {
 
   @Test
   public void testStandalone() {
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
     assertThat(node.getDataCenter()).isNull();
     assertThat(node.getCluster()).isNull();
     assertThat(node.getParent()).isEmpty();
@@ -39,8 +39,8 @@ public class NodeTest {
     String name = "node0";
     Map<String, Object> peerInfo = new HashMap<>();
     peerInfo.put("hello", "world");
-    Node node =
-        Node.builder()
+    NodeSpec node =
+        NodeSpec.builder()
             .withId(id)
             .withAddress(address)
             .withCassandraVersion(version)
@@ -62,7 +62,7 @@ public class NodeTest {
   @Test
   public void testDefaultConstructor() {
     // This is only used by jackson mapper, but ensure it has sane defaults and doesn't throw any exceptions.
-    Node node = new Node();
+    NodeSpec node = new NodeSpec();
     assertThat(node.getDataCenter()).isNull();
     assertThat(node.getCluster()).isNull();
     assertThat(node.getParent()).isEmpty();
@@ -76,10 +76,10 @@ public class NodeTest {
 
   @Test
   public void testCopy() {
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dc = cluster.addDataCenter().build();
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dc = cluster.addDataCenter().build();
 
-    Node node =
+    NodeSpec node =
         dc.addNode()
             .withName("node2")
             .withCassandraVersion("1.2.19")
@@ -88,7 +88,7 @@ public class NodeTest {
             .withAddress(new InetSocketAddress(InetAddress.getLoopbackAddress(), 9042))
             .build();
 
-    Node node2 = dc.addNode().copy(node).build();
+    NodeSpec node2 = dc.addNode().copy(node).build();
     assertThat(node2.getId()).isEqualTo(node.getId());
     assertThat(node2.getName()).isEqualTo(node.getName());
     assertThat(node2.getCassandraVersion()).isEqualTo(node.getCassandraVersion());

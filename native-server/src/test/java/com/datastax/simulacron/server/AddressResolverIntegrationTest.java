@@ -1,6 +1,6 @@
 package com.datastax.simulacron.server;
 
-import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import org.junit.After;
 import org.junit.Test;
 
@@ -23,7 +23,7 @@ public class AddressResolverIntegrationTest {
   public void testAddressesReused() throws Exception {
     // Validate that when a Cluster is unregistered, the ip addresses used can be reassigned to subsequently
     // created clusters.
-    Cluster cluster0 = Cluster.builder().withNodes(3, 3, 3).build();
+    ClusterSpec cluster0 = ClusterSpec.builder().withNodes(3, 3, 3).build();
     BoundCluster boundCluster0 = server.register(cluster0);
 
     // Collect addresses signed to cluster 0
@@ -34,7 +34,7 @@ public class AddressResolverIntegrationTest {
     server.unregister(boundCluster0.getId());
 
     // Register a new cluster.
-    Cluster cluster1 = Cluster.builder().withNodes(4, 4, 1).build();
+    ClusterSpec cluster1 = ClusterSpec.builder().withNodes(4, 4, 1).build();
     BoundCluster boundCluster1 = server.register(cluster1);
 
     // Collect addresses signed to cluster 0
@@ -52,7 +52,7 @@ public class AddressResolverIntegrationTest {
     List<SocketAddress> lastAddresses = null;
 
     for (int i = 0; i < 10; i++) {
-      Cluster cluster = Cluster.builder().withNodes(3, 3, 3).build();
+      ClusterSpec cluster = ClusterSpec.builder().withNodes(3, 3, 3).build();
       BoundCluster boundCluster = server.register(cluster);
 
       List<SocketAddress> clusterAddrs =

@@ -9,12 +9,12 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class DataCenterTest {
+public class DataCenterSpecTest {
 
   @Test
   public void testShouldSetClusterToParent() {
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dataCenter = cluster.addDataCenter().build();
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dataCenter = cluster.addDataCenter().build();
     assertThat(dataCenter.getCluster()).isSameAs(cluster);
     assertThat(dataCenter.getParent()).isEqualTo(Optional.of(cluster));
   }
@@ -26,8 +26,8 @@ public class DataCenterTest {
     String name = "node0";
     Map<String, Object> peerInfo = new HashMap<>();
     peerInfo.put("hello", "world");
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dc =
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dc =
         cluster
             .addDataCenter()
             .withId(id)
@@ -50,9 +50,9 @@ public class DataCenterTest {
 
   @Test
   public void testAddNodeShouldAssignId() {
-    DataCenter dc = new DataCenter();
+    DataCenterSpec dc = new DataCenterSpec();
     for (int i = 0; i < 5; i++) {
-      Node node = dc.addNode().build();
+      NodeSpec node = dc.addNode().build();
       assertThat(node.getId()).isEqualTo((long) i);
       assertThat(node.getDataCenter()).isEqualTo(dc);
       assertThat(node.getParent()).isEqualTo(Optional.of(dc));
@@ -64,7 +64,7 @@ public class DataCenterTest {
   @Test
   public void testDefaultConstructor() {
     // This is only used by jackson mapper, but ensure it has sane defaults and doesn't throw any exceptions.
-    DataCenter dc = new DataCenter();
+    DataCenterSpec dc = new DataCenterSpec();
     assertThat(dc.getCluster()).isNull();
     assertThat(dc.getParent()).isEmpty();
     assertThat(dc.getId()).isEqualTo(null);
@@ -77,7 +77,7 @@ public class DataCenterTest {
 
   @Test
   public void testLookupNode() {
-    DataCenter dc = new DataCenter();
+    DataCenterSpec dc = new DataCenterSpec();
     dc.addNode().build();
     dc.addNode().build();
     dc.addNode().build();
@@ -91,8 +91,8 @@ public class DataCenterTest {
 
   @Test
   public void testCopy() {
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dc =
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dc =
         cluster
             .addDataCenter()
             .withName("dc2")
@@ -104,7 +104,7 @@ public class DataCenterTest {
     dc.addNode().build();
     dc.addNode().build();
 
-    DataCenter dc2 = cluster.addDataCenter().copy(dc).build();
+    DataCenterSpec dc2 = cluster.addDataCenter().copy(dc).build();
     assertThat(dc2.getId()).isEqualTo(dc.getId());
     assertThat(dc2.getName()).isEqualTo(dc.getName());
     assertThat(dc2.getCassandraVersion()).isEqualTo(dc.getCassandraVersion());

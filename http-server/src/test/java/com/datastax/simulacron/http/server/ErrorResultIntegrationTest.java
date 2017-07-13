@@ -5,7 +5,7 @@ import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.*;
 import com.datastax.driver.core.policies.FallthroughRetryPolicy;
-import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.datastax.simulacron.common.codec.WriteType;
@@ -33,7 +33,7 @@ import static org.hamcrest.CoreMatchers.*;
 
 public class ErrorResultIntegrationTest {
 
-  @Rule public AdminServer server = new AdminServer(Cluster.builder().withNodes(1).build());
+  @Rule public AdminServer server = new AdminServer(ClusterSpec.builder().withNodes(1).build());
 
   @Rule public ExpectedException thrown = ExpectedException.none();
 

@@ -5,9 +5,9 @@ import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.request.Startup;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
+import com.datastax.simulacron.common.cluster.DataCenterSpec;
+import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import org.junit.Test;
 
@@ -22,29 +22,29 @@ import static com.datastax.simulacron.common.Assertions.assertThat;
 public class PeerMetadataHandlerTest {
 
   // A 200 node cluster with 2 dcs with 100 nodes in each.
-  private static Cluster cluster;
-  private static Node node0;
-  private static Node node1;
+  private static ClusterSpec cluster;
+  private static NodeSpec node0;
+  private static NodeSpec node1;
 
   // A 3 node cluster mimicking DSE 5.1.
-  private static Cluster dseCluster;
-  private static Node dseNode0;
+  private static ClusterSpec dseCluster;
+  private static NodeSpec dseNode0;
 
   private PeerMetadataHandler handler = new PeerMetadataHandler();
 
   static {
-    cluster = Cluster.builder().withName("cluster0").build();
-    dseCluster = Cluster.builder().withName("dseCluster0").withDSEVersion("5.0.8").build();
-    DataCenter dseDc0 = dseCluster.addDataCenter().withName("dseDc0").build();
+    cluster = ClusterSpec.builder().withName("cluster0").build();
+    dseCluster = ClusterSpec.builder().withName("dseCluster0").withDSEVersion("5.0.8").build();
+    DataCenterSpec dseDc0 = dseCluster.addDataCenter().withName("dseDc0").build();
     dseNode0 = dseDc0.addNode().withPeerInfo("graph", true).build();
     dseDc0.addNode().build();
     dseDc0.addNode().build();
 
-    DataCenter dc0 = cluster.addDataCenter().withName("dc0").build();
-    DataCenter dc1 = cluster.addDataCenter().withName("dc1").build();
+    DataCenterSpec dc0 = cluster.addDataCenter().withName("dc0").build();
+    DataCenterSpec dc1 = cluster.addDataCenter().withName("dc1").build();
     try {
       for (int i = 0; i < 100; i++) {
-        Node node =
+        NodeSpec node =
             dc0.addNode()
                 .withAddress(
                     new InetSocketAddress(
@@ -55,7 +55,7 @@ public class PeerMetadataHandlerTest {
         }
       }
       for (int i = 0; i < 100; i++) {
-        Node node =
+        NodeSpec node =
             dc1.addNode()
                 .withAddress(
                     new InetSocketAddress(
@@ -203,7 +203,7 @@ public class PeerMetadataHandlerTest {
 
   @Test
   public void shouldHandleQueryClusterName() {
-    // querying the local table for cluster_name should return Cluster.getName()
+    // querying the local table for cluster_name should return ClusterSpec.getName()
     List<Action> node0Actions =
         handler.getActions(node0, queryFrame("select cluster_name from system.local"));
 

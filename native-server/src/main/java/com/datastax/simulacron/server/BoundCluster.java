@@ -2,9 +2,9 @@ package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.AbstractCluster;
-import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.StubMapping;
@@ -18,7 +18,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 /**
- * A wrapper around {@link Cluster} that is bound to a {@link Server}. If used as {@link
+ * A wrapper around {@link ClusterSpec} that is bound to a {@link Server}. If used as {@link
  * java.io.Closeable} will unbind itself form its bound server.
  */
 public class BoundCluster extends AbstractCluster<BoundDataCenter, BoundNode>
@@ -28,7 +28,7 @@ public class BoundCluster extends AbstractCluster<BoundDataCenter, BoundNode>
 
   private final transient StubStore stubStore;
 
-  BoundCluster(Cluster delegate, Long clusterId, Server server) {
+  BoundCluster(ClusterSpec delegate, Long clusterId, Server server) {
     super(
         delegate.getName(),
         clusterId,

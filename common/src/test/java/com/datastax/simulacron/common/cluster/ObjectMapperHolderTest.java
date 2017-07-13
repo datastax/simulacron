@@ -26,8 +26,8 @@ public class ObjectMapperHolderTest {
 
   @Test
   public void testSimpleCluster() throws Exception {
-    Cluster cluster =
-        Cluster.builder().withName("cluster1").withDSEVersion("5.1.0").withNodes(1, 2).build();
+    ClusterSpec cluster =
+        ClusterSpec.builder().withName("cluster1").withDSEVersion("5.1.0").withNodes(1, 2).build();
 
     String json = mapper.writeValueAsString(cluster);
 
@@ -38,7 +38,7 @@ public class ObjectMapperHolderTest {
             + "],\"active_connections\":0}";
     assertThat(json).isEqualTo(expectedJson);
 
-    Cluster cluster2 = mapper.readValue(json, Cluster.class);
+    ClusterSpec cluster2 = mapper.readValue(json, ClusterSpec.class);
 
     assertThat(cluster2.getName()).isEqualTo("cluster1");
     assertThat(cluster2.getDataCenters()).hasSize(2);
@@ -47,8 +47,8 @@ public class ObjectMapperHolderTest {
 
   @Test
   public void testClusterWithAddresses() throws Exception {
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dc = cluster.addDataCenter().build();
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dc = cluster.addDataCenter().build();
     // Add two nodes with preassigned ip addresses.
     byte[] local1 = {127, 0, 0, 1};
     byte[] local2 = {127, 0, 0, 2};
@@ -66,7 +66,7 @@ public class ObjectMapperHolderTest {
             + "],\"active_connections\":0}],\"active_connections\":0}";
     assertThat(json).isEqualTo(expectedJson);
 
-    Cluster cluster2 = mapper.readValue(json, Cluster.class);
+    ClusterSpec cluster2 = mapper.readValue(json, ClusterSpec.class);
 
     // Ensure the addresses get created on deserialization
     assertThat(cluster2.node(0).getAddress()).isEqualTo(addr1);

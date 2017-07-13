@@ -2,18 +2,18 @@ package com.datastax.simulacron.common.stubbing;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.AbstractNode;
-import com.datastax.simulacron.common.cluster.Node;
 
 import java.util.List;
 
 /**
- * Defines a mapping for which given a {@link Node} and a received {@link Frame} to that node if
- * these two objects meet some criteria, {@link Action}s are produced which should be performed.
+ * Defines a mapping for which given a {@link AbstractNode} and a received {@link Frame} to that
+ * node if these two objects meet some criteria, {@link Action}s are produced which should be
+ * performed.
  */
 public abstract class StubMapping {
 
   /**
-   * Determines whether or not the input {@link Node} and {@link Frame} meet the criteria.
+   * Determines whether or not the input {@link AbstractNode} and {@link Frame} meet the criteria.
    *
    * @param node node receiving the frame.
    * @param frame the sent frame.
@@ -26,7 +26,8 @@ public abstract class StubMapping {
   public abstract boolean matches(Frame frame);
 
   /**
-   * Return the {@link Action}s to perform for the given {@link Frame} received by the {@link Node}
+   * Return the {@link Action}s to perform for the given {@link Frame} received by the {@link
+   * AbstractNode}
    *
    * @param node node receiving the frame.
    * @param frame the sent frame.

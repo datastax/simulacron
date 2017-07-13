@@ -5,7 +5,6 @@ import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.request.Startup;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import org.junit.Test;
 
@@ -14,8 +13,6 @@ import java.util.List;
 import static com.datastax.simulacron.common.Assertions.assertThat;
 
 public class EmptyReturnMetadataHandlerTest {
-
-  private static Node node;
 
   private static String[] sampleStrings = {
     "SELECT * FROM system_schema.keyspaces",
@@ -40,7 +37,7 @@ public class EmptyReturnMetadataHandlerTest {
   public void shouldReturnAction() {
     // Should returned the one single expected message
     for (String s : sampleStrings) {
-      List<Action> nodeActions = new EmptyReturnMetadataHandler(s).getActions(node, queryFrame(s));
+      List<Action> nodeActions = new EmptyReturnMetadataHandler(s).getActions(null, queryFrame(s));
 
       assertThat(nodeActions).hasSize(1);
 
@@ -57,22 +54,22 @@ public class EmptyReturnMetadataHandlerTest {
   public void shouldMatch() {
     // Should match the following queries.
     for (String s : sampleStrings) {
-      assertThat(new EmptyReturnMetadataHandler(s).matches(node, queryFrame(s))).isTrue();
+      assertThat(new EmptyReturnMetadataHandler(s).matches(null, queryFrame(s))).isTrue();
     }
   }
 
   @Test
   public void shouldNotMatch() {
     // Should not match queries that aren't peer related.
-    assertThat(handler.matches(node, queryFrame("SELECT foo FROM bar"))).isFalse();
+    assertThat(handler.matches(null, queryFrame("SELECT foo FROM bar"))).isFalse();
     // Should not match non-queries
-    assertThat(handler.matches(node, FrameUtils.wrapRequest(new Startup()))).isFalse();
-    assertThat(handler.matches(node, FrameUtils.wrapRequest(Options.INSTANCE))).isFalse();
+    assertThat(handler.matches(null, FrameUtils.wrapRequest(new Startup()))).isFalse();
+    assertThat(handler.matches(null, FrameUtils.wrapRequest(Options.INSTANCE))).isFalse();
   }
 
   @Test
   public void shouldReturnNoActionsForNonMatchingQuery() {
     // Should not return any actions if the query doesn't match.
-    assertThat(handler.getActions(node, FrameUtils.wrapRequest(new Startup()))).isEmpty();
+    assertThat(handler.getActions(null, FrameUtils.wrapRequest(new Startup()))).isEmpty();
   }
 }

@@ -18,7 +18,7 @@ import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.oss.protocol.internal.response.result.Void;
 import com.datastax.simulacron.common.cluster.AbstractNode;
-import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.QueryLog;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.stubbing.Action;
@@ -42,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class BoundNodeTest {
 
-  private final BoundCluster cluster = new BoundCluster(Cluster.builder().build(), 0L, null);
+  private final BoundCluster cluster = new BoundCluster(ClusterSpec.builder().build(), 0L, null);
   private final BoundDataCenter dc = new BoundDataCenter(cluster);
   private final Timer timer = new HashedWheelTimer();
   private final BoundNode node =

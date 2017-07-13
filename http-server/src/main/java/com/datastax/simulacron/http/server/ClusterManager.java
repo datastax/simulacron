@@ -1,6 +1,6 @@
 package com.datastax.simulacron.http.server;
 
-import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.simulacron.server.BoundCluster;
 import com.datastax.simulacron.server.Server;
@@ -59,7 +59,7 @@ public class ClusterManager implements HttpListener {
                     activityLog != null ? Boolean.parseBoolean(activityLog) : null;
                 String name = context.request().getParam("name");
                 StringBuilder response = new StringBuilder();
-                Cluster cluster = null;
+                ClusterSpec cluster = null;
                 //General parameters were provided for us.
                 if (dcRawString != null) {
                   String[] dcStrs = dcRawString.split(",");
@@ -67,7 +67,7 @@ public class ClusterManager implements HttpListener {
                   for (int i = 0; i < dcStrs.length; i++) {
                     dcs[i] = Integer.parseInt(dcStrs[i]);
                     cluster =
-                        Cluster.builder()
+                        ClusterSpec.builder()
                             .withNodes(dcs)
                             .withDSEVersion(dseVersion)
                             .withCassandraVersion(cassandraVersion)
@@ -78,7 +78,7 @@ public class ClusterManager implements HttpListener {
                   //A specific cluster object was provided.
                   // We could add special handling here, but I'm not sure it's worth it
                   String jsonBody = totalBuffer.toString();
-                  cluster = om.readValue(jsonBody, Cluster.class);
+                  cluster = om.readValue(jsonBody, ClusterSpec.class);
                 }
                 CompletionStage<BoundCluster> future =
                     server.registerAsync(

@@ -5,8 +5,8 @@ import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.simulacron.common.cluster.AbstractNode;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
+import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
 import com.datastax.simulacron.common.stubbing.DisconnectAction.Scope;
@@ -49,9 +49,9 @@ public class DisconnectActionTest {
 
   @Test
   public void testCloseConnection() throws Exception {
-    // Validate that when a stub dictates to close a connection it does so and does not close the Node's channel so it
+    // Validate that when a stub dictates to close a connection it does so and does not close the NodeSpec's channel so it
     // can remain accepting traffic.
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
     BoundNode boundNode = localServer.register(node);
 
     stubCloseOnStartup(Scope.CONNECTION);
@@ -79,7 +79,7 @@ public class DisconnectActionTest {
   @Test
   public void testMessageWithClose() throws Exception {
     // Validates that a stub that dictates to send a message and then close a connection does so.
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
     BoundNode boundNode = localServer.register(node);
 
     localServer.stubStore.register(
@@ -120,7 +120,7 @@ public class DisconnectActionTest {
   @Test
   public void testCloseNode() throws Exception {
     // Validates that a stub that dictates to close a node's connections does so.
-    Cluster cluster = Cluster.builder().withNodes(2, 2).build();
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(2, 2).build();
     BoundCluster boundCluster = localServer.register(cluster);
 
     BoundDataCenter dc0 = boundCluster.getDataCenters().iterator().next();
@@ -174,7 +174,7 @@ public class DisconnectActionTest {
   @Test
   public void testCloseDataCenter() throws Exception {
     // Validates that a stub that dictates to close a node's DC's connections does so.
-    Cluster cluster = Cluster.builder().withNodes(2, 2).build();
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(2, 2).build();
     BoundCluster boundCluster = localServer.register(cluster);
 
     BoundDataCenter dc0 = boundCluster.getDataCenters().iterator().next();
@@ -228,8 +228,8 @@ public class DisconnectActionTest {
 
   @Test
   public void testCloseCluster() throws Exception {
-    // Validates that a stub that dictates to close a node's Cluster's connections does so.
-    Cluster cluster = Cluster.builder().withNodes(2, 2).build();
+    // Validates that a stub that dictates to close a node's ClusterSpec's connections does so.
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(2, 2).build();
     BoundCluster boundCluster = localServer.register(cluster);
 
     BoundDataCenter dc0 = boundCluster.getDataCenters().iterator().next();

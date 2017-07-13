@@ -3,7 +3,11 @@ package com.datastax.simulacron.common.cluster;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.KeyDeserializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
@@ -30,8 +34,8 @@ public class ObjectMapperHolder {
   }
 
   /**
-   * Returns the {@link ObjectMapper} that knows how to serialize and deserialize {@link Cluster}
-   * and its members, as well as query prime requests.
+   * Returns the {@link ObjectMapper} that knows how to serialize and deserialize {@link
+   * ClusterSpec} and its members, as well as query prime requests.
    *
    * @return the {@link ObjectMapper}
    */

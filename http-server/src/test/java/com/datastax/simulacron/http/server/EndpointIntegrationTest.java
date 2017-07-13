@@ -2,8 +2,8 @@ package com.datastax.simulacron.http.server;
 
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
-import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.DataCenterConnectionReport;
 import com.datastax.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class EndpointIntegrationTest {
   private final ObjectMapper om = ObjectMapperHolder.getMapper();
 
-  @Rule public AdminServer server = new AdminServer(Cluster.builder().withNodes(3, 3).build());
+  @Rule public AdminServer server = new AdminServer(ClusterSpec.builder().withNodes(3, 3).build());
 
   @Test
   public void testGetConnections() throws Exception {

@@ -2,9 +2,9 @@ package com.datastax.simulacron.http.server;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
-import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
+import com.datastax.simulacron.common.cluster.DataCenterSpec;
+import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.datastax.simulacron.common.request.Query;
@@ -109,21 +109,21 @@ public class HttpContainerIntegrationTest {
       HttpTestResponse responseToValidate = future.get();
       ObjectMapper om = ObjectMapperHolder.getMapper();
       //create cluster object from json return code
-      Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
+      ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
       assertThat(new Long(0)).isEqualTo(cluster.getId());
       assertThat("0").isEqualTo(cluster.getName());
       assertThat(cluster.getPeerInfo()).isEmpty();
       //create cluster object from json return code
-      Collection<DataCenter> centers = cluster.getDataCenters();
+      Collection<DataCenterSpec> centers = cluster.getDataCenters();
       assertThat(centers.size()).isEqualTo(1);
-      DataCenter center = centers.iterator().next();
+      DataCenterSpec center = centers.iterator().next();
       assertThat(new Long(0)).isEqualTo(center.getId());
       assertThat(cluster).isEqualTo(center.getCluster());
       assertThat("dc1").isEqualTo(center.getName());
-      Collection<Node> nodes = center.getNodes();
+      Collection<NodeSpec> nodes = center.getNodes();
       assertThat(1).isEqualTo(nodes.size());
-      Node node = nodes.iterator().next();
+      NodeSpec node = nodes.iterator().next();
       assertThat(new Long(0)).isEqualTo(node.getId());
       assertThat("node1").isEqualTo(node.getName());
       assertThat(cluster).isEqualTo(node.getCluster());
@@ -156,7 +156,7 @@ public class HttpContainerIntegrationTest {
     validateCluster(responseToValidate, 201);
 
     //create cluster object from json return code
-    Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
+    ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
 
     client = vertx.createHttpClient();
     CompletableFuture<HttpTestResponse> future2 = new CompletableFuture<>();
@@ -210,8 +210,8 @@ public class HttpContainerIntegrationTest {
   }
 
   private void unregisterClusterExists(Function<BoundCluster, String> f) throws Exception {
-    BoundCluster cluster = nativeServer.register(Cluster.builder().withNodes(1).build());
-    BoundCluster cluster2 = nativeServer.register(Cluster.builder().withNodes(1).build());
+    BoundCluster cluster = nativeServer.register(ClusterSpec.builder().withNodes(1).build());
+    BoundCluster cluster2 = nativeServer.register(ClusterSpec.builder().withNodes(1).build());
 
     HttpClient client = vertx.createHttpClient();
     CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
@@ -236,7 +236,7 @@ public class HttpContainerIntegrationTest {
     assertThat(msg.getMessage()).isEqualTo("Cluster " + f.apply(cluster) + " unregistered.");
     assertThat(msg.getStatusCode()).isEqualTo(202);
 
-    // Cluster should have been unregistered
+    // ClusterSpec should have been unregistered
     assertThat(nativeServer.getCluster(cluster.getId())).isNull();
     // Cluster2 should not have been unregistered
     assertThat(nativeServer.getCluster(cluster2.getId())).isNotNull();
@@ -273,7 +273,7 @@ public class HttpContainerIntegrationTest {
     // register 10 clusters and capture their ids.
     List<Long> ids = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      ids.add(nativeServer.register(Cluster.builder().withNodes(1).build()).getId());
+      ids.add(nativeServer.register(ClusterSpec.builder().withNodes(1).build()).getId());
     }
 
     HttpClient client = vertx.createHttpClient();
@@ -305,32 +305,33 @@ public class HttpContainerIntegrationTest {
 
   @Test
   public void testClusterCreationByNameAndId() {
-    testVerifyQueryParticularCluster(Cluster::getName);
+    testVerifyQueryParticularCluster(ClusterSpec::getName);
     testVerifyQueryParticularCluster(p -> p.getId().toString());
-    testVerifyQueryParticularDatacenter(Cluster::getName, DataCenter::getName);
-    testVerifyQueryParticularDatacenter(Cluster::getName, p -> p.getId().toString());
-    testVerifyQueryParticularNode(p -> p.getId().toString(), DataCenter::getName, Node::getName);
+    testVerifyQueryParticularDatacenter(ClusterSpec::getName, DataCenterSpec::getName);
+    testVerifyQueryParticularDatacenter(ClusterSpec::getName, p -> p.getId().toString());
     testVerifyQueryParticularNode(
-        p -> p.getId().toString(), DataCenter::getName, p -> p.getId().toString());
+        p -> p.getId().toString(), DataCenterSpec::getName, NodeSpec::getName);
+    testVerifyQueryParticularNode(
+        p -> p.getId().toString(), DataCenterSpec::getName, p -> p.getId().toString());
   }
 
   @Test
   public void testQueryClearTarget() {
     HttpClient client = vertx.createHttpClient();
-    Cluster cluster = this.createMultiNodeCluster(client, "3,3");
+    ClusterSpec cluster = this.createMultiNodeCluster(client, "3,3");
 
     String query = "Select * FROM TABLE2_" + cluster.getName();
 
     RequestPrime prime = createSimplePrimedQuery(query);
-    List<DataCenter> datacenters = (List<DataCenter>) cluster.getDataCenters();
-    DataCenter datacenter = datacenters.get(0);
+    List<DataCenterSpec> datacenters = (List<DataCenterSpec>) cluster.getDataCenters();
+    DataCenterSpec datacenter = datacenters.get(0);
 
     this.primeSimpleRequest(client, prime, cluster.getName(), datacenter.getName());
 
-    Iterator<Node> nodeIteratorQueried = cluster.getNodes().iterator();
+    Iterator<NodeSpec> nodeIteratorQueried = cluster.getNodes().iterator();
 
     while (nodeIteratorQueried.hasNext()) {
-      Node node = nodeIteratorQueried.next();
+      NodeSpec node = nodeIteratorQueried.next();
 
       String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
       ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
@@ -342,7 +343,7 @@ public class HttpContainerIntegrationTest {
     }
     this.clearQueries(client, new Scope(cluster.getId(), datacenter.getId(), null));
     while (nodeIteratorQueried.hasNext()) {
-      Node node = nodeIteratorQueried.next();
+      NodeSpec node = nodeIteratorQueried.next();
 
       String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
       ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
@@ -350,10 +351,10 @@ public class HttpContainerIntegrationTest {
     }
   }
 
-  private void testVerifyQueryParticularCluster(Function<Cluster, String> f) {
+  private void testVerifyQueryParticularCluster(Function<ClusterSpec, String> f) {
     HttpClient client = vertx.createHttpClient();
-    Cluster clusterQueried = this.createMultiNodeCluster(client, "3,3");
-    Cluster clusterUnused = this.createMultiNodeCluster(client, "3,3");
+    ClusterSpec clusterQueried = this.createMultiNodeCluster(client, "3,3");
+    ClusterSpec clusterUnused = this.createMultiNodeCluster(client, "3,3");
 
     String query = "Select * FROM TABLE2_" + clusterQueried.getName();
 
@@ -361,11 +362,11 @@ public class HttpContainerIntegrationTest {
     HttpTestResponse response =
         this.primeSimpleRequest(client, prime, "/prime" + "/" + f.apply(clusterQueried));
 
-    Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
-    Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
+    Iterator<NodeSpec> nodeIteratorQueried = clusterQueried.getNodes().iterator();
+    Iterator<NodeSpec> nodeIteratorUnused = clusterUnused.getNodes().iterator();
 
     while (nodeIteratorQueried.hasNext()) {
-      Node node = nodeIteratorQueried.next();
+      NodeSpec node = nodeIteratorQueried.next();
 
       String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
       ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
@@ -383,24 +384,24 @@ public class HttpContainerIntegrationTest {
   }
 
   private void testVerifyQueryParticularDatacenter(
-      Function<Cluster, String> fc, Function<DataCenter, String> fd) {
+      Function<ClusterSpec, String> fc, Function<DataCenterSpec, String> fd) {
     HttpClient client = vertx.createHttpClient();
-    Cluster clusterQueried = this.createMultiNodeCluster(client, "3,3");
-    Cluster clusterUnused = this.createMultiNodeCluster(client, "3,3");
+    ClusterSpec clusterQueried = this.createMultiNodeCluster(client, "3,3");
+    ClusterSpec clusterUnused = this.createMultiNodeCluster(client, "3,3");
 
     String query = "Select * FROM TABLE2_" + clusterQueried.getName();
 
     RequestPrime prime = createSimplePrimedQuery(query);
-    List<DataCenter> datacenters = (List<DataCenter>) clusterQueried.getDataCenters();
-    DataCenter datacenterQueried = datacenters.get(0);
+    List<DataCenterSpec> datacenters = (List<DataCenterSpec>) clusterQueried.getDataCenters();
+    DataCenterSpec datacenterQueried = datacenters.get(0);
 
     this.primeSimpleRequest(client, prime, fc.apply(clusterQueried), fd.apply(datacenterQueried));
 
-    Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
-    Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
+    Iterator<NodeSpec> nodeIteratorQueried = clusterQueried.getNodes().iterator();
+    Iterator<NodeSpec> nodeIteratorUnused = clusterUnused.getNodes().iterator();
 
     while (nodeIteratorQueried.hasNext()) {
-      Node node = nodeIteratorQueried.next();
+      NodeSpec node = nodeIteratorQueried.next();
 
       String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
       ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
@@ -422,20 +423,22 @@ public class HttpContainerIntegrationTest {
   }
 
   private void testVerifyQueryParticularNode(
-      Function<Cluster, String> fc, Function<DataCenter, String> fd, Function<Node, String> fn) {
+      Function<ClusterSpec, String> fc,
+      Function<DataCenterSpec, String> fd,
+      Function<NodeSpec, String> fn) {
     HttpClient client = vertx.createHttpClient();
-    Cluster clusterQueried = this.createMultiNodeCluster(client, "3,3");
-    Cluster clusterUnused = this.createMultiNodeCluster(client, "3,3");
+    ClusterSpec clusterQueried = this.createMultiNodeCluster(client, "3,3");
+    ClusterSpec clusterUnused = this.createMultiNodeCluster(client, "3,3");
 
     String query = "Select * FROM TABLE2_" + clusterQueried.getName();
 
     RequestPrime prime = createSimplePrimedQuery(query);
 
-    List<DataCenter> datacenters = (List<DataCenter>) clusterQueried.getDataCenters();
-    DataCenter datacenterQueried = datacenters.get(0);
-    Iterator<Node> datacenterIterator = datacenterQueried.getNodes().iterator();
+    List<DataCenterSpec> datacenters = (List<DataCenterSpec>) clusterQueried.getDataCenters();
+    DataCenterSpec datacenterQueried = datacenters.get(0);
+    Iterator<NodeSpec> datacenterIterator = datacenterQueried.getNodes().iterator();
 
-    Node nodeQueried = datacenterIterator.next();
+    NodeSpec nodeQueried = datacenterIterator.next();
 
     this.primeSimpleRequest(
         client,
@@ -444,11 +447,11 @@ public class HttpContainerIntegrationTest {
         fd.apply(datacenterQueried),
         fn.apply(nodeQueried));
 
-    Iterator<Node> nodeIteratorQueried = clusterQueried.getNodes().iterator();
-    Iterator<Node> nodeIteratorUnused = clusterUnused.getNodes().iterator();
+    Iterator<NodeSpec> nodeIteratorQueried = clusterQueried.getNodes().iterator();
+    Iterator<NodeSpec> nodeIteratorUnused = clusterUnused.getNodes().iterator();
 
     while (nodeIteratorQueried.hasNext()) {
-      Node node = nodeIteratorQueried.next();
+      NodeSpec node = nodeIteratorQueried.next();
 
       String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
       ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
@@ -567,7 +570,7 @@ public class HttpContainerIntegrationTest {
     return this.clearQueries(client, new Scope(null, null, null));
   }
 
-  private Cluster createSingleNodeCluster(HttpClient client) {
+  private ClusterSpec createSingleNodeCluster(HttpClient client) {
     CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
     client
         .request(
@@ -590,7 +593,7 @@ public class HttpContainerIntegrationTest {
       ObjectMapper om = ObjectMapperHolder.getMapper();
       //create cluster object from json return code
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
-      Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
+      ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
       return cluster;
     } catch (Exception e) {
       fail("Exception encountered");
@@ -598,7 +601,7 @@ public class HttpContainerIntegrationTest {
     }
   }
 
-  private Cluster createMultiNodeCluster(HttpClient client, String datacenters) {
+  private ClusterSpec createMultiNodeCluster(HttpClient client, String datacenters) {
     CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
     client
         .request(
@@ -621,7 +624,7 @@ public class HttpContainerIntegrationTest {
       ObjectMapper om = ObjectMapperHolder.getMapper();
       //create cluster object from json return code
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
-      Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
+      ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
       return cluster;
     } catch (Exception e) {
       fail(e.getMessage());
@@ -633,22 +636,22 @@ public class HttpContainerIntegrationTest {
       throws Exception {
     ObjectMapper om = ObjectMapperHolder.getMapper();
     //create cluster object from json return code
-    Cluster cluster = om.readValue(responseToValidate.body, Cluster.class);
+    ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
     assertThat(responseToValidate.response.statusCode()).isEqualTo(expectedStatusCode);
     assertThat(new Long(0)).isEqualTo(cluster.getId());
     assertThat("0").isEqualTo(cluster.getName());
     assertThat(cluster.getPeerInfo()).isEmpty();
     //create cluster object from json return code
-    Collection<DataCenter> centers = cluster.getDataCenters();
+    Collection<DataCenterSpec> centers = cluster.getDataCenters();
     assertThat(centers.size()).isEqualTo(3);
-    for (DataCenter center : centers.toArray(new DataCenter[centers.size()])) {
+    for (DataCenterSpec center : centers.toArray(new DataCenterSpec[centers.size()])) {
       assertThat(center.getId()).isNotNull();
       assertThat(cluster.getName()).isNotNull();
 
       assertThat(cluster).isEqualTo(center.getCluster());
-      Collection<Node> nodes = center.getNodes();
+      Collection<NodeSpec> nodes = center.getNodes();
       assertThat(3).isEqualTo(nodes.size());
-      for (Node node : nodes.toArray(new Node[nodes.size()])) {
+      for (NodeSpec node : nodes.toArray(new NodeSpec[nodes.size()])) {
         assertThat(node.getId()).isNotNull();
         assertThat(node.getName()).isNotNull();
         assertThat(cluster).isEqualTo(node.getCluster());

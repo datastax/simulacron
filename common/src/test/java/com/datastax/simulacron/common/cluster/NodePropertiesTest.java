@@ -11,15 +11,15 @@ public class NodePropertiesTest {
   @Test
   public void testResolveDirect() {
     // should resolve values when they are set directly on their subjects.
-    Cluster cluster =
-        Cluster.builder()
+    ClusterSpec cluster =
+        ClusterSpec.builder()
             .withName("cluster0")
             .withId(1L)
             .withCassandraVersion("1.2.19")
             .withPeerInfo("hello", "world")
             .build();
 
-    DataCenter dc =
+    DataCenterSpec dc =
         cluster
             .addDataCenter()
             .withName("dc0")
@@ -28,7 +28,7 @@ public class NodePropertiesTest {
             .withPeerInfo("nothing", "something")
             .build();
 
-    Node node =
+    NodeSpec node =
         dc.addNode()
             .withName("node0")
             .withId(7L)
@@ -51,20 +51,21 @@ public class NodePropertiesTest {
   @Test
   public void testResolveIndirect() {
     // should resolve values when they are set directly on their subjects.
-    Cluster cluster =
-        Cluster.builder()
+    ClusterSpec cluster =
+        ClusterSpec.builder()
             .withName("cluster0")
             .withId(1L)
             .withCassandraVersion("1.2.19")
             .withPeerInfo("hello", "world")
             .build();
 
-    DataCenter dc = cluster.addDataCenter().withName("dc0").withPeerInfo("goodbye", "sun").build();
+    DataCenterSpec dc =
+        cluster.addDataCenter().withName("dc0").withPeerInfo("goodbye", "sun").build();
 
-    Node node = dc.addNode().withPeerInfo("hola", "mundo").build();
+    NodeSpec node = dc.addNode().withPeerInfo("hola", "mundo").build();
 
     assertThat(node.resolveCassandraVersion()).isEqualTo("1.2.19");
-    // Node id/name should be resolved to 0 since first node in dc.
+    // NodeSpec id/name should be resolved to 0 since first node in dc.
     assertThat(node.resolveId()).isEqualTo("1:0:0");
     assertThat(node.resolveName()).isEqualTo("cluster0:dc0:0");
     assertThat(node.resolvePeerInfo("hello", String.class)).isEqualTo(Optional.of("world"));
@@ -74,22 +75,22 @@ public class NodePropertiesTest {
 
   @Test
   public void testToStringWithId() {
-    Node node = Node.builder().withId(7L).withName("node0").build();
+    NodeSpec node = NodeSpec.builder().withId(7L).withName("node0").build();
 
-    assertThat(node.toString()).isEqualTo("Node{id=7, name='node0', address=null}");
+    assertThat(node.toString()).isEqualTo("NodeSpec{id=7, name='node0', address=null}");
   }
 
   @Test
   public void testToStringNoName() {
-    Node node = Node.builder().withId(7L).build();
+    NodeSpec node = NodeSpec.builder().withId(7L).build();
 
-    assertThat(node.toString()).isEqualTo("Node{id=7, address=null}");
+    assertThat(node.toString()).isEqualTo("NodeSpec{id=7, address=null}");
   }
 
   @Test
   public void testToStringWithProps() {
-    Node node =
-        Node.builder()
+    NodeSpec node =
+        NodeSpec.builder()
             .withId(7L)
             .withName("node0")
             .withPeerInfo("hello", "world")
@@ -99,6 +100,6 @@ public class NodePropertiesTest {
 
     assertThat(node.toString())
         .isEqualTo(
-            "Node{id=7, name='node0', cassandraVersion='1.2.19', dseVersion='5.1.0', peerInfo={hello=world}, address=null}");
+            "NodeSpec{id=7, name='node0', cassandraVersion='1.2.19', dseVersion='5.1.0', peerInfo={hello=world}, address=null}");
   }
 }

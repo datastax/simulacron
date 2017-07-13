@@ -23,12 +23,12 @@ import com.datastax.oss.protocol.internal.response.Event;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Result;
 import com.datastax.oss.protocol.internal.response.Supported;
-import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
-import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.DataCenterSpec;
 import com.datastax.simulacron.common.cluster.DataCenterConnectionReport;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.cluster.NodeConnectionReport;
+import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import io.netty.bootstrap.ServerBootstrap;
@@ -78,7 +78,7 @@ public class ServerTest {
 
   @Test
   public void testRegisterNode() throws Exception {
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
 
     try (BoundNode boundNode = localServer.register(node)) {
       assertThat(boundNode).isInstanceOf(BoundNode.class);
@@ -99,9 +99,9 @@ public class ServerTest {
   @Test
   public void testRegisterNodeBelongingToACluster() throws Exception {
     // attempting to register a node on its own that belongs to a cluster should fail.
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dc = cluster.addDataCenter().build();
-    Node node = dc.addNode().build();
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dc = cluster.addDataCenter().build();
+    NodeSpec node = dc.addNode().build();
 
     try {
       localServer.register(node);
@@ -113,14 +113,14 @@ public class ServerTest {
 
   @Test
   public void testRegisterCluster() throws Exception {
-    Cluster cluster = Cluster.builder().withNodes(5, 5).build();
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(5, 5).build();
     try (BoundCluster boundCluster = localServer.register(cluster)) {
       // Cluster should be registered.
       assertThat(localServer.getCluster(boundCluster.getId())).isSameAs(boundCluster);
 
       // Should be 2 DCs.
       assertThat(boundCluster.getDataCenters()).hasSize(2);
-      // Ensure an ID is assigned to each DC and Node.
+      // Ensure an ID is assigned to each DC and NodeSpec.
       for (BoundDataCenter dataCenter : boundCluster.getDataCenters()) {
         // Each DC has 5 nodes.
         assertThat(dataCenter.getNodes()).hasSize(5);
@@ -146,14 +146,14 @@ public class ServerTest {
 
   @Test
   public void testRegisterClusterFailsWhenNodeAlreadyBound() throws Exception {
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dc = cluster.addDataCenter().build();
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dc = cluster.addDataCenter().build();
     SocketAddress address = localAddressResolver.get();
 
     // Create 2 nodes with the same address, this should cause issue since both can't be
     // bound to same interface.
-    Node node0 = dc.addNode().withAddress(address).build();
-    Node node1 = dc.addNode().withAddress(address).build();
+    NodeSpec node0 = dc.addNode().withAddress(address).build();
+    NodeSpec node1 = dc.addNode().withAddress(address).build();
 
     BoundCluster boundCluster = null;
     try {
@@ -231,8 +231,8 @@ public class ServerTest {
             serverBootstrap);
 
     // Create a 2 node cluster with 1 node having the slow address.
-    Cluster cluster = Cluster.builder().build();
-    DataCenter dc = cluster.addDataCenter().build();
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dc = cluster.addDataCenter().build();
     dc.addNode().withAddress(slowAddr).build();
     dc.addNode().build();
 
@@ -248,7 +248,7 @@ public class ServerTest {
 
   @Test
   public void testUnregisterCluster() throws Exception {
-    Cluster cluster = Cluster.builder().withNodes(2, 2).build();
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(2, 2).build();
     try (BoundCluster boundCluster = localServer.register(cluster)) {
       // Cluster should be registered.
       assertThat(localServer.getCluster(boundCluster.getId())).isSameAs(boundCluster);
@@ -298,7 +298,7 @@ public class ServerTest {
 
   @Test
   public void testShouldCloseNodeConnections() throws Exception {
-    try (BoundNode node = localServer.register(Node.builder());
+    try (BoundNode node = localServer.register(NodeSpec.builder());
         MockClient client = new MockClient(eventLoop)) {
       client.connect(node.getAddress());
       client.write(new Startup());
@@ -324,7 +324,7 @@ public class ServerTest {
 
   @Test
   public void testShouldCloseClusterConnections() throws Exception {
-    try (BoundCluster cluster = localServer.register(Cluster.builder().withNodes(3));
+    try (BoundCluster cluster = localServer.register(ClusterSpec.builder().withNodes(3));
         MockClient client = new MockClient(eventLoop)) {
       client.connect(cluster.node(0, 1).getAddress());
       client.write(new Startup());
@@ -353,7 +353,7 @@ public class ServerTest {
 
   @Test
   public void testShouldCloseDataCenterConnections() throws Exception {
-    try (BoundCluster cluster = localServer.register(Cluster.builder().withNodes(3, 1));
+    try (BoundCluster cluster = localServer.register(ClusterSpec.builder().withNodes(3, 1));
         MockClient client = new MockClient(eventLoop)) {
       client.connect(cluster.node(1, 0).getAddress());
       client.write(new Startup());
@@ -385,7 +385,7 @@ public class ServerTest {
 
   @Test
   public void testStopAndStart() throws Exception {
-    try (BoundNode boundNode = localServer.register(Node.builder());
+    try (BoundNode boundNode = localServer.register(NodeSpec.builder());
         MockClient client = new MockClient(eventLoop)) {
       client.connect(boundNode.getAddress());
       client.write(new Startup());
@@ -424,7 +424,7 @@ public class ServerTest {
 
   @Test
   public void testShouldStopAcceptingStartupAndAcceptAgain() throws Exception {
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
     try (BoundNode boundNode = localServer.register(node)) {
       // Should be wrapped and registered in a dummy cluster.
       assertThat(localServer.getCluster(boundNode.getCluster().getId()))
@@ -468,7 +468,7 @@ public class ServerTest {
 
   @Test
   public void testShouldStopAcceptingConnectionsAndAcceptAgain() throws Exception {
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
     try (BoundNode boundNode = localServer.register(node)) {
 
       // Should be wrapped and registered in a dummy cluster.
@@ -513,7 +513,7 @@ public class ServerTest {
 
   @Test
   public void testShouldCloseExistingConnectionsAndAcceptAgain() throws Exception {
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
     try (BoundNode boundNode = localServer.register(node)) {
       // Should be wrapped and registered in a dummy cluster.
       assertThat(localServer.getCluster(boundNode.getCluster().getId()))
@@ -557,7 +557,7 @@ public class ServerTest {
 
   @Test
   public void testShouldStopAcceptingConnectionsAfter5() throws Exception {
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
     try (BoundNode boundNode = localServer.register(node)) {
       // Should be wrapped and registered in a dummy cluster.
       assertThat(localServer.getCluster(boundNode.getCluster().getId()))
@@ -601,7 +601,7 @@ public class ServerTest {
   @Test
   public void testShouldReturnProtocolErrorWhenUsingUnsupportedProtocolVersion() throws Exception {
     // If connecting with a newer protocol version than simulacron supports, a protocol error should be sent back.
-    Node node = Node.builder().build();
+    NodeSpec node = NodeSpec.builder().build();
     try (BoundNode boundNode = localServer.register(node)) {
 
       // Create encoders/decoders for protocol v6.
@@ -672,7 +672,7 @@ public class ServerTest {
 
   @Test
   public void testClusterActiveConnections() throws Exception {
-    Cluster cluster = Cluster.builder().withNodes(5).build();
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(5).build();
     try (BoundCluster boundCluster = localServer.register(cluster)) {
       // Create clients and ensure active connections on each node, data center, and cluster
       List<MockClient> clients = new ArrayList<>();
@@ -715,7 +715,7 @@ public class ServerTest {
 
   @Test
   public void testClusterActiveConnectionsMultipleDataCenters() throws Exception {
-    Cluster cluster = Cluster.builder().withNodes(1, 3, 5).build();
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(1, 3, 5).build();
     try (BoundCluster boundCluster = localServer.register(cluster)) {
       List<BoundNode> nodes = new ArrayList<>(boundCluster.getNodes());
 
@@ -783,7 +783,7 @@ public class ServerTest {
     SocketAddress address;
     // Validate that when a cluster is created in try-with-resources that when leaving try block
     // that the cluster is unregistered from the server.
-    try (BoundCluster cluster = localServer.register(Cluster.builder().withNodes(3))) {
+    try (BoundCluster cluster = localServer.register(ClusterSpec.builder().withNodes(3))) {
       clusterId = cluster.getId();
       address = cluster.node(0, 1).getAddress();
       try (MockClient client = new MockClient(eventLoop)) {
@@ -809,7 +809,7 @@ public class ServerTest {
     SocketAddress address;
     // Validate that when a node is created in try-with-resources that when leaving try block
     // that the associated cluster is unregistered from the server.
-    try (BoundNode node = localServer.register(Node.builder())) {
+    try (BoundNode node = localServer.register(NodeSpec.builder())) {
       clusterId = node.getCluster().getId();
       address = node.getAddress();
       try (MockClient client = new MockClient(eventLoop)) {
@@ -870,7 +870,7 @@ public class ServerTest {
             .withEventLoopGroup(eventLoop, LocalServerChannel.class)
             .build()) {
 
-      cluster = server.register(Cluster.builder().withNodes(5));
+      cluster = server.register(ClusterSpec.builder().withNodes(5));
       BoundNode node = cluster.node(0);
       SocketAddress address = node.getAddress();
       client = new MockClient(eventLoop);
@@ -912,7 +912,7 @@ public class ServerTest {
             .withEventLoopGroup(eventLoop, LocalServerChannel.class)
             .build()) {
 
-      cluster = server.register(Cluster.builder().withNodes(5));
+      cluster = server.register(ClusterSpec.builder().withNodes(5));
       BoundNode node = cluster.node(0);
       SocketAddress address = node.getAddress();
       client = new MockClient(eventLoop);
@@ -967,13 +967,13 @@ public class ServerTest {
             .withEventLoopGroup(eventLoop, LocalServerChannel.class)
             .build();
 
-    BoundCluster cluster = server.register(Cluster.builder().withNodes(1));
+    BoundCluster cluster = server.register(ClusterSpec.builder().withNodes(1));
     BoundNode node = cluster.node(0);
 
     server.close();
 
     try {
-      server.register(Cluster.builder().withNodes(1));
+      server.register(ClusterSpec.builder().withNodes(1));
       fail("Expected IllegalStateException");
     } catch (IllegalStateException ise) {
       // expected
@@ -987,7 +987,7 @@ public class ServerTest {
     }
 
     try {
-      server.register(Node.builder().build());
+      server.register(NodeSpec.builder().build());
       fail("Expected IllegalStateException");
     } catch (IllegalStateException ise) {
       // expected

@@ -4,9 +4,9 @@ import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.simulacron.common.cluster.AbstractDataCenter;
 import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
-import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.DataCenterConnectionReport;
 import com.datastax.simulacron.common.cluster.DataCenterQueryLogReport;
+import com.datastax.simulacron.common.cluster.DataCenterSpec;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -40,7 +40,7 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
     this.stubStore = new StubStore();
   }
 
-  BoundDataCenter(DataCenter delegate, BoundCluster parent) {
+  BoundDataCenter(DataCenterSpec delegate, BoundCluster parent) {
     super(
         delegate.getName(),
         delegate.getId(),
