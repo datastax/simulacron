@@ -12,7 +12,7 @@ Simulacron can be added to your application by using the following maven depende
 <dependency>
   <groupId>com.datastax.simulacron</groupId>
   <artifactId>native-server</artifactId>
-  <version>0.2.1</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
@@ -24,7 +24,7 @@ using the java driver you should consider depending on the `driver-3x` module wh
 <dependency>
   <groupId>com.datastax.simulacron</groupId>
   <artifactId>driver-3x</artifactId>
-  <version>0.2.1</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
@@ -59,15 +59,15 @@ With a `Server` instance in hand, you can provision Cluster and Nodes using `Ser
 
 `register` returns `BoundCluster` and `BoundNode` instances which each implement
 [`java.io.AutoCloseable`][AutoCloseable] and thus can be used in a `try-with-resources` block such that when the `try`
-block` exits, the `Cluster` or `Node` is automatically unregistered with the `Server`.
+block` exits, the `BoundCluster` or `BoundNode` is automatically unregistered with the `Server`.
 
-To register a single `Node`:
+To register a single `BoundNode`:
 
 ```java
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.server.BoundNode;
 
-try (BoundNode node = server.register(Node.builder())) {
+try (BoundNode node = server.register(NodeSpec.builder())) {
     // interact with Node
 }
 ```
@@ -75,26 +75,22 @@ try (BoundNode node = server.register(Node.builder())) {
 To register a `Cluster`:
 
 ```java
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.server.BoundCluster;
-import static com.datastax.simulacron.driver.SimulacronDriverSupport.cluster;
 
-try (BoundCluster cluster = server.register(cluster().withNodes(10,10))) {
+try (BoundCluster cluster = server.register(ClusterSpec.builder().withNodes(10,10))) {
     // interact with Cluster
 }
 ```
 
-Note that the input `Cluster` and `Node` instances provided to `register` are ultimately different objects than those
-returned.  The returned objects are 'bound' to the `Server`.
-
-Also note the use of `cluster()`.  This is a convenience method that providers a `Cluster.Builder`.
-This was introduced to avoid clashing with `com.datastax.driver.core.Cluster`.
-If you aren't using the java driver, you could instead use `Cluster.builder()` to construct a Cluster.   Simulacron
-provides additional conveniences to avoid namespace clashing with other driver types as well which is explained in the
-[Driver Integration Support](#driver-integration-support) section.
+Note that the input `ClusterSpec` and `NodeSpec` instances provided to `register` simply describe what simulacron 
+should provision.  The returned objects are 'bound' to the `Server`.  Both `Bound` and `Spec` types share a
+base type, `AbstractNode`.
 
 ## Cluster, DataCenter and Node configurability
 
-`Cluster`, `DataCenter` and `Node`s can be configured in the following ways during construction with their builders:
+`ClusterSpec`, `DataCenterSpec` and `NodeSpec`s can be configured in the following ways during construction with their
+builders:
 
 All Subjects:
 
@@ -106,32 +102,37 @@ If present adds some extra columns to peers table to mimic a DSE node.
 is expected or else defaults are used.
 * `withPeerInfo(Map<String, Object> peerInfo)` - Full version of peer info.
 
-`Cluster`:
+`ClusterSpec`:
 
 * `withNodes(int nodeCount ...)` - Convenience for specifying DataCenter layout of Cluster with each index of input
 representing a DC with number of nodes in that DC.
 
-`Node`:
+`NodeSpec`:
 
 * `withAddress(SocketAddress address)` - Configure the listening address for the to be constructed Node.  If not
 provided, the configured `AddressResolver` will assign an address automatically.
 
-In the general case, configuring everything at the `Cluster` level is adequate, but in some cases you may want configure
-`DataCenter` and `Node`s individually.  `DataCenter`s can be added to constructed `Cluster` instances using
-`addDataCenter()`.  `Node`s can be added to constructed `DataCenter` instances using `addNode()`.  For example:
+In the general case, configuring everything at the `ClusterSpec` level is adequate, but in some cases you may want 
+configure `DataCenterSpec` and `NodeSpec`s individually.  `DataCenterSpec`s can be added to constructed `ClusterSpec`
+instances using `addDataCenter()`.  `NodeSpec`s can be added to constructed `DataCenterSpec` instances using
+`addNode()`.  For example:
 
 ```java
 import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.server.BoundCluster;
+import com.datastax.simulacron.server.Server;
 import java.util.UUID;
 
-Cluster cluster = Cluster.builder().build();
+Server server = Server.builder().build();
+
+ClusterSpec cluster = ClusterSpec.builder().build();
 
 // Add DC whose nodes are at C* 3.8.
-DataCenter dc = cluster.addDataCenter().withCassandraVersion("3.8").build();
+DataCenterSpec dc = cluster.addDataCenter().withCassandraVersion("3.8").build();
 
 // Add nodes to dc with their own configuration.
-Node node0 = dc.addNode().withPeerInfo("rack", "rack2").build();
-Node node1 = dc.addNode().withPeerInfo("rack", "rack1").withPeerInfo("host_id", UUID.randomUUID()).build();
+NodeSpec node0 = dc.addNode().withPeerInfo("rack", "rack2").build();
+NodeSpec node1 = dc.addNode().withPeerInfo("rack", "rack1").withPeerInfo("host_id", UUID.randomUUID()).build();
 
 // Nodes and DataCenters cannot be added after the Cluster is registered to the Server.
 BoundCluster bCluster = server.register(cluster);
@@ -141,11 +142,11 @@ This API is admittedly non-ideal.  See [#48](https://github.com/riptano/simulacr
 
 ## Shortcuts for accessing DataCenters and Nodes
 
-Both `BoundCluster` and `BoundDataCenter` provide convenience methods to quickly accessing `DataCenter` and `Node`
-objects respectively, i.e.:
+Both `BoundCluster` and `BoundDataCenter` provide convenience methods to quickly accessing their children objects
+respectively, i.e.:
 
 ```java
-try (BoundCluster cluster = server.register(cluster().withNodes(5, 5, 5))) {
+try (BoundCluster cluster = server.register(ClusterSpec.builder().withNodes(5, 5, 5))) {
     // short cut to get a node in dc 0.
     BoundNode dc0node1 = cluster.node(1);
     // short cut to get dc 1.
@@ -162,33 +163,20 @@ try (BoundCluster cluster = server.register(cluster().withNodes(5, 5, 5))) {
 Simulacron includes driver-xx (i.e. `driver-3x`) compatibility modules for various versions of the java driver.
 These modules are optional and merely provide convenience functionality.
 
-### Simulacron Builders
-
-`SimulacronDriverSupport` provides `cluster()` and `node()` for creating simulacron `Cluster` and `Node` builders
-so there is no direct need to import them, i.e.:
-
-```java
-import static com.datastax.simulacron.driver.SimulacronDriverSupport.*;
-
-BoundNode node = server.register(node());
-
-BoundCluster cluster = server.register(cluster().withNodes(10));
-```
-
-### Building a Java Driver Cluster from a Simulacron Cluster
-
 `SimulacronDriverSupport` also provides `defaultBuilder()` methods for creating
-`com.datastax.driver.core.Cluster.Builder` instances that are preconfigured to communicate with simulacron `Cluster`s.
+`com.datastax.driver.core.Cluster.Builder` instances that are preconfigured to communicate with simulacron
+`BoundCluster`s.
 
 ```java
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.*;
+import static com.datastax.simulacron.common.cluster.*;
 
 // Creates a builder that simply configures netty options such that it closes quickly.  This is useful
 // for testing but has no intrinsic ties to simulacron functionality.
 Cluster.Builder builder = defaultBuilder();
 
 // Creates a builder that has its contact point pointing to the first node in the input cluster.
-BoundCluster cluster = server.register(cluster().withNodes(3));
+BoundCluster cluster = server.register(ClusterSpec.builder().withNodes(3));
 Cluster.Builder builder2 = defaultBuilder(cluster);
 
 // Creates a builder that has its contact point pointing to the the input node.
@@ -387,10 +375,10 @@ Server server = Server.builder()
   .build();
 ```
 
-One may also disable activity logging at the `Cluster` level when registering it:
+One may also disable activity logging at the cluster level when registering it:
 
 ```java
-BoundCluster cluster = server.register(cluster().withNodes(5).build(),
+BoundCluster cluster = server.register(ClusterSpec.builder().withNodes(5).build(),
   ServerOptions.builder().withActivityLoggingEnabled(false));
 
 ```
@@ -400,7 +388,12 @@ BoundCluster cluster = server.register(cluster().withNodes(5).build(),
 To access logs for a `BoundCluster`, `BoundDataCenter`, or `BoundServer` simply call `getLogs()`, i.e.:
 
 ```java
-List<QueryLog> logs = node.getLogs();
+
+// get all query logs
+List<QueryLog> logs = node.getLogs().getLogs();
+
+// get only query logs for queries received that had a matching prime.
+List<QueryLog> logs = node.getLogs(true).getLogs();
 ```
 
 `QueryLog` provides a variety of metadata about each query made on that node.
@@ -415,10 +408,10 @@ dc.clearLogs();
 
 ## Accessing and Closing Connections
 
-Simulacron offers away to retrieve the established socket connections by `Node` and further a way to close those
+Simulacron offers away to retrieve the established socket connections by node and further a way to close those
 connections.
 
-To access connections at a `Cluster`, `DataCenter`, or `Node` level, call `getConnections()`, i.e.:
+To access connections at a cluster, data center, or node level, call `getConnections()`, i.e.:
 
 ```java
 // cluster level
@@ -430,7 +423,7 @@ NodeConnectionReport nodeReport = cluster.node(0, 1).getConnections();
 ```
 
 Depending on the subject, a `ConnectionReport` will be returned.  These objects are hierarchical in a similar structure
-to `Cluster`, `DataCenter`, `Node`.  `NodeConnectionReport` offers a `getConnections()` method which returns all
+to cluster, data center, and node.  `NodeConnectionReport` offers a `getConnections()` method which returns all
 established sockets to that node.
 
 ```java
@@ -531,10 +524,10 @@ same name as their synchronous version, but ending with `Async`.  These methods 
 
 ```java
 // sync version
-BoundCluster boundCluster = server.register(cluster().withNodes(5));
+BoundCluster boundCluster = server.register(ClusterSpec.builder().withNodes(5));
 
 // async version
-CompletionStage<BoundCluster> future = server.registerAsync(cluster().withNodes(5));
+CompletionStage<BoundCluster> future = server.registerAsync(ClusterSpec.builder().withNodes(5));
 ```
 
 [AutoCloseable]: https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html
