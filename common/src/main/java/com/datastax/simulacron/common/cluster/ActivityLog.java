@@ -19,11 +19,7 @@ public class ActivityLog {
   private List<QueryLog> queryLog = new ArrayList<QueryLog>();
 
   public void addLog(
-      Node node,
-      Frame frame,
-      SocketAddress socketAddress,
-      Optional<StubMapping> stubOption,
-      long timestamp) {
+      Frame frame, SocketAddress socketAddress, Optional<StubMapping> stubOption, long timestamp) {
     // TODO: Add field which indicates the type of message.
     boolean isPrimed = false;
     if (stubOption.isPresent()) {

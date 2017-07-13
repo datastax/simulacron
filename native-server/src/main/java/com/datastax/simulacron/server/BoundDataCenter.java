@@ -1,25 +1,24 @@
 package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.simulacron.common.cluster.AbstractDataCenter;
 import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.DataCenterConnectionReport;
 import com.datastax.simulacron.common.cluster.DataCenterQueryLogReport;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.channel.Channel;
 
 import java.net.SocketAddress;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
-public class BoundDataCenter extends DataCenter
+public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
     implements BoundTopic<DataCenterConnectionReport, DataCenterQueryLogReport> {
 
   private final transient Server server;
@@ -54,21 +53,6 @@ public class BoundDataCenter extends DataCenter
     this.stubStore = new StubStore();
   }
 
-  /**
-   * Convenience method to look up node by id.
-   *
-   * @param id The id of the node.
-   * @return The node if found or null.
-   */
-  public BoundNode node(long id) {
-    return this.getNodes()
-        .stream()
-        .filter(n -> n.getId() == id)
-        .findFirst()
-        .map(n -> (BoundNode) n)
-        .orElse(null);
-  }
-
   @Override
   public StubStore getStubStore() {
     return stubStore;
@@ -78,7 +62,7 @@ public class BoundDataCenter extends DataCenter
   public int clearPrimes(boolean nested) {
     int cleared = getStubStore().clear();
     if (nested) {
-      for (BoundNode node : getBoundNodes()) {
+      for (BoundNode node : getNodes()) {
         cleared += node.clearPrimes(true);
       }
     }
@@ -86,18 +70,18 @@ public class BoundDataCenter extends DataCenter
   }
 
   @Override
+  public CompletionStage<BoundCluster> unregisterAsync() {
+    return getServer().unregisterAsync(getCluster());
+  }
+
+  @Override
   public DataCenterConnectionReport getConnections() {
     ClusterConnectionReport clusterConnectionReport = new ClusterConnectionReport(cluster.getId());
-    for (Node node : this.getNodes()) {
-      BoundNode boundNode = (BoundNode) node;
+    for (BoundNode node : this.getNodes()) {
       clusterConnectionReport.addNode(
-          boundNode,
-          boundNode
-              .clientChannelGroup
-              .stream()
-              .map(Channel::remoteAddress)
-              .collect(Collectors.toList()),
-          boundNode.getAddress());
+          node,
+          node.clientChannelGroup.stream().map(Channel::remoteAddress).collect(Collectors.toList()),
+          node.getAddress());
     }
     return clusterConnectionReport.getDataCenters().iterator().next();
   }
@@ -108,7 +92,7 @@ public class BoundDataCenter extends DataCenter
     return CompletableFuture.allOf(
             this.getNodes()
                 .stream()
-                .map(n -> ((BoundNode) n).closeConnectionsAsync(closeType).toCompletableFuture())
+                .map(n -> n.closeConnectionsAsync(closeType).toCompletableFuture())
                 .collect(Collectors.toList())
                 .toArray(new CompletableFuture[] {}))
         .thenApply(v -> report);
@@ -118,13 +102,11 @@ public class BoundDataCenter extends DataCenter
   public CompletionStage<DataCenterConnectionReport> closeConnectionAsync(
       SocketAddress connection, CloseType type) {
 
-    for (Node node : this.getNodes()) {
-      BoundNode boundNode = (BoundNode) node;
+    for (BoundNode node : this.getNodes()) {
       // identify the node that has the connection and close it with that node.
-      for (SocketAddress address : boundNode.getConnections().getConnections()) {
+      for (SocketAddress address : node.getConnections().getConnections()) {
         if (connection.equals(address)) {
-          return boundNode
-              .closeConnectionAsync(address, type)
+          return node.closeConnectionAsync(address, type)
               .thenApply(n -> n.getRootReport().getDataCenters().iterator().next());
         }
       }
@@ -133,11 +115,6 @@ public class BoundDataCenter extends DataCenter
     CompletableFuture<DataCenterConnectionReport> failedFuture = new CompletableFuture<>();
     failedFuture.completeExceptionally(new IllegalArgumentException("Not found"));
     return failedFuture;
-  }
-
-  @Override
-  public List<BoundNode> getBoundNodes() {
-    return getNodes().stream().map(n -> (BoundNode) n).collect(Collectors.toList());
   }
 
   /**
@@ -149,8 +126,7 @@ public class BoundDataCenter extends DataCenter
   @JsonIgnore
   public DataCenterQueryLogReport getLogs(boolean primed) {
     ClusterQueryLogReport clusterQueryLogReport = new ClusterQueryLogReport(cluster.getId());
-    this.getBoundNodes()
-        .forEach(n -> clusterQueryLogReport.addNode(n, n.activityLog.getLogs(primed)));
+    this.getNodes().forEach(n -> clusterQueryLogReport.addNode(n, n.activityLog.getLogs(primed)));
     return clusterQueryLogReport.getDataCenters().iterator().next();
   }
 
@@ -163,18 +139,8 @@ public class BoundDataCenter extends DataCenter
   @JsonIgnore
   public DataCenterQueryLogReport getLogs() {
     ClusterQueryLogReport clusterQueryLogReport = new ClusterQueryLogReport(cluster.getId());
-    this.getBoundNodes().forEach(n -> clusterQueryLogReport.addNode(n, n.activityLog.getLogs()));
+    this.getNodes().forEach(n -> clusterQueryLogReport.addNode(n, n.activityLog.getLogs()));
     return clusterQueryLogReport.getDataCenters().iterator().next();
-  }
-
-  @Override
-  public void clearLogs() {
-    getBoundNodes().forEach(BoundNode::clearLogs);
-  }
-
-  @Override
-  public BoundCluster getCluster() {
-    return cluster;
   }
 
   @Override
@@ -182,7 +148,7 @@ public class BoundDataCenter extends DataCenter
     return server;
   }
 
-  Optional<StubMapping> find(Node node, Frame frame) {
+  Optional<StubMapping> find(BoundNode node, Frame frame) {
     Optional<StubMapping> stub = stubStore.find(node, frame);
     if (!stub.isPresent()) {
       stub = getCluster().find(node, frame);

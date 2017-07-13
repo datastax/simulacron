@@ -1,16 +1,26 @@
 package com.datastax.simulacron.http.server;
 
-import com.datastax.driver.core.*;
+import com.datastax.driver.core.BatchStatement;
+import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
-import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.cluster.RequestPrime;
-import com.datastax.simulacron.common.request.*;
+import com.datastax.simulacron.common.request.Batch;
+import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
+import com.datastax.simulacron.server.BoundCluster;
 
-import java.lang.reflect.Array;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 
@@ -158,12 +168,12 @@ public class HttpTestUtil {
     return rawaddress.substring(1, rawaddress.length() - 5);
   }
 
-  public static String getContactPointString(Cluster cluster, int node) {
-    String rawaddress = cluster.getNodes().get(node).getAddress().toString();
+  public static String getContactPointString(BoundCluster cluster, int node) {
+    String rawaddress = cluster.node(node).getAddress().toString();
     return rawaddress.substring(1, rawaddress.length() - 5);
   }
 
-  public static String getContactPointString(Cluster cluster) {
+  public static String getContactPointString(BoundCluster cluster) {
     return getContactPointString(cluster, 0);
   }
 

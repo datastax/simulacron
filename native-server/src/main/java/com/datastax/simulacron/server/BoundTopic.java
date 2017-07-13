@@ -9,7 +9,7 @@ import com.datastax.simulacron.common.stubbing.PrimeDsl;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.net.SocketAddress;
-import java.util.List;
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
@@ -58,9 +58,7 @@ public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport
    *
    * @return unregistered Cluster
    */
-  default CompletionStage<BoundCluster> unregisterAsync() {
-    return getServer().unregisterAsync(getCluster());
-  }
+  CompletionStage<BoundCluster> unregisterAsync();
 
   @JsonIgnore
   C getConnections();
@@ -94,7 +92,7 @@ public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport
 
   /** @return All nodes belonging to this topic. */
   @JsonIgnore
-  List<BoundNode> getBoundNodes();
+  Collection<BoundNode> getNodes();
 
   /**
    * Apply a function that returns a CompletableFuture on each node.
@@ -104,7 +102,7 @@ public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport
    */
   default CompletionStage<Void> forEachNode(Function<BoundNode, CompletionStage<Void>> fun) {
     return CompletableFuture.allOf(
-            this.getBoundNodes()
+            this.getNodes()
                 .stream()
                 .map(i -> fun.apply(i).toCompletableFuture())
                 .collect(Collectors.toList())
@@ -185,13 +183,12 @@ public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport
   Q getLogs(boolean primed);
 
   /** clears the query logs for this. */
-  void clearLogs();
+  default void clearLogs() {
+    getNodes().forEach(BoundNode::clearLogs);
+  }
 
   @JsonIgnore
   Server getServer();
-
-  @Override
-  BoundCluster getCluster();
 
   @Override
   default void close() {

@@ -1,15 +1,8 @@
 package com.datastax.simulacron.common.cluster;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Represents a {@link Node} which may belong to a {@link Cluster} (via a {@link DataCenter}
@@ -18,12 +11,7 @@ import java.util.Optional;
  * <p>A {@link Node} has an address which indicates what ip address and port the node is listening
  * on.
  */
-public class Node extends AbstractNodeProperties {
-
-  /** The address and port that this node should listen on. */
-  @JsonProperty private final SocketAddress address;
-
-  @JsonBackReference private final DataCenter parent;
+public class Node extends AbstractNode<Cluster, DataCenter> {
 
   Node() {
     // Default constructor for jackson deserialization.
@@ -38,81 +26,7 @@ public class Node extends AbstractNodeProperties {
       String dseVersion,
       Map<String, Object> peerInfo,
       DataCenter parent) {
-    super(name, id, cassandraVersion, dseVersion, peerInfo);
-    this.address = address;
-    this.parent = parent;
-    if (this.parent != null) {
-      parent.addNode(this);
-    }
-  }
-
-  /** @return The address and port that this node should listen on. */
-  public SocketAddress getAddress() {
-    return address;
-  }
-
-  /**
-   * Convenience method to get access {@link #getAddress()} as {@link InetSocketAddress} instance
-   * which it almost always is (except in testing scenarios.
-   *
-   * @return address as an {@link InetSocketAddress}
-   */
-  public InetSocketAddress inetSocketAddress() {
-    if (address instanceof InetSocketAddress) {
-      return (InetSocketAddress) address;
-    }
-    return null;
-  }
-
-  /**
-   * Convenience method to access the {@link InetAddress} part of {@link #getAddress()} if it is an
-   * {@link InetSocketAddress}.
-   *
-   * @return address as an {@link InetAddress}
-   */
-  public InetAddress inet() {
-    InetSocketAddress addr = inetSocketAddress();
-    if (addr != null) {
-      return addr.getAddress();
-    }
-    return null;
-  }
-
-  /**
-   * Convenience method to access the port part of {@link #getAddress()} if it is an {@link
-   * InetSocketAddress}.
-   *
-   * @return port
-   */
-  public int port() {
-    InetSocketAddress addr = inetSocketAddress();
-    if (addr != null) {
-      return addr.getPort();
-    }
-    return -1;
-  }
-
-  /**
-   * @return The {@link DataCenter} this node belongs to, otherwise null if it does not have one.
-   */
-  @JsonIgnore
-  public DataCenter getDataCenter() {
-    return parent;
-  }
-
-  /**
-   * @return The {@link Cluster} associated this node belongs to, otherwise null if it does not
-   *     belong to one.
-   */
-  @JsonIgnore
-  @Override
-  public Cluster getCluster() {
-    return Optional.ofNullable(parent).map(DataCenter::getCluster).orElse(null);
-  }
-
-  @Override
-  public String toString() {
-    return toStringWith(", address=" + address);
+    super(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
   }
 
   /**
@@ -122,19 +36,6 @@ public class Node extends AbstractNodeProperties {
    */
   public static Builder builder() {
     return new Builder(null, null);
-  }
-
-  @Override
-  @JsonIgnore
-  public Optional<NodeProperties> getParent() {
-    return Optional.ofNullable(parent);
-  }
-
-  @Override
-  public Long getActiveConnections() {
-    // In the case of a concrete 'Node' instance, active connections will always be 0 since there is no actual
-    // connection state here.  We expect specialized implementations of Node to override this.
-    return 0L;
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, DataCenter> {

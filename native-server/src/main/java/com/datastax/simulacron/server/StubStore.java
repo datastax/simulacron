@@ -1,7 +1,6 @@
 package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Prime;
 import com.datastax.simulacron.common.stubbing.StubMapping;
 
@@ -28,7 +27,7 @@ public class StubStore {
     return size;
   }
 
-  public Optional<StubMapping> find(Node node, Frame frame) {
+  public Optional<StubMapping> find(BoundNode node, Frame frame) {
     return stubMappings.stream().filter(s -> s.matches(node, frame)).findFirst();
   }
 }

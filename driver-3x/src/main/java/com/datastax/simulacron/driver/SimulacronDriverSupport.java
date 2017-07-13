@@ -3,6 +3,8 @@ package com.datastax.simulacron.driver;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.NettyOptions;
 import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.server.BoundCluster;
+import com.datastax.simulacron.server.BoundNode;
 import io.netty.channel.EventLoopGroup;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -27,7 +29,7 @@ public class SimulacronDriverSupport {
    * @param node to connect to as contact point.
    * @return a builder to connect to the input node.
    */
-  public static Cluster.Builder defaultBuilder(Node node) {
+  public static Cluster.Builder defaultBuilder(BoundNode node) {
     return defaultBuilder().withPort(node.port()).addContactPoints(node.inet());
   }
 
@@ -37,9 +39,8 @@ public class SimulacronDriverSupport {
    * @param cluster cluster to connect to.
    * @return a builder to connect to the input cluster.
    */
-  public static Cluster.Builder defaultBuilder(
-      com.datastax.simulacron.common.cluster.Cluster cluster) {
-    Node node = cluster.node(0);
+  public static Cluster.Builder defaultBuilder(BoundCluster cluster) {
+    BoundNode node = cluster.node(0);
     return defaultBuilder(node);
   }
 

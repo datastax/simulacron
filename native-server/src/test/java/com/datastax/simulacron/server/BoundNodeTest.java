@@ -17,9 +17,8 @@ import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.oss.protocol.internal.response.result.Void;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.cluster.QueryLog;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.stubbing.Action;
@@ -44,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class BoundNodeTest {
 
   private final BoundCluster cluster = new BoundCluster(Cluster.builder().build(), 0L, null);
-  private final DataCenter dc = new BoundDataCenter(cluster);
+  private final BoundDataCenter dc = new BoundDataCenter(cluster);
   private final Timer timer = new HashedWheelTimer();
   private final BoundNode node =
       new BoundNode(
@@ -201,7 +200,7 @@ public class BoundNodeTest {
               }
 
               @Override
-              public List<Action> getActions(Node node, Frame frame) {
+              public List<Action> getActions(AbstractNode node, Frame frame) {
                 return Collections.singletonList(new MessageResponseAction(response));
               }
             });
@@ -234,7 +233,7 @@ public class BoundNodeTest {
               }
 
               @Override
-              public List<Action> getActions(Node node, Frame frame) {
+              public List<Action> getActions(AbstractNode node, Frame frame) {
                 List<Action> actions = new ArrayList<>();
                 actions.add(new MessageResponseAction(response, 500));
                 actions.add(new MessageResponseAction(Options.INSTANCE));

@@ -8,7 +8,6 @@ import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
-import com.datastax.simulacron.common.codec.CqlMapper;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import org.junit.Test;
 
@@ -26,7 +25,6 @@ public class PeerMetadataHandlerTest {
   private static Cluster cluster;
   private static Node node0;
   private static Node node1;
-  private static CqlMapper mapper = CqlMapper.forVersion(4);
 
   // A 3 node cluster mimicking DSE 5.1.
   private static Cluster dseCluster;

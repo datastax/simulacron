@@ -4,8 +4,8 @@ import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.response.Supported;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.cluster.Cluster;
-import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
@@ -20,7 +20,12 @@ import org.junit.After;
 import org.junit.Test;
 
 import java.nio.channels.ClosedChannelException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -75,7 +80,7 @@ public class DisconnectActionTest {
   public void testMessageWithClose() throws Exception {
     // Validates that a stub that dictates to send a message and then close a connection does so.
     Node node = Node.builder().build();
-    Node boundNode = localServer.register(node);
+    BoundNode boundNode = localServer.register(node);
 
     localServer.stubStore.register(
         new StubMapping() {
@@ -85,7 +90,7 @@ public class DisconnectActionTest {
           }
 
           @Override
-          public List<Action> getActions(Node node, Frame frame) {
+          public List<Action> getActions(AbstractNode node, Frame frame) {
             ArrayList<Action> actions = new ArrayList<>();
             actions.add(new MessageResponseAction(new Supported(Collections.emptyMap())));
             actions.add(DisconnectAction.builder().build());
@@ -116,18 +121,18 @@ public class DisconnectActionTest {
   public void testCloseNode() throws Exception {
     // Validates that a stub that dictates to close a node's connections does so.
     Cluster cluster = Cluster.builder().withNodes(2, 2).build();
-    Cluster boundCluster = localServer.register(cluster);
+    BoundCluster boundCluster = localServer.register(cluster);
 
-    DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
-    Iterator<Node> nodes = dc0.getNodes().iterator();
-    BoundNode boundNode = (BoundNode) nodes.next();
+    BoundDataCenter dc0 = boundCluster.getDataCenters().iterator().next();
+    Iterator<BoundNode> nodes = dc0.getNodes().iterator();
+    BoundNode boundNode = nodes.next();
     stubCloseOnStartup(Scope.NODE);
 
-    Map<Node, MockClient> nodeToClients = new HashMap<>();
+    Map<BoundNode, MockClient> nodeToClients = new HashMap<>();
     MockClient client = null;
     try {
       // Create a connection to each node.
-      for (Node node : boundCluster.getNodes()) {
+      for (BoundNode node : boundCluster.getNodes()) {
         MockClient client0 = new MockClient(eventLoop);
         client0.connect(node.getAddress());
         nodeToClients.put(node, client0);
@@ -170,18 +175,18 @@ public class DisconnectActionTest {
   public void testCloseDataCenter() throws Exception {
     // Validates that a stub that dictates to close a node's DC's connections does so.
     Cluster cluster = Cluster.builder().withNodes(2, 2).build();
-    Cluster boundCluster = localServer.register(cluster);
+    BoundCluster boundCluster = localServer.register(cluster);
 
-    DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
-    Iterator<Node> nodes = dc0.getNodes().iterator();
-    BoundNode boundNode = (BoundNode) nodes.next();
+    BoundDataCenter dc0 = boundCluster.getDataCenters().iterator().next();
+    Iterator<BoundNode> nodes = dc0.getNodes().iterator();
+    BoundNode boundNode = nodes.next();
     stubCloseOnStartup(Scope.DATA_CENTER);
 
-    Map<Node, MockClient> nodeToClients = new HashMap<>();
+    Map<BoundNode, MockClient> nodeToClients = new HashMap<>();
     MockClient client = null;
     try {
       // Create a connection to each node.
-      for (Node node : boundCluster.getNodes()) {
+      for (BoundNode node : boundCluster.getNodes()) {
         MockClient client0 = new MockClient(eventLoop);
         client0.connect(node.getAddress());
         nodeToClients.put(node, client0);
@@ -225,18 +230,18 @@ public class DisconnectActionTest {
   public void testCloseCluster() throws Exception {
     // Validates that a stub that dictates to close a node's Cluster's connections does so.
     Cluster cluster = Cluster.builder().withNodes(2, 2).build();
-    Cluster boundCluster = localServer.register(cluster);
+    BoundCluster boundCluster = localServer.register(cluster);
 
-    DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
-    Iterator<Node> nodes = dc0.getNodes().iterator();
-    BoundNode boundNode = (BoundNode) nodes.next();
+    BoundDataCenter dc0 = boundCluster.getDataCenters().iterator().next();
+    Iterator<BoundNode> nodes = dc0.getNodes().iterator();
+    BoundNode boundNode = nodes.next();
     stubCloseOnStartup(Scope.CLUSTER);
 
-    Map<Node, MockClient> nodeToClients = new HashMap<>();
+    Map<BoundNode, MockClient> nodeToClients = new HashMap<>();
     MockClient client = null;
     try {
       // Create a connection to each node.
-      for (Node node : boundCluster.getNodes()) {
+      for (BoundNode node : boundCluster.getNodes()) {
         MockClient client0 = new MockClient(eventLoop);
         client0.connect(node.getAddress());
         nodeToClients.put(node, client0);
@@ -275,7 +280,7 @@ public class DisconnectActionTest {
           }
 
           @Override
-          public List<Action> getActions(Node node, Frame frame) {
+          public List<Action> getActions(AbstractNode node, Frame frame) {
             return Collections.singletonList(DisconnectAction.builder().withScope(scope).build());
           }
         });

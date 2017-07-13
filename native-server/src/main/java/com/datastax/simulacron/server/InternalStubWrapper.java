@@ -1,7 +1,7 @@
 package com.datastax.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.InternalStubMapping;
 import com.datastax.simulacron.common.stubbing.Prime;
@@ -24,7 +24,7 @@ class InternalStubWrapper extends Prime implements InternalStubMapping {
   }
 
   @Override
-  public List<Action> getActions(Node node, Frame frame) {
+  public List<Action> getActions(AbstractNode node, Frame frame) {
     return super.getActions(node, frame);
   }
 }

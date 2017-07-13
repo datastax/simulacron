@@ -4,13 +4,21 @@ import com.datastax.oss.protocol.internal.ProtocolConstants;
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -103,7 +111,7 @@ public class CodecUtils {
    */
   @SuppressWarnings("unchecked")
   public static <T> ByteBuffer encodePeerInfo(
-      Node node, Encoder<T> encoder, String key, T defaultValue) {
+      AbstractNode node, Encoder<T> encoder, String key, T defaultValue) {
     // TODO: Handle type conversions
     return encoder.apply(node.resolvePeerInfo(key, defaultValue));
   }

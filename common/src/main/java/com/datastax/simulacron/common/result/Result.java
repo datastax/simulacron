@@ -1,9 +1,13 @@
 package com.datastax.simulacron.common.result;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.stubbing.Action;
-import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -52,7 +56,7 @@ public abstract class Result {
     this.delayInMs = TimeUnit.MILLISECONDS.convert(delay, delayUnit);
   }
 
-  public abstract List<Action> toActions(Node node, Frame frame);
+  public abstract List<Action> toActions(AbstractNode node, Frame frame);
 
   @Override
   public boolean equals(Object o) {

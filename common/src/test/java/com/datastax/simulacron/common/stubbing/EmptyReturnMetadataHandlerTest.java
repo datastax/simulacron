@@ -5,10 +5,10 @@ import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.request.Startup;
-import com.datastax.simulacron.common.cluster.Cluster;
 import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.utils.FrameUtils;
 import org.junit.Test;
+
 import java.util.List;
 
 import static com.datastax.simulacron.common.Assertions.assertThat;

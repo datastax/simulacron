@@ -1,7 +1,7 @@
 package com.datastax.simulacron.common.result;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.MessageResponseAction;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -39,7 +39,7 @@ public class VoidResult extends Result {
   }
 
   @Override
-  public List<Action> toActions(Node node, Frame frame) {
+  public List<Action> toActions(AbstractNode node, Frame frame) {
     return this.actions;
   }
 }

@@ -1,31 +1,34 @@
 package com.datastax.simulacron.common.cluster;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
+import java.net.SocketAddress;
 import java.util.Collection;
-import java.util.Optional;
+import java.util.List;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /**
  * Represent a class that contains the connections of a particular datacenter. It's useful for
  * encoding the results with JSON.
  */
 @JsonIgnoreProperties(value = {"name"})
-public class DataCenterConnectionReport extends ConnectionReport {
+public class DataCenterConnectionReport extends ConnectionReport
+    implements DataCenterStructure<ClusterConnectionReport, NodeConnectionReport> {
   @JsonManagedReference private final Collection<NodeConnectionReport> nodes = new TreeSet<>();
 
   @JsonBackReference private final ClusterConnectionReport parent;
 
+  @SuppressWarnings("unused")
   DataCenterConnectionReport() {
     // Default constructor for jackson deserialization.
     this(null, null);
   }
 
   public DataCenterConnectionReport(Long id, ClusterConnectionReport clusterReport) {
-    super(null, id, null, null, null);
+    super(id);
     this.parent = clusterReport;
     if (parent != null) {
       parent.addDataCenter(this);
@@ -33,7 +36,7 @@ public class DataCenterConnectionReport extends ConnectionReport {
   }
 
   void addNode(NodeConnectionReport node) {
-    assert node.getParent().orElse(null) == this;
+    assert node.getDataCenter() == this;
     this.nodes.add(node);
   }
 
@@ -42,19 +45,8 @@ public class DataCenterConnectionReport extends ConnectionReport {
   }
 
   @Override
-  @JsonIgnore
-  public Long getActiveConnections() {
-    return getNodes().stream().mapToLong(NodeConnectionReport::getActiveConnections).sum();
-  }
-
-  @Override
-  public Optional<NodeProperties> getParent() {
-    return Optional.ofNullable(parent);
-  }
-
-  @Override
-  public Cluster getCluster() {
-    return null;
+  public ClusterConnectionReport getCluster() {
+    return parent;
   }
 
   @Override
@@ -77,5 +69,13 @@ public class DataCenterConnectionReport extends ConnectionReport {
   @Override
   public ClusterConnectionReport getRootReport() {
     return parent;
+  }
+
+  @Override
+  public List<SocketAddress> getConnections() {
+    return getNodes()
+        .stream()
+        .flatMap(n -> n.getConnections().stream())
+        .collect(Collectors.toList());
   }
 }

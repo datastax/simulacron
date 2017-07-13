@@ -1,7 +1,7 @@
 package com.datastax.simulacron.common.result;
 
 import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
@@ -28,7 +28,7 @@ public class CloseConnectionResult extends Result {
   }
 
   @Override
-  public List<Action> toActions(Node node, Frame frame) {
+  public List<Action> toActions(AbstractNode node, Frame frame) {
     DisconnectAction.Builder builder = DisconnectAction.builder().withDelayInMs(delayInMs);
     if (scope != null) {
       builder.withScope(scope);

@@ -2,19 +2,18 @@ package com.datastax.simulacron.common.cluster;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.util.Map;
+import java.net.SocketAddress;
+import java.util.List;
 
-public abstract class ConnectionReport extends AbstractNodeProperties {
+public abstract class ConnectionReport extends AbstractIdentifiable {
 
-  ConnectionReport(
-      String name,
-      Long id,
-      String cassandraVersion,
-      String dseVersion,
-      Map<String, Object> peerInfo) {
-    super(name, id, cassandraVersion, dseVersion, peerInfo);
+  ConnectionReport(Long id) {
+    super(id);
   }
 
   @JsonIgnore
   public abstract ClusterConnectionReport getRootReport();
+
+  @JsonIgnore
+  public abstract List<SocketAddress> getConnections();
 }

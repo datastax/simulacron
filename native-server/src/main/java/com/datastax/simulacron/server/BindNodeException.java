@@ -1,21 +1,21 @@
 package com.datastax.simulacron.server;
 
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 
 import java.net.SocketAddress;
 
 public final class BindNodeException extends Exception {
 
-  private final Node node;
+  private final AbstractNode node;
   private final SocketAddress address;
 
-  public BindNodeException(Node node, SocketAddress address, Throwable cause) {
+  public BindNodeException(AbstractNode node, SocketAddress address, Throwable cause) {
     super("Failed to bind " + node + " to " + address, cause);
     this.node = node;
     this.address = address;
   }
 
-  public Node getNode() {
+  public AbstractNode getNode() {
     return node;
   }
 

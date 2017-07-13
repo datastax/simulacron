@@ -1,17 +1,16 @@
 package com.datastax.simulacron.common.cluster;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Represent a class that contains the querylogs of a particular node. It's useful for encoding the
  * results with JSON.
  */
-public class NodeQueryLogReport extends QueryLogReport {
+public class NodeQueryLogReport extends QueryLogReport
+    implements NodeStructure<ClusterQueryLogReport, DataCenterQueryLogReport> {
   @JsonProperty("queries")
   private List<QueryLog> queryLogs;
 
@@ -27,16 +26,6 @@ public class NodeQueryLogReport extends QueryLogReport {
     super(id);
     this.queryLogs = queryLogs;
     this.parent = parent;
-  }
-
-  @Override
-  public Optional<AbstractReport> getParent() {
-    return Optional.ofNullable(parent);
-  }
-
-  @Override
-  public ClusterQueryLogReport getRootReport() {
-    return parent.getRootReport();
   }
 
   @Override
@@ -56,8 +45,18 @@ public class NodeQueryLogReport extends QueryLogReport {
     return queryLogs != null ? queryLogs.hashCode() : 0;
   }
 
-  @JsonIgnore
+  @Override
+  public ClusterQueryLogReport getRootReport() {
+    return getCluster();
+  }
+
+  @Override
   public List<QueryLog> getQueryLogs() {
     return queryLogs;
+  }
+
+  @Override
+  public DataCenterQueryLogReport getDataCenter() {
+    return parent;
   }
 }

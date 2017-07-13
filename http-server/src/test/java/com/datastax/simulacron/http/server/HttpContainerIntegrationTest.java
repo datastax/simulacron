@@ -2,10 +2,15 @@ package com.datastax.simulacron.http.server;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.DataCenter;
+import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
+import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.result.Result;
 import com.datastax.simulacron.common.result.SuccessResult;
+import com.datastax.simulacron.server.BoundCluster;
 import com.datastax.simulacron.server.Server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
@@ -17,7 +22,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -194,13 +205,13 @@ public class HttpContainerIntegrationTest {
 
   @Test
   public void testUnregisterClusterExists() throws Exception {
-    unregisterClusterExists(Cluster::getName);
+    unregisterClusterExists(BoundCluster::getName);
     unregisterClusterExists(p -> p.getId().toString());
   }
 
-  private void unregisterClusterExists(Function<Cluster, String> f) throws Exception {
-    Cluster cluster = nativeServer.register(Cluster.builder().withNodes(1).build());
-    Cluster cluster2 = nativeServer.register(Cluster.builder().withNodes(1).build());
+  private void unregisterClusterExists(Function<BoundCluster, String> f) throws Exception {
+    BoundCluster cluster = nativeServer.register(Cluster.builder().withNodes(1).build());
+    BoundCluster cluster2 = nativeServer.register(Cluster.builder().withNodes(1).build());
 
     HttpClient client = vertx.createHttpClient();
     CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();

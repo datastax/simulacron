@@ -3,9 +3,9 @@ package com.datastax.simulacron.driver;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.server.BoundCluster;
+import com.datastax.simulacron.server.BoundDataCenter;
+import com.datastax.simulacron.server.BoundNode;
 import com.datastax.simulacron.server.Server;
 import org.junit.Test;
 
@@ -26,7 +26,7 @@ public class PeerMetadataIntegrationTest {
     // Validate that peers as appropriately discovered when connecting to a node.
     try (BoundCluster boundCluster = server.register(cluster().withNodes(3, 3, 3));
         Cluster driverCluster = defaultBuilder(boundCluster).build()) {
-      DataCenter dc0 = boundCluster.getDataCenters().iterator().next();
+      BoundDataCenter dc0 = boundCluster.getDataCenters().iterator().next();
       driverCluster.init();
 
       // Should be 9 hosts
@@ -45,7 +45,7 @@ public class PeerMetadataIntegrationTest {
               .collect(Collectors.toList());
 
       Collection<SocketAddress> dcHosts =
-          dc0.getNodes().stream().map(Node::getAddress).collect(Collectors.toList());
+          dc0.getNodes().stream().map(BoundNode::getAddress).collect(Collectors.toList());
 
       assertThat(connectedHosts).hasSameElementsAs(dcHosts);
     }

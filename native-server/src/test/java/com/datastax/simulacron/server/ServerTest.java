@@ -50,6 +50,7 @@ import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -120,12 +121,12 @@ public class ServerTest {
       // Should be 2 DCs.
       assertThat(boundCluster.getDataCenters()).hasSize(2);
       // Ensure an ID is assigned to each DC and Node.
-      for (DataCenter dataCenter : boundCluster.getDataCenters()) {
+      for (BoundDataCenter dataCenter : boundCluster.getDataCenters()) {
         // Each DC has 5 nodes.
         assertThat(dataCenter.getNodes()).hasSize(5);
         assertThat(dataCenter.getId()).isNotNull();
 
-        for (Node node : dataCenter.getNodes()) {
+        for (BoundNode node : dataCenter.getNodes()) {
           // Each node should have assigned address and has an ID.
           assertThat(node.getAddress()).isNotNull();
           assertThat(node.getId()).isNotNull();
@@ -253,14 +254,15 @@ public class ServerTest {
       assertThat(localServer.getCluster(boundCluster.getId())).isSameAs(boundCluster);
 
       // Should be 4 nodes total.
-      List<BoundNode> nodes = boundCluster.getBoundNodes();
+      Collection<BoundNode> nodes = boundCluster.getNodes();
       assertThat(nodes).hasSize(4);
       for (BoundNode node : nodes) {
         // Each node's channel should be open.
         assertThat(node.channel.get().isOpen()).isTrue();
       }
 
-      try (MockClient client = new MockClient(eventLoop).connect(nodes.get(0).getAddress())) {
+      try (MockClient client =
+          new MockClient(eventLoop).connect(boundCluster.node(0).getAddress())) {
         // Use a client, this makes sure that the client channel is initialized and added to channel group.
         // Usually this will be the case, but in some constrained environments there may be a window where
         // the unregister happens before the channel is added to the channel group.
@@ -295,42 +297,6 @@ public class ServerTest {
   }
 
   @Test
-  public void testUnregisterClusterWithoutId() throws Exception {
-    // attempting to unregister using a Cluster without an assigned ID should thrown an exception.
-    Cluster cluster = Cluster.builder().withNodes(2, 2).build();
-    try {
-      localServer.unregister(cluster);
-      fail();
-    } catch (IllegalArgumentException ex) {
-      // expected
-    }
-  }
-
-  @Test
-  public void testUnregisterClusterNotRegistered() throws Exception {
-    // attemping to unregister a Cluster that is not registered should throw an exception.
-    Cluster cluster = Cluster.builder().withId(Long.MAX_VALUE).withNodes(1).build();
-    try {
-      localServer.unregister(cluster);
-      fail();
-    } catch (IllegalArgumentException ex) {
-      assertThat(localServer.getCluster(cluster.getId())).isNull();
-    }
-  }
-
-  @Test
-  public void testUnregisterNodeWithoutCluster() throws Exception {
-    // attempting to unregister a Node that has no parent cluster should throw an exception.
-    Node node = Node.builder().build();
-    try {
-      localServer.unregister(node);
-      fail();
-    } catch (IllegalArgumentException ex) {
-      // expected
-    }
-  }
-
-  @Test
   public void testShouldCloseNodeConnections() throws Exception {
     try (BoundNode node = localServer.register(Node.builder());
         MockClient client = new MockClient(eventLoop)) {
@@ -346,7 +312,7 @@ public class ServerTest {
 
       // Close connection
       report = node.closeConnections(CloseType.DISCONNECT);
-      assertThat(report.getActiveConnections()).isEqualTo(1);
+      assertThat(report.getConnections()).hasSize(1);
 
       // sleep a little bit as connected channels may not be registered immediately.
       Thread.sleep(50);
@@ -368,17 +334,20 @@ public class ServerTest {
 
       // Retrieve active connection
       ClusterConnectionReport report = cluster.getConnections();
-      assertThat(report.getActiveConnections()).isEqualTo(1);
+      assertThat(report.getNodes().stream().mapToInt(r -> r.getConnections().size()).sum())
+          .isEqualTo(1);
 
       // Close connection
       report = cluster.closeConnections(CloseType.DISCONNECT);
-      assertThat(report.getActiveConnections()).isEqualTo(1);
+      assertThat(report.getNodes().stream().mapToInt(r -> r.getConnections().size()).sum())
+          .isEqualTo(1);
 
       // sleep a little bit as connected channels may not be registered immediately.
       Thread.sleep(50);
 
       report = cluster.getConnections();
-      assertThat(report.getActiveConnections()).isEqualTo(0);
+      assertThat(report.getNodes().stream().mapToInt(r -> r.getConnections().size()).sum())
+          .isEqualTo(0);
     }
   }
 
@@ -393,21 +362,24 @@ public class ServerTest {
       // sleep a little bit as connected channels may not be registered immediately.
       Thread.sleep(50);
       DataCenterConnectionReport report = cluster.dc(1).getConnections();
-      assertThat(report.getActiveConnections()).isEqualTo(1);
+      assertThat(report.getNodes().stream().mapToInt(r -> r.getConnections().size()).sum())
+          .isEqualTo(1);
 
       // Retrieve active connections - dc0 should have 0
       report = cluster.dc(0).getConnections();
-      assertThat(report.getActiveConnections()).isEqualTo(0);
+      assertThat(report.getNodes().stream().mapToInt(r -> r.getConnections().size()).sum())
+          .isEqualTo(0);
 
       // Close connection
       report = cluster.dc(1).closeConnections(CloseType.DISCONNECT);
-      assertThat(report.getActiveConnections()).isEqualTo(1);
+      assertThat(report.getNodes().stream().mapToInt(r -> r.getConnections().size()).sum())
+          .isEqualTo(1);
 
       // sleep a little bit as connected channels may not be registered immediately.
       Thread.sleep(50);
-      ;
       report = cluster.dc(1).getConnections();
-      assertThat(report.getActiveConnections()).isEqualTo(0);
+      assertThat(report.getNodes().stream().mapToInt(r -> r.getConnections().size()).sum())
+          .isEqualTo(0);
     }
   }
 
@@ -702,13 +674,11 @@ public class ServerTest {
   public void testClusterActiveConnections() throws Exception {
     Cluster cluster = Cluster.builder().withNodes(5).build();
     try (BoundCluster boundCluster = localServer.register(cluster)) {
-      List<Node> nodes = boundCluster.getNodes();
-
       // Create clients and ensure active connections on each node, data center, and cluster
       List<MockClient> clients = new ArrayList<>();
-      for (int i = 0; i < nodes.size(); ++i) {
-        Node node = nodes.get(i);
-        DataCenter dc = node.getDataCenter();
+      for (int i = 0; i < 5; ++i) {
+        BoundNode node = boundCluster.node(i);
+        BoundDataCenter dc = node.getDataCenter();
         assertThat(node.getActiveConnections()).isEqualTo(0L);
         assertThat(dc.getActiveConnections()).isEqualTo(i);
         assertThat(boundCluster.getActiveConnections()).isEqualTo(i);
@@ -729,8 +699,8 @@ public class ServerTest {
       // Close the client connections and ensure the active connections
       for (int i = 0; i < clients.size(); ++i) {
         MockClient client = clients.get(i);
-        Node node = nodes.get(i);
-        DataCenter dc = node.getDataCenter();
+        BoundNode node = boundCluster.node(i);
+        BoundDataCenter dc = node.getDataCenter();
 
         // Ensure the active connections after disconnect
         client.close();
@@ -747,13 +717,13 @@ public class ServerTest {
   public void testClusterActiveConnectionsMultipleDataCenters() throws Exception {
     Cluster cluster = Cluster.builder().withNodes(1, 3, 5).build();
     try (BoundCluster boundCluster = localServer.register(cluster)) {
-      List<Node> nodes = boundCluster.getNodes();
+      List<BoundNode> nodes = new ArrayList<>(boundCluster.getNodes());
 
       // Create clients and ensure active connections on each node, data center, and cluster
       List<MockClient> clients = new ArrayList<>();
       for (int i = 0; i < nodes.size(); ++i) {
-        Node node = nodes.get(i);
-        DataCenter dc = node.getDataCenter();
+        BoundNode node = nodes.get(i);
+        BoundDataCenter dc = node.getDataCenter();
 
         // Offset mechanism for determining active connections in data center
         Long activeConnectionsOffset = 0L;
@@ -784,8 +754,8 @@ public class ServerTest {
       // Close the client connections and ensure the active connections
       for (int i = 0; i < clients.size(); ++i) {
         MockClient client = clients.get(i);
-        Node node = nodes.get(i);
-        DataCenter dc = node.getDataCenter();
+        BoundNode node = nodes.get(i);
+        BoundDataCenter dc = node.getDataCenter();
 
         // Offset mechanism for determining active connections in data center
         Long activeConnectionsOffset = 9L;
@@ -997,6 +967,9 @@ public class ServerTest {
             .withEventLoopGroup(eventLoop, LocalServerChannel.class)
             .build();
 
+    BoundCluster cluster = server.register(Cluster.builder().withNodes(1));
+    BoundNode node = cluster.node(0);
+
     server.close();
 
     try {
@@ -1007,7 +980,7 @@ public class ServerTest {
     }
 
     try {
-      server.unregister(Cluster.builder().withNodes(1).build());
+      server.unregister(cluster);
       fail("Expected IllegalStateException");
     } catch (IllegalStateException ise) {
       // expected
@@ -1021,7 +994,7 @@ public class ServerTest {
     }
 
     try {
-      server.unregister(Node.builder().build());
+      server.unregister(node);
       fail("Expected IllegalStateException");
     } catch (IllegalStateException ise) {
       // expected

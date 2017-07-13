@@ -4,8 +4,13 @@ import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.policies.FallthroughRetryPolicy;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
+import com.datastax.simulacron.common.cluster.DataCenterQueryLogReport;
+import com.datastax.simulacron.common.cluster.NodeQueryLogReport;
+import com.datastax.simulacron.common.cluster.QueryLog;
 import com.datastax.simulacron.common.result.SuccessResult;
+import com.datastax.simulacron.driver.SimulacronDriverSupport;
 import com.datastax.simulacron.server.Server;
 import org.junit.Rule;
 import org.junit.Test;
@@ -214,7 +219,9 @@ public class ActivityLogIntegrationTest {
 
   private void query(String statement, Cluster cluster) throws Exception {
     try (com.datastax.driver.core.Cluster driverCluster =
-        defaultBuilder(cluster)
+        com.datastax.driver.core.Cluster.builder()
+            .addContactPointsWithPorts(cluster.node(0).inetSocketAddress())
+            .withNettyOptions(SimulacronDriverSupport.nonQuietClusterCloseOptions)
             .allowBetaProtocolVersion()
             .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
             .build()) {

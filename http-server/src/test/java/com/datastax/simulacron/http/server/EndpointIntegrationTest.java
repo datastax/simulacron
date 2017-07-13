@@ -2,7 +2,13 @@ package com.datastax.simulacron.http.server;
 
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
-import com.datastax.simulacron.common.cluster.*;
+import com.datastax.simulacron.common.cluster.Cluster;
+import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
+import com.datastax.simulacron.common.cluster.DataCenterConnectionReport;
+import com.datastax.simulacron.common.cluster.NodeConnectionReport;
+import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
+import com.datastax.simulacron.server.BoundDataCenter;
+import com.datastax.simulacron.server.BoundNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Rule;
 import org.junit.Test;
@@ -23,10 +29,10 @@ public class EndpointIntegrationTest {
 
   @Test
   public void testGetConnections() throws Exception {
-    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
-    DataCenter dc = datacenters.iterator().next();
-    Iterator<Node> nodeIterator = dc.getNodes().iterator();
-    Node node = nodeIterator.next();
+    Collection<BoundDataCenter> datacenters = server.getCluster().getDataCenters();
+    BoundDataCenter dc = datacenters.iterator().next();
+    Iterator<BoundNode> nodeIterator = dc.getNodes().iterator();
+    BoundNode node = nodeIterator.next();
 
     com.datastax.driver.core.Cluster driverCluster = defaultBuilder(server.getCluster()).build();
     driverCluster.init();
@@ -50,11 +56,10 @@ public class EndpointIntegrationTest {
 
   @Test
   public void testDeleteConnections() throws Exception {
-
-    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
-    DataCenter dc = datacenters.iterator().next();
-    Iterator<Node> nodeIterator = dc.getNodes().iterator();
-    Node node = nodeIterator.next();
+    Collection<BoundDataCenter> datacenters = server.getCluster().getDataCenters();
+    BoundDataCenter dc = datacenters.iterator().next();
+    Iterator<BoundNode> nodeIterator = dc.getNodes().iterator();
+    BoundNode node = nodeIterator.next();
 
     ArrayList<Scope> list = new ArrayList<>();
     list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
@@ -90,11 +95,10 @@ public class EndpointIntegrationTest {
 
   @Test
   public void testDeleteParticularConnection() throws Exception {
-
-    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
-    DataCenter dc = datacenters.iterator().next();
-    Iterator<Node> nodeIterator = dc.getNodes().iterator();
-    Node node = nodeIterator.next();
+    Collection<BoundDataCenter> datacenters = server.getCluster().getDataCenters();
+    BoundDataCenter dc = datacenters.iterator().next();
+    Iterator<BoundNode> nodeIterator = dc.getNodes().iterator();
+    BoundNode node = nodeIterator.next();
 
     com.datastax.driver.core.Cluster driverCluster =
         defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
@@ -156,12 +160,12 @@ public class EndpointIntegrationTest {
 
   @Test
   public void testRejectAndAcceptConnections() throws Exception {
-    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
-    Iterator<DataCenter> dcI = datacenters.iterator();
-    DataCenter dc = dcI.next();
-    DataCenter dc2 = dcI.next();
-    Node node = dc.getNodes().iterator().next();
-    Node node2 = dc2.getNodes().iterator().next();
+    Collection<BoundDataCenter> datacenters = server.getCluster().getDataCenters();
+    Iterator<BoundDataCenter> dcI = datacenters.iterator();
+    BoundDataCenter dc = dcI.next();
+    BoundDataCenter dc2 = dcI.next();
+    BoundNode node = dc.getNodes().iterator().next();
+    BoundNode node2 = dc2.getNodes().iterator().next();
 
     ArrayList<Scope> list = new ArrayList<>();
     list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
@@ -202,10 +206,10 @@ public class EndpointIntegrationTest {
 
   @Test
   public void testRejectAndAccepAfter() throws Exception {
-    Collection<DataCenter> datacenters = server.getCluster().getDataCenters();
-    DataCenter dc = datacenters.iterator().next();
-    Iterator<Node> nodeIterator = dc.getNodes().iterator();
-    Node node = nodeIterator.next();
+    Collection<BoundDataCenter> datacenters = server.getCluster().getDataCenters();
+    BoundDataCenter dc = datacenters.iterator().next();
+    Iterator<BoundNode> nodeIterator = dc.getNodes().iterator();
+    BoundNode node = nodeIterator.next();
 
     Scope scope = new Scope(server.getCluster().getId(), dc.getId(), node.getId());
     HttpTestResponse delete =

@@ -1,6 +1,5 @@
 package com.datastax.simulacron.common.cluster;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -10,25 +9,33 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /**
  * Represent a class that contains the connections of a particular cluster. It's useful for encoding
  * the results with JSON.
  */
 @JsonIgnoreProperties(value = {"name"})
-public class ClusterConnectionReport extends ConnectionReport {
+public class ClusterConnectionReport extends ConnectionReport
+    implements ClusterStructure<DataCenterConnectionReport, NodeConnectionReport> {
 
   @JsonManagedReference
   @JsonProperty("data_centers")
   private final Collection<DataCenterConnectionReport> dataCenters = new TreeSet<>();
 
+  @SuppressWarnings("unused")
   ClusterConnectionReport() {
     // Default constructor for jackson deserialization.
     this(null);
   }
 
   public ClusterConnectionReport(Long id) {
-    super(null, id, null, null, null);
+    super(id);
+  }
+
+  @Override
+  public ClusterConnectionReport getRootReport() {
+    return this;
   }
 
   /**
@@ -40,15 +47,15 @@ public class ClusterConnectionReport extends ConnectionReport {
    * @return report for added node.
    */
   public NodeConnectionReport addNode(
-      Node node, List<SocketAddress> addressList, SocketAddress serverAddress) {
-    Long id = node.getParent().get().getId();
+      AbstractNode node, List<SocketAddress> addressList, SocketAddress serverAddress) {
+    Long dcId = node.getDataCenter().getId();
     Optional<DataCenterConnectionReport> optionalDatacenterReport =
-        dataCenters.stream().filter(dc -> dc.getId().equals(id)).findFirst();
+        dataCenters.stream().filter(dc -> dc.getId().equals(dcId)).findFirst();
     DataCenterConnectionReport datacenterReport;
     if (optionalDatacenterReport.isPresent()) {
       datacenterReport = optionalDatacenterReport.get();
     } else {
-      datacenterReport = new DataCenterConnectionReport(id, this);
+      datacenterReport = new DataCenterConnectionReport(dcId, this);
       this.addDataCenter(datacenterReport);
     }
     NodeConnectionReport nodeReport =
@@ -58,32 +65,12 @@ public class ClusterConnectionReport extends ConnectionReport {
   }
 
   void addDataCenter(DataCenterConnectionReport dataCenter) {
-    assert dataCenter.getParent().orElse(null) == this;
+    assert dataCenter.getCluster() == this;
     this.dataCenters.add(dataCenter);
   }
 
   public Collection<DataCenterConnectionReport> getDataCenters() {
     return dataCenters;
-  }
-
-  @Override
-  @JsonIgnore
-  public Long getActiveConnections() {
-    return getDataCenters()
-        .stream()
-        .mapToLong(DataCenterConnectionReport::getActiveConnections)
-        .sum();
-  }
-
-  @Override
-  public Cluster getCluster() {
-    return null;
-  }
-
-  @JsonIgnore
-  @Override
-  public Optional<NodeProperties> getParent() {
-    return Optional.empty();
   }
 
   @Override
@@ -102,7 +89,10 @@ public class ClusterConnectionReport extends ConnectionReport {
   }
 
   @Override
-  public ClusterConnectionReport getRootReport() {
-    return this;
+  public List<SocketAddress> getConnections() {
+    return getNodes()
+        .stream()
+        .flatMap(n -> n.getConnections().stream())
+        .collect(Collectors.toList());
   }
 }

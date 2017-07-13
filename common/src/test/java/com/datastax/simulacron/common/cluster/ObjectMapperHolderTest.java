@@ -12,7 +12,11 @@ import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -65,8 +69,8 @@ public class ObjectMapperHolderTest {
     Cluster cluster2 = mapper.readValue(json, Cluster.class);
 
     // Ensure the addresses get created on deserialization
-    assertThat(cluster2.getNodes().get(0).getAddress()).isEqualTo(addr1);
-    assertThat(cluster2.getNodes().get(1).getAddress()).isEqualTo(addr2);
+    assertThat(cluster2.node(0).getAddress()).isEqualTo(addr1);
+    assertThat(cluster2.node(1).getAddress()).isEqualTo(addr2);
   }
 
   @Test

@@ -9,7 +9,13 @@ import com.datastax.simulacron.common.stubbing.EmptyReturnMetadataHandler;
 import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.AttributeKey;
@@ -21,8 +27,20 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.net.SocketAddress;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -244,9 +262,9 @@ public final class Server implements AutoCloseable {
     for (CompletableFuture<BoundNode> f : bindFutures) {
       try {
         if (timedOut) {
-          Node node = f.getNow(null);
+          BoundNode node = f.getNow(null);
           if (node != null) {
-            nodes.add((BoundNode) node);
+            nodes.add(node);
           }
         } else {
           nodes.add(f.get(bindTimeoutInNanos, TimeUnit.NANOSECONDS));
@@ -286,8 +304,8 @@ public final class Server implements AutoCloseable {
     }
   }
 
-  /** synchronous version of {@link #unregisterAsync(Node)} */
-  public BoundCluster unregister(Node node) {
+  /** synchronous version of {@link #unregisterAsync(BoundNode)} */
+  public BoundCluster unregister(BoundNode node) {
     return getUninterruptibly(unregisterAsync(node));
   }
 
@@ -299,7 +317,7 @@ public final class Server implements AutoCloseable {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletionStage<BoundCluster> unregisterAsync(Node node) {
+  public CompletionStage<BoundCluster> unregisterAsync(BoundNode node) {
     if (isClosed()) {
       return failByClose();
     }
@@ -311,8 +329,8 @@ public final class Server implements AutoCloseable {
     return unregisterAsync(node.getCluster().getId());
   }
 
-  /** synchronous version of {@link #unregisterAsync(Cluster)} */
-  public BoundCluster unregister(Cluster cluster) {
+  /** synchronous version of {@link #unregisterAsync(BoundCluster)} */
+  public BoundCluster unregister(BoundCluster cluster) {
     return getUninterruptibly(unregisterAsync(cluster));
   }
 
@@ -324,7 +342,7 @@ public final class Server implements AutoCloseable {
    * @return A future that when completed provides the unregistered cluster as it existed in the
    *     registry, may not be the same object as the input.
    */
-  public CompletionStage<BoundCluster> unregisterAsync(Cluster cluster) {
+  public CompletionStage<BoundCluster> unregisterAsync(BoundCluster cluster) {
     return unregisterAsync(cluster.getId());
   }
 
@@ -355,10 +373,9 @@ public final class Server implements AutoCloseable {
       List<CompletableFuture<BoundNode>> closeFutures = new ArrayList<>();
       if (foundCluster != null) {
         // Close socket on each node.
-        for (DataCenter dataCenter : foundCluster.getDataCenters()) {
-          for (Node node : dataCenter.getNodes()) {
-            BoundNode boundNode = (BoundNode) node;
-            closeFutures.add(close(boundNode));
+        for (BoundDataCenter dataCenter : foundCluster.getDataCenters()) {
+          for (BoundNode node : dataCenter.getNodes()) {
+            closeFutures.add(close(node));
           }
         }
         CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[] {}))
@@ -490,7 +507,7 @@ public final class Server implements AutoCloseable {
   private CompletionStage<BoundNode> bindInternal(
       Node refNode,
       BoundCluster cluster,
-      DataCenter parent,
+      BoundDataCenter parent,
       String token,
       SocketAddress address,
       boolean activityLogging) {

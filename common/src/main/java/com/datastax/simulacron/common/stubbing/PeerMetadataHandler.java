@@ -6,7 +6,8 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractCluster;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.codec.Codec;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.codec.CqlMapper;
@@ -14,15 +15,31 @@ import com.datastax.simulacron.common.codec.CqlMapper;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.*;
-import static com.datastax.simulacron.common.codec.CodecUtils.*;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BOOLEAN;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INET;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID;
+import static com.datastax.simulacron.common.codec.CodecUtils.ColumnSpecBuilder;
+import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecBuilder;
+import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecs;
+import static com.datastax.simulacron.common.codec.CodecUtils.encodePeerInfo;
+import static com.datastax.simulacron.common.codec.CodecUtils.primitive;
+import static com.datastax.simulacron.common.codec.CodecUtils.row;
 
 public class PeerMetadataHandler extends StubMapping implements InternalStubMapping {
 
@@ -71,7 +88,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   }
 
   @Override
-  public List<Action> getActions(Node node, Frame frame) {
+  public List<Action> getActions(AbstractNode node, Frame frame) {
     if (frame.message instanceof Query) {
       CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
       Query query = (Query) frame.message;
@@ -118,12 +135,12 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     return false;
   }
 
-  private Set<String> resolveTokens(Node node) {
+  private Set<String> resolveTokens(AbstractNode node) {
     String[] t = node.resolvePeerInfo("token", "0").split(",");
     return new LinkedHashSet<>(Arrays.asList(t));
   }
 
-  private List<Action> handleSystemLocalQuery(Node node, CqlMapper mapper) {
+  private List<Action> handleSystemLocalQuery(AbstractNode node, CqlMapper mapper) {
     InetAddress address = resolveAddress(node);
     Codec<Set<String>> tokenCodec = mapper.codecFor(new RawType.RawSet(primitive(ASCII)));
 
@@ -157,7 +174,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     return Collections.singletonList(action);
   }
 
-  private List<Action> handleClusterNameQuery(Node node, CqlMapper mapper) {
+  private List<Action> handleClusterNameQuery(AbstractNode node, CqlMapper mapper) {
     Queue<List<ByteBuffer>> clusterRow =
         CodecUtils.singletonRow(mapper.ascii.encode(node.getCluster().getName()));
     Rows rows = new Rows(queryClusterNameMetadata, clusterRow);
@@ -165,14 +182,18 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     return Collections.singletonList(action);
   }
 
-  private List<Action> handlePeersQuery(Node node, CqlMapper mapper, Predicate<Node> nodeFilter) {
+  @SuppressWarnings("unchecked")
+  private List<Action> handlePeersQuery(
+      AbstractNode node, CqlMapper mapper, Predicate<AbstractNode> nodeFilter) {
     // For each node matching the filter, provide its peer information.
     Codec<Set<String>> tokenCodec = mapper.codecFor(new RawType.RawSet(primitive(ASCII)));
+
+    AbstractCluster cluster = node.getCluster();
+    Stream<AbstractNode> stream = cluster.getNodes().stream();
+
     Queue<List<ByteBuffer>> peerRows =
         new ArrayDeque<>(
-            node.getCluster()
-                .getNodes()
-                .stream()
+            stream
                 .filter(nodeFilter)
                 .map(
                     n -> {
@@ -206,7 +227,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     return Collections.singletonList(action);
   }
 
-  private InetAddress resolveAddress(Node node) {
+  private InetAddress resolveAddress(AbstractNode node) {
     InetAddress address;
     if (node.getAddress() instanceof InetSocketAddress) {
       address = ((InetSocketAddress) node.getAddress()).getAddress();
@@ -216,7 +237,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     return address;
   }
 
-  private RowsMetadata buildSystemPeersRowsMetadata(Node node) {
+  private RowsMetadata buildSystemPeersRowsMetadata(AbstractNode node) {
     ColumnSpecBuilder systemPeers = columnSpecBuilder("system", "peers");
     List<ColumnSpec> systemPeersSpecs =
         columnSpecs(
@@ -236,7 +257,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     return new RowsMetadata(systemPeersSpecs, null, new int[] {0});
   }
 
-  private RowsMetadata buildSystemLocalRowsMetadata(Node node) {
+  private RowsMetadata buildSystemLocalRowsMetadata(AbstractNode node) {
     ColumnSpecBuilder systemLocal = columnSpecBuilder("system", "local");
     List<ColumnSpec> systemLocalSpecs =
         columnSpecs(

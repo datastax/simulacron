@@ -5,7 +5,7 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.codec.CqlMapper;
 import com.datastax.simulacron.common.stubbing.Action;
@@ -14,7 +14,13 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 
 import static com.datastax.simulacron.common.codec.CodecUtils.columnSpecBuilder;
 
@@ -48,7 +54,7 @@ public class SuccessResult extends Result {
   }
 
   @Override
-  public List<Action> toActions(Node node, Frame frame) {
+  public List<Action> toActions(AbstractNode node, Frame frame) {
     CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
     //This will return all the rows specified in the query, along with any corresponding metadata about the row
     boolean meta_constructed = false;

@@ -1,6 +1,7 @@
 package com.datastax.simulacron.common.stubbing;
 
 import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.cluster.Node;
 
 import java.util.List;
@@ -18,7 +19,7 @@ public abstract class StubMapping {
    * @param frame the sent frame.
    * @return whether or not the matching criteria was met.
    */
-  public boolean matches(Node node, Frame frame) {
+  public boolean matches(AbstractNode node, Frame frame) {
     return this.matches(frame);
   }
 
@@ -31,5 +32,5 @@ public abstract class StubMapping {
    * @param frame the sent frame.
    * @return the actions to perform as result of receiving the input frame on the input node.
    */
-  public abstract List<Action> getActions(Node node, Frame frame);
+  public abstract List<Action> getActions(AbstractNode node, Frame frame);
 }

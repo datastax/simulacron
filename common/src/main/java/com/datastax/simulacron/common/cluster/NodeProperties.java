@@ -1,7 +1,5 @@
 package com.datastax.simulacron.common.cluster;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -18,7 +16,7 @@ import static java.util.Optional.ofNullable;
  * #resolveCassandraVersion()} on the node will return the cassandraVersion defined at the node
  * level if defined, otherwise data center, otherwise cluster, otherwise some default value.
  */
-public interface NodeProperties extends Comparable<NodeProperties> {
+public interface NodeProperties extends Identifiable {
 
   /**
    * Convenience utility such that for a given method reference of an instance method of {@link
@@ -47,9 +45,6 @@ public interface NodeProperties extends Comparable<NodeProperties> {
 
   /** @return A human readable name for this. */
   String getName();
-
-  /** @return A unique id for this. */
-  Long getId();
 
   /**
    * @return The cassandra version of this if set, otherwise null. The cassandra version is used to
@@ -170,16 +165,5 @@ public interface NodeProperties extends Comparable<NodeProperties> {
         return defaultValue;
       }
     }
-  }
-
-  /** @return The cluster associated with these properties. */
-  @JsonIgnore
-  Cluster getCluster();
-
-  @Override
-  default int compareTo(NodeProperties other) {
-    // by default compare by id, this is not perfect if comparing cross-dc or comparing different types but in the
-    // general case this should only be used for comparing for things in same group.
-    return (int) (this.getId() - other.getId());
   }
 }

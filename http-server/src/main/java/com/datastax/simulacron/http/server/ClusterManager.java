@@ -188,7 +188,7 @@ public class ClusterManager implements HttpListener {
                   Optional<Long> clusterId =
                       HttpUtils.getClusterIdFromIdOrName(server, idOrNameToFetch);
                   if (clusterId.isPresent()) {
-                    Cluster cluster = server.getCluster(clusterId.get());
+                    BoundCluster cluster = server.getCluster(clusterId.get());
                     String clusterStr =
                         om.writerWithDefaultPrettyPrinter().writeValueAsString(cluster);
                     response.append(clusterStr);

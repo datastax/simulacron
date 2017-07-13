@@ -1,7 +1,6 @@
 package com.datastax.simulacron.http.server;
 
 import com.datastax.simulacron.common.cluster.AbstractNodeProperties;
-import com.datastax.simulacron.common.cluster.DataCenter;
 import com.datastax.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.simulacron.server.BoundCluster;
 import com.datastax.simulacron.server.BoundDataCenter;
@@ -163,7 +162,7 @@ class HttpUtils {
    */
   static Optional<Long> getNodeIdFromIdOrName(
       Server server, Long clusterId, Long datacenterId, String idOrName) {
-    Optional<DataCenter> dc =
+    Optional<BoundDataCenter> dc =
         server
             .getCluster(clusterId)
             .getDataCenters()

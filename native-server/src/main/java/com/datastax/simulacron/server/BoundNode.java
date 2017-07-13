@@ -12,13 +12,11 @@ import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.error.Unprepared;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.cluster.ActivityLog;
 import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.simulacron.common.cluster.ClusterQueryLogReport;
-import com.datastax.simulacron.common.cluster.DataCenter;
-import com.datastax.simulacron.common.cluster.Node;
 import com.datastax.simulacron.common.cluster.NodeConnectionReport;
-import com.datastax.simulacron.common.cluster.NodeProperties;
 import com.datastax.simulacron.common.cluster.NodeQueryLogReport;
 import com.datastax.simulacron.common.stubbing.Action;
 import com.datastax.simulacron.common.stubbing.CloseType;
@@ -48,6 +46,7 @@ import java.math.BigInteger;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -72,7 +71,7 @@ import static com.datastax.simulacron.common.stubbing.PrimeDsl.when;
 import static com.datastax.simulacron.common.utils.FrameUtils.wrapResponse;
 import static com.datastax.simulacron.server.ChannelUtils.completable;
 
-public class BoundNode extends Node
+public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     implements BoundTopic<NodeConnectionReport, NodeQueryLogReport> {
 
   private static Logger logger = LoggerFactory.getLogger(BoundNode.class);
@@ -130,7 +129,7 @@ public class BoundNode extends Node
       String dseVersion,
       Map<String, Object> peerInfo,
       BoundCluster cluster,
-      DataCenter parent,
+      BoundDataCenter parent,
       Server server,
       Timer timer,
       Channel channel,
@@ -295,7 +294,7 @@ public class BoundNode extends Node
   private Optional<StubMapping> find(Frame frame) {
     Optional<StubMapping> stub = stubStore.find(this, frame);
     if (!stub.isPresent()) {
-      return Optional.ofNullable(getDataCenter()).flatMap(dc -> dc.find(BoundNode.this, frame));
+      return getDataCenter().find(this, frame);
     }
     return stub;
   }
@@ -315,7 +314,7 @@ public class BoundNode extends Node
     //store the frame in history
     if (activityLogging) {
       activityLog.addLog(
-          this, frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
+          frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
     }
 
     if (actions != null && !actions.isEmpty()) {
@@ -455,7 +454,7 @@ public class BoundNode extends Node
                     .thenApply(v -> null);
             break;
           default:
-            Stream<Node> nodes =
+            Stream<BoundNode> nodes =
                 cAction.getScope() == NODE
                     ? Stream.of(BoundNode.this)
                     : cAction.getScope() == CLUSTER
@@ -484,10 +483,10 @@ public class BoundNode extends Node
     }
   }
 
-  private static CompletableFuture<Void> closeNodes(Stream<Node> nodes, CloseType closeType) {
+  private static CompletableFuture<Void> closeNodes(Stream<BoundNode> nodes, CloseType closeType) {
     return CompletableFuture.allOf(
         nodes
-            .map(n -> ((BoundNode) n).closeConnectionsAsync(closeType).toCompletableFuture())
+            .map(n -> n.closeConnectionsAsync(closeType).toCompletableFuture())
             .collect(Collectors.toList())
             .toArray(new CompletableFuture[] {}));
   }
@@ -510,6 +509,11 @@ public class BoundNode extends Node
   @Override
   public int clearPrimes(boolean nested) {
     return stubStore.clear();
+  }
+
+  @Override
+  public CompletionStage<BoundCluster> unregisterAsync() {
+    return getServer().unregisterAsync(this);
   }
 
   /** See {@link #clearPrimes(boolean)} */
@@ -590,22 +594,8 @@ public class BoundNode extends Node
   }
 
   @Override
-  public List<BoundNode> getBoundNodes() {
-    return Collections.singletonList(this);
-  }
-
-  @Override
-  public BoundCluster getCluster() {
-    return cluster;
-  }
-
-  /**
-   * @return The {@link DataCenter} this node belongs to, otherwise null if it does not have one.
-   */
-  @JsonIgnore
-  public BoundDataCenter getDataCenter() {
-    Optional<NodeProperties> parent = getParent();
-    return parent.map(dc -> (BoundDataCenter) dc).orElse(null);
+  public Collection<BoundNode> getNodes() {
+    return Collections.singleton(this);
   }
 
   @Override

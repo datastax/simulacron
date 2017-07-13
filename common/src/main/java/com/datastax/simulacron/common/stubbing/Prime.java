@@ -6,7 +6,7 @@ import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.Prepared;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
-import com.datastax.simulacron.common.cluster.Node;
+import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.cluster.RequestPrime;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.request.Query;
@@ -80,7 +80,7 @@ public class Prime extends StubMapping {
   }
 
   @Override
-  public List<Action> getActions(Node node, Frame frame) {
+  public List<Action> getActions(AbstractNode node, Frame frame) {
     if (frame.message instanceof Prepare) {
       if (primedRequest.when instanceof Query && primedRequest.then instanceof SuccessResult) {
         return this.toPreparedAction();
