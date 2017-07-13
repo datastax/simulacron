@@ -5,6 +5,7 @@ import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.request.Startup;
+import com.datastax.oss.protocol.internal.request.query.QueryOptions;
 import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.DataCenterSpec;
 import com.datastax.simulacron.common.cluster.NodeSpec;
@@ -14,8 +15,11 @@ import org.junit.Test;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.datastax.simulacron.common.Assertions.assertThat;
 
@@ -72,6 +76,10 @@ public class PeerMetadataHandlerTest {
 
   private static Frame queryFrame(String queryString) {
     return FrameUtils.wrapRequest(new Query(queryString));
+  }
+
+  private static Frame queryFrame(String queryString, QueryOptions options) {
+    return FrameUtils.wrapRequest(new Query(queryString, options));
   }
 
   @Test
@@ -274,6 +282,34 @@ public class PeerMetadataHandlerTest {
         .hasRows(1)
         .hasColumnSpecs(9)
         .hasColumn(0, 0, InetAddress.getByAddress(new byte[] {127, 0, 11, 17}))
+        .hasColumn(0, 2, "dc1");
+  }
+
+  @Test
+  public void shouldHandleQuerySpecificPeerNamedParameter() throws UnknownHostException {
+    // when peer query is made for a peer in the cluster using named parameters, we should get 1 row back.
+    InetAddress addr = InetAddress.getByAddress(new byte[] {127, 0, 11, 17});
+    Map<String, ByteBuffer> params = new HashMap<>();
+    params.put("address", ByteBuffer.wrap(addr.getAddress()));
+    QueryOptions queryOptions =
+        new QueryOptions(0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE);
+    List<Action> node0Actions =
+        handler.getActions(
+            node0, queryFrame("SELECT * FROM system.peers WHERE peer = :address", queryOptions));
+
+    assertThat(node0Actions).hasSize(1);
+
+    Action node0Action = node0Actions.get(0);
+    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+    // should be 1 matching peer
+    assertThat(node0Message)
+        .isRows()
+        .hasRows(1)
+        .hasColumnSpecs(9)
+        .hasColumn(0, 0, addr)
         .hasColumn(0, 2, "dc1");
   }
 

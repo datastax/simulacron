@@ -64,8 +64,13 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   private static final Pattern queryPeersWithAddr =
       Pattern.compile("SELECT \\* FROM system\\.peers WHERE peer='(.*)'");
 
+  // query the java driver makes when refreshing node (i.e. after it comes back up)
+  private static final String queryPeerWithNamedParam =
+      "SELECT * FROM system.peers WHERE peer = :address";
+
   static {
     queries.add(queryClusterName);
+    queries.add(queryPeerWithNamedParam);
   }
 
   static {
@@ -112,6 +117,10 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
                   return false;
                 }
               });
+        } else if (query.query.equalsIgnoreCase(queryPeerWithNamedParam)) {
+          ByteBuffer addressBuffer = query.options.namedValues.get("address");
+          InetAddress address = mapper.inet.decode(addressBuffer);
+          return handlePeersQuery(node, mapper, n -> n.inet().equals(address));
         }
         Matcher matcher = queryLocal.matcher(query.query);
         if (matcher.matches()) {

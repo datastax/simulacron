@@ -353,7 +353,7 @@ public final class Server implements AutoCloseable {
   }
 
   /**
-   * Unregisters a {@link Cluster} and closes all listening network interfaces associated with it.
+   * Unregisters a cluster and closes all listening network interfaces associated with it.
    *
    * <p>If the cluster is not currently registered the returned future will fail with an {@link
    * IllegalArgumentException}.
