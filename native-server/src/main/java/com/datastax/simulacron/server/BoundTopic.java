@@ -20,6 +20,7 @@ import static com.datastax.simulacron.server.CompletableFutures.getUninterruptib
 public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport>
     extends AutoCloseable, NodeProperties {
 
+  @JsonIgnore
   StubStore getStubStore();
 
   /**

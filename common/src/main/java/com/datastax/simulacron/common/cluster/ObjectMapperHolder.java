@@ -1,6 +1,5 @@
 package com.datastax.simulacron.common.cluster;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -28,8 +27,6 @@ public class ObjectMapperHolder {
     mod.addKeySerializer(InetAddress.class, new InetAddressSerializer());
     mod.addKeyDeserializer(InetAddress.class, new InetAddressDeserializer());
     om.registerModule(mod);
-    // Exclude null / emptys.
-    om.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
     OBJECT_MAPPER = om;
   }
 

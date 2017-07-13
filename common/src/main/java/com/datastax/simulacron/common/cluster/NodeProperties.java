@@ -1,9 +1,13 @@
 package com.datastax.simulacron.common.cluster;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static java.util.Optional.ofNullable;
 
 /**
@@ -50,18 +54,21 @@ public interface NodeProperties extends Identifiable {
    * @return The cassandra version of this if set, otherwise null. The cassandra version is used to
    *     determine formatting of schema tables and maybe eventually other behavior.
    */
+  @JsonInclude(NON_NULL)
   String getCassandraVersion();
 
   /**
    * @return The DSE version of this if set, otherwise null. THe dse version is used to determine
    *     formatting of system and schema tables.
    */
+  @JsonInclude(NON_NULL)
   String getDSEVersion();
 
   /**
    * @return The peer info of this, should always be nonnull. The peer info is a mapping of column
    *     names to values to be used in the system.peers and local table.
    */
+  @JsonInclude(NON_EMPTY)
   Map<String, Object> getPeerInfo();
 
   /** @return The number of active connections on a node */
