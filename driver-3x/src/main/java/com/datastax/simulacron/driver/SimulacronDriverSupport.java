@@ -2,8 +2,6 @@ package com.datastax.simulacron.driver;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.NettyOptions;
-import com.datastax.simulacron.common.cluster.ClusterSpec;
-import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.server.BoundCluster;
 import com.datastax.simulacron.server.BoundNode;
 import io.netty.channel.EventLoopGroup;
@@ -48,15 +46,5 @@ public class SimulacronDriverSupport {
   /** @return A default cluster builder using {@link #nonQuietClusterCloseOptions}. */
   public static Cluster.Builder defaultBuilder() {
     return Cluster.builder().withNettyOptions(nonQuietClusterCloseOptions);
-  }
-
-  /** @return A default node builder */
-  public static NodeSpec.Builder node() {
-    return NodeSpec.builder();
-  }
-
-  /** @return a default {@link Cluster} builder * */
-  public static ClusterSpec.Builder cluster() {
-    return ClusterSpec.builder();
   }
 }
