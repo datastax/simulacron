@@ -2,6 +2,7 @@ package com.datastax.simulacron.common.cluster;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.net.InetAddress;
@@ -10,11 +11,15 @@ import java.net.SocketAddress;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 public class AbstractNode<C extends AbstractCluster, D extends AbstractDataCenter<C, ?>>
     extends AbstractNodeProperties implements NodeStructure<C, D> {
 
   /** The address and port that this node should listen on. */
-  @JsonProperty private final SocketAddress address;
+  @JsonProperty
+  @JsonInclude(NON_NULL)
+  private final SocketAddress address;
 
   @JsonBackReference private final D parent;
 

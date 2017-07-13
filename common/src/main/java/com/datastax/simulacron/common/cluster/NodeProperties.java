@@ -48,6 +48,7 @@ public interface NodeProperties extends Identifiable {
   }
 
   /** @return A human readable name for this. */
+  @JsonInclude(NON_NULL)
   String getName();
 
   /**

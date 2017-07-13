@@ -4,22 +4,31 @@ import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Execute;
 import com.datastax.oss.protocol.internal.request.Prepare;
 import com.datastax.oss.protocol.internal.request.query.QueryOptions;
-import com.datastax.oss.protocol.internal.response.result.RawType;
-import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.codec.CqlMapper;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 
 public final class Query extends Request {
   public final String query;
   public final transient List<ConsistencyLevel> consistencyEnum;
+
+  @JsonProperty("param_types")
+  @JsonInclude(NON_EMPTY)
   public final Map<String, String> paramTypes;
+
+  @JsonInclude(NON_EMPTY)
   public final Map<String, Object> params;
 
   public Query(String query) {
@@ -47,6 +56,7 @@ public final class Query extends Request {
   }
 
   @JsonProperty("consistency_level")
+  @JsonInclude(NON_EMPTY)
   public String[] getConsistency() {
     String[] consistency = new String[consistencyEnum.size()];
     for (int i = 0; i < consistencyEnum.size(); i++) {

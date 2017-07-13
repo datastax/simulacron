@@ -1,7 +1,12 @@
 package com.datastax.simulacron.common.cluster;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 public interface Identifiable extends Comparable<Identifiable> {
   /** @return A unique id for this. */
+  @JsonInclude(NON_NULL)
   Long getId();
 
   @Override
