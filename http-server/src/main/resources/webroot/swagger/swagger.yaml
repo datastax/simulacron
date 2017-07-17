@@ -1508,50 +1508,6 @@ paths:
           description: Connection not found
         '500':
           description: Internal server error
-
-  '/listener':
-    put:
-      tags:
-        - listener
-      summary: accept connections to all nodes
-      operationId: acceptAllConnections
-      responses:
-        '200':
-          description: connections will be accepted
-        '400':
-          description: Internal server error
-    delete:
-      tags:
-        - listener
-      summary: stop accepting connections to all nodes
-      operationId: rejectAllConnections
-      parameters:
-        - name: after
-          in: query
-          description: Number of attempts after which to start rejecting connections (defaults to 0, (immediate))
-          type:
-            type: integer
-        - name: type
-          in: query
-          description: |
-            The way to reject connections.
-
-            * *unbind* - Stops listening for new connections.  Existing connections stay connected.
-            * *stop* - Meant to simulate the behavior of stopping a node.  Closes existing connections and then unbinds to stop listening for new ones.
-            * *reject_startup* - Accepts new connections, but does not respond to 'startup' response.  Existing connections stay connected.  Meant to simulate behavior of when a cassandra process becomes unresponsive, but the host OS is still able to read off the socket.
-
-            Defaults to *unbind*.
-          type: string
-          enum:
-            - unbind
-            - stop
-            - reject_startup
-      responses:
-        '200':
-          description: connections will be rejected
-        '500':
-          description: Internal server error
-
   '/listener/{clusterId}':
     put:
       tags:
@@ -2218,7 +2174,7 @@ definitions:
             additionalProperties:
               $ref: '#/definitions/RequestFailureReason'
             example:
-              - 127.0.0.1: READ_TOO_MANY_TOMBSTONES
+              127.0.0.1: READ_TOO_MANY_TOMBSTONES
           data_present:
             type: boolean
             example: true
@@ -2350,7 +2306,7 @@ definitions:
             additionalProperties:
               $ref: '#/definitions/RequestFailureReason'
             example:
-              - 127.0.0.1: UNKNOWN
+              127.0.0.1: UNKNOWN
           write_type:
             $ref: '#/definitions/WriteType'
   WriteTimeoutResult:
