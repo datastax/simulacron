@@ -3,7 +3,7 @@
   <parent>
     <groupId>com.datastax.simulacron</groupId>
     <artifactId>simulacron-parent</artifactId>
-    <version>0.3.1</version>
+    <version>0.3.2-SNAPSHOT</version>
   </parent>
 
   <artifactId>driver-3x</artifactId>
