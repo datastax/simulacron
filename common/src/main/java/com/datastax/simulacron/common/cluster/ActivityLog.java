@@ -2,6 +2,7 @@ package com.datastax.simulacron.common.cluster;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.simulacron.common.stubbing.InternalStubMapping;
@@ -38,6 +39,10 @@ public class ActivityLog {
               socketAddress.toString(),
               timestamp,
               isPrimed));
+    } else if (frame.message instanceof Options) {
+      queryLog.add(
+          new QueryLog(
+              "OPTIONS", null, null, socketAddress.toString(), timestamp, stubOption.isPresent()));
     } else if (frame.message instanceof Execute) {
       Execute execute = (Execute) frame.message;
       if (stubOption.isPresent()) {
