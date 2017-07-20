@@ -7,10 +7,35 @@ import com.datastax.simulacron.common.codec.WriteType;
 import com.datastax.simulacron.common.request.Options;
 import com.datastax.simulacron.common.request.Query;
 import com.datastax.simulacron.common.request.Request;
-import com.datastax.simulacron.common.result.*;
-
+import com.datastax.simulacron.common.result.AlreadyExistsResult;
+import com.datastax.simulacron.common.result.AuthenticationErrorResult;
+import com.datastax.simulacron.common.result.CloseConnectionResult;
+import com.datastax.simulacron.common.result.ConfigurationErrorResult;
+import com.datastax.simulacron.common.result.FunctionFailureResult;
+import com.datastax.simulacron.common.result.InvalidResult;
+import com.datastax.simulacron.common.result.IsBootstrappingResult;
+import com.datastax.simulacron.common.result.NoResult;
+import com.datastax.simulacron.common.result.OverloadedResult;
+import com.datastax.simulacron.common.result.ProtocolErrorResult;
+import com.datastax.simulacron.common.result.ReadFailureResult;
+import com.datastax.simulacron.common.result.ReadTimeoutResult;
+import com.datastax.simulacron.common.result.Result;
+import com.datastax.simulacron.common.result.ServerErrorResult;
+import com.datastax.simulacron.common.result.SuccessResult;
+import com.datastax.simulacron.common.result.SyntaxErrorResult;
+import com.datastax.simulacron.common.result.TruncateErrorResult;
+import com.datastax.simulacron.common.result.UnauthorizedResult;
+import com.datastax.simulacron.common.result.UnavailableResult;
+import com.datastax.simulacron.common.result.UnpreparedResult;
+import com.datastax.simulacron.common.result.VoidResult;
+import com.datastax.simulacron.common.result.WriteFailureResult;
+import com.datastax.simulacron.common.result.WriteTimeoutResult;
 import java.net.InetAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -240,6 +265,15 @@ public class PrimeDsl {
    */
   public static VoidResult void_() {
     return new VoidResult();
+  }
+
+  /**
+   * Provides an indication that no response should be sent for the given prime.
+   *
+   * @return The generated no result.
+   */
+  public static NoResult noResult() {
+    return new NoResult();
   }
 
   /**

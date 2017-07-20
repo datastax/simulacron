@@ -3,7 +3,27 @@ package com.datastax.simulacron.http.server;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
-import com.datastax.driver.core.exceptions.*;
+import com.datastax.driver.core.exceptions.AlreadyExistsException;
+import com.datastax.driver.core.exceptions.AuthenticationException;
+import com.datastax.driver.core.exceptions.BootstrappingException;
+import com.datastax.driver.core.exceptions.FunctionExecutionException;
+import com.datastax.driver.core.exceptions.InvalidConfigurationInQueryException;
+import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
+import com.datastax.driver.core.exceptions.OperationTimedOutException;
+import com.datastax.driver.core.exceptions.OverloadedException;
+import com.datastax.driver.core.exceptions.ProtocolError;
+import com.datastax.driver.core.exceptions.ReadFailureException;
+import com.datastax.driver.core.exceptions.ReadTimeoutException;
+import com.datastax.driver.core.exceptions.ServerError;
+import com.datastax.driver.core.exceptions.SyntaxError;
+import com.datastax.driver.core.exceptions.TransportException;
+import com.datastax.driver.core.exceptions.TruncateException;
+import com.datastax.driver.core.exceptions.UnauthorizedException;
+import com.datastax.driver.core.exceptions.UnavailableException;
+import com.datastax.driver.core.exceptions.UnpreparedException;
+import com.datastax.driver.core.exceptions.WriteFailureException;
+import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import com.datastax.driver.core.policies.FallthroughRetryPolicy;
 import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.codec.ConsistencyLevel;
@@ -11,6 +31,11 @@ import com.datastax.simulacron.common.codec.RequestFailureReason;
 import com.datastax.simulacron.common.codec.WriteType;
 import com.datastax.simulacron.common.stubbing.CloseType;
 import com.datastax.simulacron.common.stubbing.DisconnectAction;
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -19,17 +44,34 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static com.datastax.simulacron.common.stubbing.PrimeDsl.*;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.alreadyExists;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.authenticationError;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.closeConnection;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.configurationError;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.functionFailure;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.invalid;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.isBootstrapping;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.noResult;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.overloaded;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.protocolError;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.readFailure;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.readTimeout;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.serverError;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.syntaxError;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.truncateError;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.unauthorized;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.unavailable;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.unprepared;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.void_;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.when;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.writeFailure;
+import static com.datastax.simulacron.common.stubbing.PrimeDsl.writeTimeout;
 import static com.datastax.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 import static com.datastax.simulacron.http.server.FluentMatcher.match;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.endsWith;
+import static org.hamcrest.CoreMatchers.instanceOf;
 
 public class ErrorResultIntegrationTest {
 
@@ -279,6 +321,13 @@ public class ErrorResultIntegrationTest {
   public void testShouldReturnClientTimeout() throws Exception {
     server.prime(when(query));
 
+    thrown.expect(OperationTimedOutException.class);
+    query(new SimpleStatement(query).setReadTimeoutMillis(1000));
+  }
+
+  @Test
+  public void testShouldReturnClientTimeoutWhenUsingNoResult() throws Exception {
+    server.prime(when(query).then(noResult()));
     thrown.expect(OperationTimedOutException.class);
     query(new SimpleStatement(query).setReadTimeoutMillis(1000));
   }
