@@ -9,7 +9,7 @@
 
   <groupId>com.datastax.simulacron</groupId>
   <artifactId>simulacron-parent</artifactId>
-  <version>0.3.2-SNAPSHOT</version>
+  <version>0.3.2</version>
   <packaging>pom</packaging>
 
   <name>simulacron parent project</name>
@@ -242,7 +242,7 @@
     <connection>scm:git:git@github.com:riptano/simulacron.git</connection>
     <developerConnection>scm:git:git@github.com:riptano/simulacron.git</developerConnection>
     <url>https://github.com/riptano/simulacron</url>
-    <tag>HEAD</tag>
+    <tag>0.3.2</tag>
   </scm>
 
   <developers>
