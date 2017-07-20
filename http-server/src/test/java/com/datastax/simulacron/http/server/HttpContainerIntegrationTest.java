@@ -16,12 +16,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpMethod;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,6 +26,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
@@ -348,6 +347,124 @@ public class HttpContainerIntegrationTest {
       String contactPoint = HttpTestUtil.getContactPointStringByNodeID(node);
       ResultSet set = HttpTestUtil.makeNativeQuery(query, contactPoint);
       assertThat(0).isEqualTo(set.all().size());
+    }
+  }
+
+  @Test
+  public void testClusterCreationWithNumberOfTokens() {
+    int numTokens = 256;
+    HttpClient client = vertx.createHttpClient();
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.POST,
+            portNum,
+            "127.0.0.1",
+            "/cluster/?data_centers=1&num_tokens=" + numTokens,
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    String body = totalBuffer.toString();
+                    HttpTestResponse testResponse = new HttpTestResponse(response, body);
+                    future.complete(testResponse);
+                  });
+            })
+        .end();
+
+    try {
+      HttpTestResponse responseToValidate = future.get();
+      ObjectMapper om = ObjectMapperHolder.getMapper();
+      //create cluster object from json return code
+      ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
+      assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
+      assertThat(new Long(0)).isEqualTo(cluster.getId());
+      assertThat("0").isEqualTo(cluster.getName());
+      assertThat(cluster.getPeerInfo()).isEmpty();
+      //create cluster object from json return code
+      Collection<DataCenterSpec> centers = cluster.getDataCenters();
+      assertThat(centers.size()).isEqualTo(1);
+      DataCenterSpec center = centers.iterator().next();
+      assertThat(new Long(0)).isEqualTo(center.getId());
+      assertThat(cluster).isEqualTo(center.getCluster());
+      assertThat("dc1").isEqualTo(center.getName());
+      Collection<NodeSpec> nodes = center.getNodes();
+      assertThat(1).isEqualTo(nodes.size());
+      NodeSpec node = nodes.iterator().next();
+      assertThat(new Long(0)).isEqualTo(node.getId());
+      assertThat("node1").isEqualTo(node.getName());
+      assertThat(cluster).isEqualTo(node.getCluster());
+      assertThat(center).isEqualTo(node.getDataCenter());
+      assertThat(node.getAddress()).isNotNull();
+      assertThat(node.getPeerInfo().containsKey("tokens")).isTrue();
+      String tokenInfo = (String) node.getPeerInfo().get("tokens");
+      String[] tokens = tokenInfo.split(",");
+      assertThat(tokens.length).isEqualTo(numTokens);
+      for (String token : tokens) {
+        Long.parseLong(token);
+      }
+    } catch (Exception e) {
+      fail("Exception encountered");
+    }
+  }
+
+  @Test
+  public void testClusterCreationWithNumberOfTokensDcs() {
+    int numTokens = 256;
+    HttpClient client = vertx.createHttpClient();
+    CompletableFuture<HttpTestResponse> future = new CompletableFuture<>();
+    client
+        .request(
+            HttpMethod.POST,
+            portNum,
+            "127.0.0.1",
+            "/cluster/?data_centers=3,3,3&num_tokens=" + numTokens,
+            response -> {
+              response.bodyHandler(
+                  totalBuffer -> {
+                    String body = totalBuffer.toString();
+                    HttpTestResponse testResponse = new HttpTestResponse(response, body);
+                    future.complete(testResponse);
+                  });
+            })
+        .end();
+
+    try {
+      HttpTestResponse responseToValidate = future.get();
+      ObjectMapper om = ObjectMapperHolder.getMapper();
+      //create cluster object from json return code
+      ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
+      assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
+      assertThat(new Long(0)).isEqualTo(cluster.getId());
+      assertThat("0").isEqualTo(cluster.getName());
+      assertThat(cluster.getPeerInfo()).isEmpty();
+      //create cluster object from json return code
+      Collection<DataCenterSpec> centers = cluster.getDataCenters();
+      assertThat(centers.size()).isEqualTo(3);
+      long currentCenterId = 0;
+      for (DataCenterSpec center : centers) {
+        assertThat(currentCenterId++).isEqualTo(center.getId());
+        assertThat(cluster).isEqualTo(center.getCluster());
+        assertThat("dc" + currentCenterId).isEqualTo(center.getName());
+        Collection<NodeSpec> nodes = center.getNodes();
+        assertThat(3).isEqualTo(nodes.size());
+        long currentId = 0;
+        for (NodeSpec node : nodes) {
+          assertThat(currentId++).isEqualTo(node.getId());
+          assertThat("node" + currentId).isEqualTo(node.getName());
+          assertThat(cluster).isEqualTo(node.getCluster());
+          assertThat(center).isEqualTo(node.getDataCenter());
+          assertThat(node.getAddress()).isNotNull();
+          assertThat(node.getPeerInfo().containsKey("tokens")).isTrue();
+          String tokenInfo = (String) node.getPeerInfo().get("tokens");
+          String[] tokens = tokenInfo.split(",");
+          assertThat(tokens.length).isEqualTo(numTokens);
+          for (String token : tokens) {
+            Long.parseLong(token);
+          }
+        }
+      }
+    } catch (Exception e) {
+      fail("Exception encountered");
     }
   }
 

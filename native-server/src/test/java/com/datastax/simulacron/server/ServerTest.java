@@ -23,10 +23,10 @@ import com.datastax.oss.protocol.internal.response.Event;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Result;
 import com.datastax.oss.protocol.internal.response.Supported;
-import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.ClusterConnectionReport;
-import com.datastax.simulacron.common.cluster.DataCenterSpec;
+import com.datastax.simulacron.common.cluster.ClusterSpec;
 import com.datastax.simulacron.common.cluster.DataCenterConnectionReport;
+import com.datastax.simulacron.common.cluster.DataCenterSpec;
 import com.datastax.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.common.stubbing.CloseType;
@@ -43,19 +43,20 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.local.LocalServerChannel;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
-import org.junit.After;
-import org.junit.Test;
-
 import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.junit.After;
+import org.junit.Test;
 
 import static com.datastax.simulacron.server.AddressResolver.localAddressResolver;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1009,5 +1010,47 @@ public class ServerTest {
 
     // closing should not throw exception if already closed.
     server.close();
+  }
+
+  @Test
+  public void testRegisterClusterWithSplitTokenAssigner() throws Exception {
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(2).build();
+    try (BoundCluster boundCluster = localServer.register(cluster)) {
+      // Cluster should be registered.
+      assertThat(localServer.getCluster(boundCluster.getId())).isSameAs(boundCluster);
+
+      // Should be 2 DCs.
+      assertThat(boundCluster.getDataCenters()).hasSize(1);
+
+      Optional<BoundDataCenter> dc1 = boundCluster.getDataCenters().stream().findFirst();
+      assertThat(dc1.isPresent()).isTrue();
+      Iterator<BoundNode> iterator = dc1.get().getNodes().iterator();
+      BoundNode node1 = iterator.next();
+      BoundNode node2 = iterator.next();
+      long token1 = Long.parseLong((String) node1.getPeerInfo().get("tokens"));
+      long token2 = Long.parseLong((String) node2.getPeerInfo().get("tokens"));
+      assertThat(token1).isEqualTo(Long.MIN_VALUE);
+      assertThat(token2).isZero();
+    }
+  }
+
+  @Test
+  public void testRegisterClusterWithRandomTokenGenerator() throws Exception {
+    ClusterSpec cluster = ClusterSpec.builder().withNodes(2).withNumberOfTokens(3).build();
+    try (BoundCluster boundCluster = localServer.register(cluster)) {
+      // Cluster should be registered.
+      assertThat(localServer.getCluster(boundCluster.getId())).isSameAs(boundCluster);
+
+      // Should be 2 DCs.
+      assertThat(boundCluster.getDataCenters()).hasSize(1);
+
+      Optional<BoundDataCenter> dc1 = boundCluster.getDataCenters().stream().findFirst();
+      assertThat(dc1.isPresent()).isTrue();
+      Iterator<BoundNode> iterator = dc1.get().getNodes().iterator();
+      BoundNode node1 = iterator.next();
+      BoundNode node2 = iterator.next();
+      assertThat(((String) node1.getPeerInfo().get("tokens")).split(",").length).isEqualTo(3);
+      assertThat(((String) node2.getPeerInfo().get("tokens")).split(",").length).isEqualTo(3);
+    }
   }
 }

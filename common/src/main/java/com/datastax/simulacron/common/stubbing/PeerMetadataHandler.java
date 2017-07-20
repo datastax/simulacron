@@ -11,7 +11,6 @@ import com.datastax.simulacron.common.cluster.AbstractNode;
 import com.datastax.simulacron.common.codec.Codec;
 import com.datastax.simulacron.common.codec.CodecUtils;
 import com.datastax.simulacron.common.codec.CqlMapper;
-
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -145,7 +144,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   }
 
   private Set<String> resolveTokens(AbstractNode node) {
-    String[] t = node.resolvePeerInfo("token", "0").split(",");
+    String[] t = node.resolvePeerInfo("tokens", "0").split(",");
     return new LinkedHashSet<>(Arrays.asList(t));
   }
 
@@ -218,7 +217,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
                               mapper.varchar.encode(
                                   n.resolvePeerInfo(
                                       "release_version", n.resolveCassandraVersion())),
-                              tokenCodec.encode(n.resolvePeerInfo("tokens", resolveTokens(n))),
+                              tokenCodec.encode(resolveTokens(n)),
                               mapper.inet.encode(n.resolvePeerInfo("listen_address", address)),
                               mapper.uuid.encode(n.resolvePeerInfo("host_id", schemaVersion)),
                               mapper.uuid.encode(

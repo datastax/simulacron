@@ -54,6 +54,8 @@ public class ClusterManager implements HttpListener {
                 String dcRawString = context.request().getParam("data_centers");
                 String dseVersion = context.request().getParam("dse_version");
                 String cassandraVersion = context.request().getParam("cassandra_version");
+                String numTokensParam = context.request().getParam("num_tokens");
+                int numTokens = numTokensParam != null ? Integer.parseInt(numTokensParam) : 1;
                 String activityLog = context.request().getParam("activity_log");
                 Boolean activityLogEnabled =
                     activityLog != null ? Boolean.parseBoolean(activityLog) : null;
@@ -72,6 +74,7 @@ public class ClusterManager implements HttpListener {
                             .withDSEVersion(dseVersion)
                             .withCassandraVersion(cassandraVersion)
                             .withName(name)
+                            .withNumberOfTokens(numTokens)
                             .build();
                   }
                 } else {

@@ -7,6 +7,9 @@ import com.datastax.simulacron.common.cluster.DataCenterSpec;
 import com.datastax.simulacron.common.cluster.NodeSpec;
 import com.datastax.simulacron.common.stubbing.EmptyReturnMetadataHandler;
 import com.datastax.simulacron.common.stubbing.PeerMetadataHandler;
+import com.datastax.simulacron.server.token.RandomTokenAssigner;
+import com.datastax.simulacron.server.token.SplitTokenAssigner;
+import com.datastax.simulacron.server.token.TokenAssigner;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -22,10 +25,6 @@ import io.netty.util.AttributeKey;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
 import io.netty.util.concurrent.DefaultThreadFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,6 +43,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import static com.datastax.simulacron.server.CompletableFutures.getUninterruptibly;
 
@@ -224,32 +226,23 @@ public final class Server implements AutoCloseable {
         serverOptions.isActivityLoggingEnabled() != null
             ? serverOptions.isActivityLoggingEnabled()
             : this.activityLogging;
-    int dcPos = 0;
-    int nPos = 0;
+
+    TokenAssigner tokenAssignment =
+        cluster.getNumberOfTokens() == 1
+            ? new SplitTokenAssigner(cluster)
+            : new RandomTokenAssigner(cluster.getNumberOfTokens());
+
     for (DataCenterSpec dataCenter : cluster.getDataCenters()) {
-      long dcOffset = dcPos * 100;
-      long nodeBase = ((long) Math.pow(2, 64) / dataCenter.getNodes().size());
       BoundDataCenter dc = new BoundDataCenter(dataCenter, c);
 
       for (NodeSpec node : dataCenter.getNodes()) {
-        Optional<String> token = node.resolvePeerInfo("token", String.class);
-        String tokenStr;
-        if (token.isPresent()) {
-          tokenStr = token.get();
-        } else if (node.getCluster() == null) {
-          tokenStr = "0";
-        } else {
-          long nodeOffset = nPos * nodeBase;
-          tokenStr = "" + (nodeOffset + dcOffset);
-        }
+        String tokenStr = tokenAssignment.getTokens(node);
         // Use node's address if set, otherwise generate a new one.
         SocketAddress address =
             node.getAddress() != null ? node.getAddress() : addressResolver.get();
         bindFutures.add(
             bindInternal(node, c, dc, tokenStr, address, activityLogging).toCompletableFuture());
-        nPos++;
       }
-      dcPos++;
     }
 
     clusters.put(c.getId(), c);
@@ -487,7 +480,7 @@ public final class Server implements AutoCloseable {
         node,
         dummyCluster,
         dummyDataCenter,
-        node.resolvePeerInfo("token", String.class).orElse("0"),
+        node.resolvePeerInfo("tokens", String.class).orElse("0"),
         address,
         activityLogging);
   }
@@ -515,7 +508,7 @@ public final class Server implements AutoCloseable {
     // derive a token for this node. This is done here as the ordering of nodes under a
     // data center is changed when it is bound.
     Map<String, Object> newPeerInfo = new HashMap<>(refNode.getPeerInfo());
-    newPeerInfo.put("token", token);
+    newPeerInfo.put("tokens", token);
     CompletableFuture<BoundNode> f = new CompletableFuture<>();
     ChannelFuture bindFuture = this.serverBootstrap.bind(address);
     bindFuture.addListener(
@@ -538,7 +531,7 @@ public final class Server implements AutoCloseable {
                         timer,
                         channelFuture.channel(),
                         activityLogging);
-                logger.info("Bound {} to {}", node, channelFuture.channel());
+                logger.info("Bound Node {} to {}", node.resolveId(), channelFuture.channel());
                 channelFuture.channel().attr(HANDLER).set(node);
                 f.complete(node);
               } else {
@@ -552,7 +545,7 @@ public final class Server implements AutoCloseable {
   }
 
   private CompletableFuture<BoundNode> close(BoundNode node) {
-    logger.debug("Closing {}.", node);
+    logger.debug("Closing Node {} on {}.", node.resolveId(), node.channel);
     return node.stopAsync()
         .thenApply(
             n -> {

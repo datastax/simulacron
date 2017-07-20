@@ -72,6 +72,12 @@ paths:
           description: Whether or not to enable activity logging of queries.  By default falls back to global behavior (which itself defaults to true).
           required: false
           type: boolean
+        - in: query
+          name: num_tokens
+          description: The number of tokens (virtual nodes) for each node.  By default is 1.
+          required: false
+          type: int
+          example: 1
         - in: body
           name: body
           description: >

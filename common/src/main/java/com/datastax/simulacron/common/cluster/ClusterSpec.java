@@ -1,6 +1,7 @@
 package com.datastax.simulacron.common.cluster;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Collections;
 import java.util.Map;
@@ -11,9 +12,11 @@ public class ClusterSpec extends AbstractCluster<DataCenterSpec, NodeSpec> {
 
   @JsonIgnore private final transient AtomicLong dcCounter = new AtomicLong(0);
 
+  @JsonIgnore private int numberOfTokens;
+
   ClusterSpec() {
     // Default constructor for jackson deserialization.
-    this(null, null, null, null, Collections.emptyMap());
+    this(null, null, null, null, Collections.emptyMap(), 0);
   }
 
   public ClusterSpec(
@@ -21,8 +24,15 @@ public class ClusterSpec extends AbstractCluster<DataCenterSpec, NodeSpec> {
       Long id,
       String cassandraVersion,
       String dseVersion,
-      Map<String, Object> peerInfo) {
+      Map<String, Object> peerInfo,
+      int numberOfTokens) {
     super(name, id, cassandraVersion, dseVersion, peerInfo);
+    this.numberOfTokens = numberOfTokens;
+  }
+
+  /** @return the number of tokens to be assigned to each node */
+  public int getNumberOfTokens() {
+    return this.numberOfTokens;
   }
 
   /**
@@ -43,6 +53,7 @@ public class ClusterSpec extends AbstractCluster<DataCenterSpec, NodeSpec> {
   public static class Builder extends NodePropertiesBuilder<Builder, ClusterSpec> {
 
     int[] nodes = null;
+    private int numberOfTokens = 1;
 
     @SuppressWarnings("unchecked")
     public Builder() {
@@ -61,9 +72,23 @@ public class ClusterSpec extends AbstractCluster<DataCenterSpec, NodeSpec> {
       return this;
     }
 
+    /**
+     * Convenience method to set the number of virtual nodes (tokens) assigned for each node of each
+     * datacenter. If not used the value 1 will be assigned and the tokens will be divided according
+     * to cluster size.
+     *
+     * @param numberOfTokens Integer with number of tokens.
+     * @return builder with dcs configured.
+     */
+    public Builder withNumberOfTokens(int numberOfTokens) {
+      this.numberOfTokens = numberOfTokens;
+      return this;
+    }
+
     /** @return Constructs a {@link ClusterSpec} from this builder. Can be called multiple times. */
     public ClusterSpec build() {
-      ClusterSpec cluster = new ClusterSpec(name, id, cassandraVersion, dseVersion, peerInfo);
+      ClusterSpec cluster =
+          new ClusterSpec(name, id, cassandraVersion, dseVersion, peerInfo, numberOfTokens);
       if (nodes != null) {
         for (int i = 1; i <= nodes.length; i++) {
           int nodeCount = nodes[i - 1];
