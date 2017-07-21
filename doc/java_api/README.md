@@ -11,8 +11,8 @@ Simulacron can be added to your application by using the following maven depende
 ```xml
 <dependency>
   <groupId>com.datastax.simulacron</groupId>
-  <artifactId>native-server</artifactId>
-  <version>0.3.2</version>
+  <artifactId>simulacron-native-server</artifactId>
+  <version>0.4.0</version>
 </dependency>
 ```
 
@@ -22,9 +22,9 @@ using the java driver you should consider depending on the `driver-3x` module wh
 
 ```xml
 <dependency>
-  <groupId>com.datastax.simulacron</groupId>
-  <artifactId>driver-3x</artifactId>
-  <version>0.3.2</version>
+  <groupId>com.datastax.oss.simulacron</groupId>
+  <artifactId>simulacron-driver-3x</artifactId>
+  <version>0.4.0</version>
 </dependency>
 ```
 
@@ -36,7 +36,7 @@ into provisioning and de-provisioning simulated clusters.
 To set up a server, simply do the following:
 
 ```java
-import com.datastax.simulacron.server.Server;
+import com.datastax.oss.simulacron.server.Server;
 
 class Test {
   static Server server = Server.builder().build();
@@ -64,8 +64,8 @@ block` exits, the `BoundCluster` or `BoundNode` is automatically unregistered wi
 To register a single `BoundNode`:
 
 ```java
-import com.datastax.simulacron.common.cluster.NodeSpec;
-import com.datastax.simulacron.server.BoundNode;
+import com.datastax.oss.simulacron.common.cluster.NodeSpec;
+import com.datastax.oss.simulacron.server.BoundNode;
 
 try (BoundNode node = server.register(NodeSpec.builder())) {
     // interact with Node
@@ -75,8 +75,8 @@ try (BoundNode node = server.register(NodeSpec.builder())) {
 To register a `Cluster`:
 
 ```java
-import com.datastax.simulacron.common.cluster.ClusterSpec;
-import com.datastax.simulacron.server.BoundCluster;
+import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
+import com.datastax.oss.simulacron.server.BoundCluster;
 
 try (BoundCluster cluster = server.register(ClusterSpec.builder().withNodes(10,10))) {
     // interact with Cluster
@@ -118,9 +118,9 @@ instances using `addDataCenter()`.  `NodeSpec`s can be added to constructed `Dat
 `addNode()`.  For example:
 
 ```java
-import com.datastax.simulacron.common.cluster.*;
-import com.datastax.simulacron.server.BoundCluster;
-import com.datastax.simulacron.server.Server;
+import com.datastax.oss.simulacron.common.cluster.*;
+import com.datastax.oss.simulacron.server.BoundCluster;
+import com.datastax.oss.simulacron.server.Server;
 import java.util.UUID;
 
 Server server = Server.builder().build();
@@ -168,8 +168,8 @@ These modules are optional and merely provide convenience functionality.
 `BoundCluster`s.
 
 ```java
-import static com.datastax.simulacron.driver.SimulacronDriverSupport.*;
-import static com.datastax.simulacron.common.cluster.*;
+import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.*;
+import static com.datastax.oss.simulacron.common.cluster.*;
 
 // Creates a builder that simply configures netty options such that it closes quickly.  This is useful
 // for testing but has no intrinsic ties to simulacron functionality.
@@ -192,9 +192,9 @@ and simulacron provide `Consistency` and `WriteType` implementations.
 to a driver type.  For example:
 
 ```java
-import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.WriteType;
-import static com.datastax.simulacron.driver.DriverTypeAdapters.*;
+import com.datastax.oss.driver.core.ConsistencyLevel;
+import com.datastax.oss.driver.core.WriteType;
+import static com.datastax.oss.simulacron.driver.DriverTypeAdapters.*;
 
 // Convert from driver CL to simulacron CL
 com.datastax.simulacron.common.codec.ConsistencyLevel cl = adapt(ConsistencyLevel.ONE);
@@ -227,8 +227,8 @@ For example, the following primes the query `select bar from foo` to return a 'r
 0 out of 1 responses were received for a query requiring ONE consistency level:
 
 ```java
-import com.datastax.simulacron.common.stubbing.PrimeDsl.PrimeBuilder;
-import static com.datastax.simulacron.common.stubbing.PrimeDsl.*;
+import com.datastax.oss.simulacron.common.stubbing.PrimeDsl.PrimeBuilder;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.*;
 
 PrimeBuilder builder = when("select bar from foo").then(readTimeout(ConsistencyLevel.ONE, 0, 1, false));
 Prime prime = builder.build();
@@ -272,8 +272,8 @@ messages that a driver may send as a means of doing heartbeats.
 To prime this scenario:
 
 ```java
-import com.datastax.simulacron.common.request.Options;
-import static com.datastax.simulacron.common.stubbing.PrimeDsl.*;
+import com.datastax.oss.simulacron.common.request.Options;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.*;
 
 cluster.node(3).prime(when(Options.INSTANCE).then(noResult()));
 ```
@@ -307,7 +307,7 @@ read failure error.
 * `writeFailure(Consistencylevel cl, int required, int blockFor, Map failureReasonByEndpoint, WriteType writeType)`: A
 write failure error.
 * `writeTimeout(ConsistencyLevel cl, int received, int blockFor, WriteType writeType)`: A write timeout error.
-* `void_()`: A 'void' result, which is the same result as having no prime, but is useful if you want to configure delays.
+* `void\_()`: A 'void' result, which is the same result as having no prime, but is useful if you want to configure delays.
 * `noResult()`: Indicates that queries matching this prime should return any response.
 
 In addition, you may simply not provide a `then`.  This indicates to simulacron to not respond to the given request.
@@ -323,7 +323,7 @@ It is expected that the type names in `columnTypes` map to real cql types. Every
 and tuples) is supported with exception to UDTs.
 
 ```java
-import static com.datastax.simulacron.common.stubbing.PrimeDsl.*;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.*;
 
 cluster.node(1,2).prime(
         when("select bar,baz from foo")
@@ -340,7 +340,7 @@ It may be desired to delay a response being sent by the server,  to do this, use
 `PrimeBuilder.delay(long delay, TimeUnit delayUnit)`:
 
 ```java
-import static com.datastax.simulacron.common.stubbing.PrimeDsl.*;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.*;
 
 // delay response to query for 5 seconds.
 cluster.prime(
@@ -438,7 +438,7 @@ To simply retrieve the number of active connections, one could use `getActiveCon
 `closeConnections(CloseType closeType)` offers a mechanism to close all connections for a given subject, i.e.:
 
 ```java
-import com.datastax.simulacron.common.stubbing.CloseType;
+import com.datastax.oss.simulacron.common.stubbing.CloseType;
 
 // Request to close connections.
 // The connections that were closed are returned.
@@ -471,7 +471,7 @@ acceptance of connections.  This is useful for simulating node outages, or nodes
 telling nodes to disable listening for new connections, i.e.:
 
 ```java
-import com.datastax.simulacron.server.RejectScope;
+import com.datastax.oss.simulacron.server.RejectScope;
 
 // simulate DC outage
 cluster.dc(1).rejectConnections(0, RejectScope.STOP);
