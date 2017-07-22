@@ -15,8 +15,10 @@
  */
 package com.datastax.oss.simulacron.common.cluster;
 
+import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.net.SocketAddress;
 
 public class QueryLog {
 
@@ -24,13 +26,13 @@ public class QueryLog {
   private String query;
 
   @JsonProperty("consistency_level")
-  private String consistency;
+  private ConsistencyLevel consistency;
 
   @JsonProperty("serial_consistency_level")
-  private String serialConsistency;
+  private ConsistencyLevel serialConsistency;
 
   @JsonProperty("connection")
-  private String connection;
+  private SocketAddress connection;
 
   @JsonProperty("timestamp")
   private long timestamp;
@@ -41,9 +43,9 @@ public class QueryLog {
   @JsonCreator
   public QueryLog(
       @JsonProperty("query") String query,
-      @JsonProperty("consistency_level") String consistency,
-      @JsonProperty("serial_consistency_level") String serialConsistency,
-      @JsonProperty("connection") String connection,
+      @JsonProperty("consistency_level") ConsistencyLevel consistency,
+      @JsonProperty("serial_consistency_level") ConsistencyLevel serialConsistency,
+      @JsonProperty("connection") SocketAddress connection,
       @JsonProperty("timestamp") long timestamp,
       @JsonProperty("primed") boolean primed) {
     this.query = query;
@@ -58,15 +60,15 @@ public class QueryLog {
     return query;
   }
 
-  public String getConsistency() {
+  public ConsistencyLevel getConsistency() {
     return consistency;
   }
 
-  public String getSerialConsistency() {
+  public ConsistencyLevel getSerialConsistency() {
     return serialConsistency;
   }
 
-  public String getConnection() {
+  public SocketAddress getConnection() {
     return connection;
   }
 

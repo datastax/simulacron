@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.rows;
 import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
+import static com.datastax.oss.simulacron.driver.DriverTypeAdapters.adapt;
 import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -205,8 +206,7 @@ public class ActivityLogIntegrationTest {
     assertThat(queryLogs.size()).isEqualTo(1);
     QueryLog log = queryLogs.get(0);
     assertThat(log.getConnection()).isNotNull();
-    assertThat(ConsistencyLevel.valueOf(log.getConsistency()))
-        .isEqualTo(ConsistencyLevel.LOCAL_ONE);
+    assertThat(log.getConsistency()).isEqualTo(adapt(ConsistencyLevel.LOCAL_ONE));
     assertThat(log.getTimestamp()).isNotZero();
     assertThat(log.getTimestamp()).isGreaterThan(currentTimestamp);
     assertThat(log.isPrimed()).isTrue();

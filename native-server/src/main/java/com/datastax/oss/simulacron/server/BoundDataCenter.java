@@ -22,14 +22,19 @@ import com.datastax.oss.simulacron.common.cluster.ClusterQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.DataCenterConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.DataCenterQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.DataCenterSpec;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.stubbing.CloseType;
 import com.datastax.oss.simulacron.common.stubbing.StubMapping;
+import com.datastax.oss.simulacron.server.listener.QueryListener;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.channel.Channel;
 import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
@@ -40,6 +45,8 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
   private final transient BoundCluster cluster;
 
   private final transient StubStore stubStore;
+
+  private final transient List<QueryListenerWrapper> queryListeners = new ArrayList<>();
 
   BoundDataCenter(BoundCluster parent) {
     super(
@@ -144,6 +151,12 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
     return clusterQueryLogReport.getDataCenters().iterator().next();
   }
 
+  @Override
+  public void registerQueryListener(
+      QueryListener queryListener, boolean after, Predicate<QueryLog> filter) {
+    this.queryListeners.add(new QueryListenerWrapper(queryListener, after, filter));
+  }
+
   /**
    * Returns a QueryLogReport that contains all the logs for this datacenter
    *
@@ -168,5 +181,16 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
       stub = getCluster().find(node, frame);
     }
     return stub;
+  }
+
+  void notifyQueryListeners(BoundNode node, QueryLog queryLog, boolean after) {
+    if (queryLog != null && !queryListeners.isEmpty()) {
+      for (QueryListenerWrapper wrapper : queryListeners) {
+        if (after == wrapper.after) {
+          wrapper.apply(node, queryLog);
+        }
+      }
+    }
+    getCluster().notifyQueryListeners(node, queryLog, after);
   }
 }

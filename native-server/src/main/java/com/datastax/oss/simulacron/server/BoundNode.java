@@ -33,6 +33,7 @@ import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.ClusterQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.NodeQueryLogReport;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.stubbing.Action;
 import com.datastax.oss.simulacron.common.stubbing.CloseType;
 import com.datastax.oss.simulacron.common.stubbing.DisconnectAction;
@@ -41,6 +42,7 @@ import com.datastax.oss.simulacron.common.stubbing.NoResponseAction;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.common.stubbing.PrimeDsl.PrimeBuilder;
 import com.datastax.oss.simulacron.common.stubbing.StubMapping;
+import com.datastax.oss.simulacron.server.listener.QueryListener;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -70,6 +72,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -87,6 +90,8 @@ import static com.datastax.oss.simulacron.server.ChannelUtils.completable;
 
 public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     implements BoundTopic<NodeConnectionReport, NodeQueryLogReport> {
+
+  static final Predicate<QueryLog> ALWAYS_TRUE = x -> true;
 
   private static Logger logger = LoggerFactory.getLogger(BoundNode.class);
 
@@ -116,6 +121,8 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
   private final Server server;
 
   private final BoundCluster cluster;
+
+  private final transient List<QueryListenerWrapper> queryListeners = new ArrayList<>();
 
   final transient ActivityLog activityLog = new ActivityLog();
 
@@ -263,6 +270,12 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     activityLog.clear();
   }
 
+  @Override
+  public void registerQueryListener(
+      QueryListener queryListener, boolean after, Predicate<QueryLog> filter) {
+    queryListeners.add(new QueryListenerWrapper(queryListener, after, filter));
+  }
+
   /**
    * Indicates that the node should stop accepting new connections.
    *
@@ -325,16 +338,19 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
       actions = stub.getActions(this, frame);
     }
 
+    QueryLog queryLog = null;
     //store the frame in history
     if (activityLogging) {
-      activityLog.addLog(
-          frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
+      queryLog =
+          activityLog.addLog(
+              frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
+      notifyQueryListeners(queryLog, false);
     }
 
     if (actions != null && !actions.isEmpty()) {
       // TODO: It might be useful to tie behavior to completion of actions but for now this isn't necessary.
       CompletableFuture<Void> future = new CompletableFuture<>();
-      handleActions(actions.iterator(), ctx, frame, future);
+      handleActions(actions.iterator(), ctx, frame, future, queryLog);
     } else {
       // Future that if set defers sending the message until the future completes.
       CompletableFuture<?> deferFuture = null;
@@ -393,25 +409,51 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
         this.getCluster().getStubStore().registerInternal(prime);
         response = prime.toPrepared();
       }
+
       if (response != null) {
+        final QueryLog fQueryLog = queryLog;
         if (deferFuture != null) {
           final Message fResponse = response;
-          deferFuture.thenRun(() -> sendMessage(ctx, frame, fResponse));
+
+          deferFuture.thenRun(
+              () -> {
+                sendMessage(ctx, frame, fResponse)
+                    .addListener(
+                        (x) -> {
+                          notifyQueryListeners(fQueryLog, true);
+                        });
+              });
         } else {
-          sendMessage(ctx, frame, response);
+          sendMessage(ctx, frame, response)
+              .addListener((x) -> notifyQueryListeners(fQueryLog, true));
+        }
+      } else {
+        notifyQueryListeners(queryLog, true);
+      }
+    }
+  }
+
+  private void notifyQueryListeners(QueryLog queryLog, boolean after) {
+    if (queryLog != null && !queryListeners.isEmpty()) {
+      for (QueryListenerWrapper wrapper : queryListeners) {
+        if (after == wrapper.after) {
+          wrapper.apply(this, queryLog);
         }
       }
     }
+    getDataCenter().notifyQueryListeners(this, queryLog, after);
   }
 
   private void handleActions(
       Iterator<Action> nextActions,
       ChannelHandlerContext ctx,
       Frame frame,
-      CompletableFuture<Void> doneFuture) {
+      CompletableFuture<Void> doneFuture,
+      QueryLog queryLog) {
     // If there are no more actions, complete the done future and return.
     if (!nextActions.hasNext()) {
       doneFuture.complete(null);
+      notifyQueryListeners(queryLog, true);
       return;
     }
 
@@ -431,7 +473,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
           if (ex != null) {
             doneFuture.completeExceptionally(ex);
           } else {
-            handleActions(nextActions, ctx, frame, doneFuture);
+            handleActions(nextActions, ctx, frame, doneFuture, queryLog);
           }
         });
   }

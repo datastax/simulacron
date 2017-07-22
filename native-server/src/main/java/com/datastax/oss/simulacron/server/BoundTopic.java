@@ -17,16 +17,19 @@ package com.datastax.oss.simulacron.server;
 
 import com.datastax.oss.simulacron.common.cluster.ConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.NodeProperties;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.cluster.QueryLogReport;
 import com.datastax.oss.simulacron.common.stubbing.CloseType;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.common.stubbing.PrimeDsl;
+import com.datastax.oss.simulacron.server.listener.QueryListener;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.datastax.oss.simulacron.server.CompletableFutures.getUninterruptibly;
@@ -201,6 +204,38 @@ public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport
   default void clearLogs() {
     getNodes().forEach(BoundNode::clearLogs);
   }
+
+  /**
+   * Registers a listener that is invoked whenever a query is received.
+   *
+   * @param queryListener The listener to invoke
+   */
+  default void registerQueryListener(QueryListener queryListener) {
+    registerQueryListener(queryListener, false);
+  }
+
+  /**
+   * Registers a listener that is invoked whenever a query is received.
+   *
+   * @param queryListener The listener to invoke
+   * @param after Whether or not to invoke before the query is handled or after the actions for the
+   *     query are all handled.
+   */
+  default void registerQueryListener(QueryListener queryListener, boolean after) {
+    registerQueryListener(queryListener, after, BoundNode.ALWAYS_TRUE);
+  }
+
+  /**
+   * Registers a listener that is invoked whenever a query is received and the filter predicate is
+   * matched.
+   *
+   * @param queryListener The listener to invoke
+   * @param after Whether or not to invoke before the query is handled (false) or after the actions
+   *     for the query are all handled (true).
+   * @param filter predicate to indicate whether or not to invoke the listener
+   */
+  void registerQueryListener(
+      QueryListener queryListener, boolean after, Predicate<QueryLog> filter);
 
   @JsonIgnore
   Server getServer();

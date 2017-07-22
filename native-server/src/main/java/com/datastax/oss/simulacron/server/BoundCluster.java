@@ -21,14 +21,19 @@ import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.ClusterQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.NodeConnectionReport;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.stubbing.CloseType;
 import com.datastax.oss.simulacron.common.stubbing.StubMapping;
+import com.datastax.oss.simulacron.server.listener.QueryListener;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.channel.Channel;
 import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +46,8 @@ public class BoundCluster extends AbstractCluster<BoundDataCenter, BoundNode>
   private final transient Server server;
 
   private final transient StubStore stubStore;
+
+  private final transient List<QueryListenerWrapper> queryListeners = new ArrayList<>();
 
   BoundCluster(ClusterSpec delegate, Long clusterId, Server server) {
     super(
@@ -144,6 +151,12 @@ public class BoundCluster extends AbstractCluster<BoundDataCenter, BoundNode>
   }
 
   @Override
+  public void registerQueryListener(
+      QueryListener queryListener, boolean after, Predicate<QueryLog> filter) {
+    queryListeners.add(new QueryListenerWrapper(queryListener, after, filter));
+  }
+
+  @Override
   public Server getServer() {
     return server;
   }
@@ -154,5 +167,15 @@ public class BoundCluster extends AbstractCluster<BoundDataCenter, BoundNode>
       stub = server.stubStore.find(node, frame);
     }
     return stub;
+  }
+
+  void notifyQueryListeners(BoundNode node, QueryLog queryLog, boolean after) {
+    if (queryLog != null && !queryListeners.isEmpty()) {
+      for (QueryListenerWrapper wrapper : queryListeners) {
+        if (after == wrapper.after) {
+          wrapper.apply(node, queryLog);
+        }
+      }
+    }
   }
 }

@@ -48,6 +48,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Test;
@@ -296,11 +298,132 @@ public class BoundNodeTest {
     assertThat(logs.size()).isEqualTo(2);
     QueryLog log1 = logs.get(0);
     assertThat(log1.getQuery()).isEqualTo("use myks");
-    assertThat(ConsistencyLevel.fromString(log1.getConsistency())).isEqualTo(ConsistencyLevel.ONE);
+    assertThat(log1.getConsistency()).isEqualTo(ConsistencyLevel.ONE);
     QueryLog log2 = logs.get(1);
     assertThat(log2.getQuery()).isEqualTo("select * from table1");
-    assertThat(ConsistencyLevel.fromString(log2.getConsistency()))
-        .isEqualTo(ConsistencyLevel.QUORUM);
+    assertThat(log2.getConsistency()).isEqualTo(ConsistencyLevel.QUORUM);
+  }
+
+  @Test
+  public void shouldNotifyNodeListener() {
+    CompletableFuture<QueryLog> logF = new CompletableFuture<>();
+    CompletableFuture<BoundNode> nodeF = new CompletableFuture<>();
+    loggedNode.registerQueryListener(
+        (n, l) -> {
+          nodeF.complete(n);
+          logF.complete(l);
+        });
+    Query query = new Query("select * from table1");
+    Frame request = FrameUtils.wrapRequest(query);
+
+    loggedChannel.writeInbound(request);
+    loggedChannel.readInbound();
+
+    assertThat(CompletableFutures.getUninterruptibly(logF, 5, TimeUnit.SECONDS).getQuery())
+        .isEqualTo(query.query);
+    assertThat(CompletableFutures.getUninterruptibly(nodeF, 5, TimeUnit.SECONDS))
+        .isEqualTo(loggedNode);
+  }
+
+  @Test
+  public void shouldNotifyListenerPredicateMatch() {
+    CompletableFuture<QueryLog> logF = new CompletableFuture<>();
+    CompletableFuture<BoundNode> nodeF = new CompletableFuture<>();
+    Query query = new Query("select * from table1");
+    loggedNode.registerQueryListener(
+        (n, l) -> {
+          nodeF.complete(n);
+          logF.complete(l);
+        },
+        false,
+        (l) -> l.getQuery().equals(query.query));
+    Frame request = FrameUtils.wrapRequest(query);
+
+    loggedChannel.writeInbound(request);
+    loggedChannel.readInbound();
+
+    assertThat(CompletableFutures.getUninterruptibly(logF, 5, TimeUnit.SECONDS).getQuery())
+        .isEqualTo(query.query);
+    assertThat(CompletableFutures.getUninterruptibly(nodeF, 5, TimeUnit.SECONDS))
+        .isEqualTo(loggedNode);
+  }
+
+  @Test
+  public void shouldNotNotifyListenerPredicateNotMatch() throws InterruptedException {
+    CountDownLatch latch = new CountDownLatch(1);
+    Query query = new Query("select * from table1");
+    loggedNode.registerQueryListener(
+        (n, l) -> latch.countDown(), false, (l) -> !l.getQuery().equals(query.query));
+    Frame request = FrameUtils.wrapRequest(query);
+
+    loggedChannel.writeInbound(request);
+    loggedChannel.readInbound();
+
+    assertThat(latch.await(100, TimeUnit.MILLISECONDS)).isFalse();
+  }
+
+  @Test
+  public void shouldNotifyDCListener() {
+    CompletableFuture<QueryLog> logF = new CompletableFuture<>();
+    CompletableFuture<BoundNode> nodeF = new CompletableFuture<>();
+    dc.registerQueryListener(
+        (n, l) -> {
+          nodeF.complete(n);
+          logF.complete(l);
+        });
+    Query query = new Query("select * from table1");
+    Frame request = FrameUtils.wrapRequest(query);
+
+    loggedChannel.writeInbound(request);
+    loggedChannel.readInbound();
+
+    assertThat(CompletableFutures.getUninterruptibly(logF, 5, TimeUnit.SECONDS).getQuery())
+        .isEqualTo(query.query);
+    assertThat(CompletableFutures.getUninterruptibly(nodeF, 5, TimeUnit.SECONDS))
+        .isEqualTo(loggedNode);
+  }
+
+  @Test
+  public void shouldNotifyClusterListener() {
+    CompletableFuture<QueryLog> logF = new CompletableFuture<>();
+    CompletableFuture<BoundNode> nodeF = new CompletableFuture<>();
+    cluster.registerQueryListener(
+        (n, l) -> {
+          nodeF.complete(n);
+          logF.complete(l);
+        });
+    Query query = new Query("select * from table1");
+    Frame request = FrameUtils.wrapRequest(query);
+
+    loggedChannel.writeInbound(request);
+    loggedChannel.readInbound();
+
+    assertThat(CompletableFutures.getUninterruptibly(logF, 5, TimeUnit.SECONDS).getQuery())
+        .isEqualTo(query.query);
+    assertThat(CompletableFutures.getUninterruptibly(nodeF, 5, TimeUnit.SECONDS))
+        .isEqualTo(loggedNode);
+  }
+
+  @Test
+  public void shouldNotifyNodeListenerAfter() {
+    CompletableFuture<QueryLog> logF = new CompletableFuture<>();
+    CompletableFuture<BoundNode> nodeF = new CompletableFuture<>();
+    loggedNode.registerQueryListener(
+        (n, l) -> {
+          nodeF.complete(n);
+          logF.complete(l);
+        },
+        true);
+    Query query = new Query("select * from table1");
+    Frame request = FrameUtils.wrapRequest(query);
+
+    loggedChannel.writeInbound(request);
+    loggedChannel.readInbound();
+
+    assertThat(CompletableFutures.getUninterruptibly(logF, 5, TimeUnit.SECONDS).getQuery())
+        .isEqualTo(query.query);
+    assertThat(CompletableFutures.getUninterruptibly(nodeF, 5, TimeUnit.SECONDS))
+        .isEqualTo(loggedNode);
   }
 
   @Test
