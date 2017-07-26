@@ -1,5 +1,7 @@
 # Simulacron - An Apache Cassandra® Native Protocol Server Simulator
 
+[![Build Status](https://travis-ci.org/datastax/simulacron.svg?branch=master)](https://travis-ci.org/datastax/simulacron)
+
 A native protocol server simulator that helps facilitate the testing of scenarios that are difficult to reliably
 reproduce in driver clients and applications.
 
