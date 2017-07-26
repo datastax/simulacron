@@ -37,7 +37,7 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>native-protocol</artifactId>
-      <version>1.4.0-SNAPSHOT</version>
+      <version>${native-protocol.version}</version>
     </dependency>
   </dependencies>
 
