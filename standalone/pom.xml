@@ -20,7 +20,7 @@
   <parent>
     <groupId>com.datastax.oss.simulacron</groupId>
     <artifactId>simulacron-parent</artifactId>
-    <version>0.4.1-SNAPSHOT</version>
+    <version>0.5.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>simulacron-standalone</artifactId>
@@ -100,7 +100,7 @@
             <configuration>
               <prerelease>true</prerelease>
               <draft>true</draft>
-              <repositoryId>riptano/simulacron</repositoryId>
+              <repositoryId>datastax/simulacron</repositoryId>
               <tag>${project.version}</tag>
               <fileSets>
                 <fileSet>

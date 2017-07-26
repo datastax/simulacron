@@ -2,7 +2,7 @@
 
 This document describes how to use the Simulacron Java API to provision and interact with simulated clusters.
 
-For non-java development, it is recommended to use the [standalone jar](https://github.com/riptano/simulacron#getting-started-with-the-standalone-jar).
+For non-java development, it is recommended to use the [standalone jar](https://github.com/datastax/simulacron#getting-started-with-the-standalone-jar).
 
 ## Getting Simulacron
 
@@ -12,7 +12,7 @@ Simulacron can be added to your application by using the following maven depende
 <dependency>
   <groupId>com.datastax.simulacron</groupId>
   <artifactId>simulacron-native-server</artifactId>
-  <version>0.4.1</version>
+  <version>0.5.0</version>
 </dependency>
 ```
 
@@ -24,7 +24,7 @@ using the java driver you should consider depending on the `driver-3x` module wh
 <dependency>
   <groupId>com.datastax.oss.simulacron</groupId>
   <artifactId>simulacron-driver-3x</artifactId>
-  <version>0.4.1</version>
+  <version>0.5.0</version>
 </dependency>
 ```
 
@@ -138,7 +138,7 @@ NodeSpec node1 = dc.addNode().withPeerInfo("rack", "rack1").withPeerInfo("host_i
 BoundCluster bCluster = server.register(cluster);
 ```
 
-This API is admittedly non-ideal.  See [#48](https://github.com/riptano/simulacron/issues/48) for future improvements.
+This API is admittedly non-ideal, it will be improved in the future.
 
 ## Shortcuts for accessing DataCenters and Nodes
 

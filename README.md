@@ -49,7 +49,7 @@ emphasis on testing with many simulated native protocol endpoints.
 To use simulacron with its included HTTP server, one may use the standalone jar.
 
 Pre-built versions of the standalone jar can be downloaded from the
-[releases page](https://github.com/riptano/simulacron/releases).
+[releases page](https://github.com/datastax/simulacron/releases).
 
 The jar is executed in the following manner:
 
@@ -151,4 +151,4 @@ Apache Cassandra, Apache, Tomcat, Lucene, Solr, Hadoop, Spark, TinkerPop, and Ca
 trademarks of the [Apache Software Foundation](http://www.apache.org/) or its subsidiaries in
 Canada, the United States and/or other countries. 
 
-[native-protocol]: https://github.com/riptano/native-protocol
+[native-protocol]: https://github.com/datastax/native-protocol
