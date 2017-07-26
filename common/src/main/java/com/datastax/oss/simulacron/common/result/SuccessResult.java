@@ -17,8 +17,8 @@ package com.datastax.oss.simulacron.common.result;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
+import com.datastax.oss.protocol.internal.response.result.DefaultRows;
 import com.datastax.oss.protocol.internal.response.result.RawType;
-import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.oss.simulacron.common.cluster.AbstractNode;
 import com.datastax.oss.simulacron.common.codec.CodecUtils;
@@ -89,7 +89,7 @@ public class SuccessResult extends Result {
     }
     RowsMetadata rowMetadata = new RowsMetadata(columnMetadata, null, new int[] {0});
     MessageResponseAction action =
-        new MessageResponseAction(new Rows(rowMetadata, rows), getDelayInMs());
+        new MessageResponseAction(new DefaultRows(rowMetadata, rows), getDelayInMs());
     return Collections.singletonList(action);
   }
 

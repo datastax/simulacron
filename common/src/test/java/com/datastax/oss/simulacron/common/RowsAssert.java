@@ -29,20 +29,22 @@ public class RowsAssert extends MessageAssert<RowsAssert, Rows> {
   }
 
   public RowsAssert hasRows(int count) {
-    assertThat(actual.data).hasSize(count);
+    assertThat(actual.getData()).hasSize(count);
     return this;
   }
 
   public RowsAssert hasColumnSpecs(int count) {
-    assertThat(actual.metadata.columnSpecs).hasSize(count);
+    assertThat(actual.getMetadata().columnSpecs).hasSize(count);
     return this;
   }
 
   public <T> RowsAssert hasColumn(int row, int column, T expectedValue) {
     CqlMapper mapper = CqlMapper.forVersion(4);
-    List<ByteBuffer> data = new ArrayList<>(actual.data).get(row);
+    List<ByteBuffer> data = new ArrayList<>(actual.getData()).get(row);
     assertThat(
-            mapper.codecFor(actual.metadata.columnSpecs.get(column).type).decode(data.get(column)))
+            mapper
+                .codecFor(actual.getMetadata().columnSpecs.get(column).type)
+                .decode(data.get(column)))
         .isEqualTo(expectedValue);
     return this;
   }

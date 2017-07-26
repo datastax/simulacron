@@ -18,6 +18,7 @@ package com.datastax.oss.simulacron.common.stubbing;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
+import com.datastax.oss.protocol.internal.response.result.DefaultRows;
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
@@ -187,7 +188,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
       localRow.add(CodecUtils.encodePeerInfo(node, mapper.bool::encode, "graph", false));
     }
 
-    Rows rows = new Rows(buildSystemLocalRowsMetadata(node), CodecUtils.rows(localRow));
+    Rows rows = new DefaultRows(buildSystemLocalRowsMetadata(node), CodecUtils.rows(localRow));
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
   }
@@ -195,7 +196,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   private List<Action> handleClusterNameQuery(AbstractNode node, CqlMapper mapper) {
     Queue<List<ByteBuffer>> clusterRow =
         CodecUtils.singletonRow(mapper.ascii.encode(node.getCluster().getName()));
-    Rows rows = new Rows(queryClusterNameMetadata, clusterRow);
+    Rows rows = new DefaultRows(queryClusterNameMetadata, clusterRow);
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
   }
@@ -241,7 +242,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
                     })
                 .collect(Collectors.toList()));
 
-    Rows rows = new Rows(buildSystemPeersRowsMetadata(node), peerRows);
+    Rows rows = new DefaultRows(buildSystemPeersRowsMetadata(node), peerRows);
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
   }

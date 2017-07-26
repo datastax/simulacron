@@ -18,6 +18,7 @@ package com.datastax.oss.simulacron.common.stubbing;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
+import com.datastax.oss.protocol.internal.response.result.DefaultRows;
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.protocol.internal.response.result.RowsMetadata;
 import com.datastax.oss.simulacron.common.cluster.AbstractNode;
@@ -53,7 +54,7 @@ public class EmptyReturnMetadataHandler extends StubMapping implements InternalS
   public List<Action> getActions(AbstractNode node, Frame frame) {
     if (frame.message instanceof Query) {
       Queue<List<ByteBuffer>> peerRows = new ArrayDeque<>();
-      Rows rows = new Rows(buildEmptyRowsMetadata(), peerRows);
+      Rows rows = new DefaultRows(buildEmptyRowsMetadata(), peerRows);
       MessageResponseAction action = new MessageResponseAction(rows);
       return Collections.singletonList(action);
     }
