@@ -15,10 +15,17 @@
  */
 package com.datastax.oss.simulacron.common.cluster;
 
+import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
+import com.datastax.oss.simulacron.common.stubbing.Prime;
+import com.datastax.oss.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.SocketAddress;
+import java.util.Optional;
 
 public class QueryLog {
 
@@ -40,6 +47,8 @@ public class QueryLog {
   @JsonProperty("primed")
   private boolean primed;
 
+  @JsonIgnore private Frame frame;
+
   @JsonCreator
   public QueryLog(
       @JsonProperty("query") String query,
@@ -54,6 +63,45 @@ public class QueryLog {
     this.connection = connection;
     this.timestamp = timestamp;
     this.primed = primed;
+  }
+
+  QueryLog(
+      Frame frame,
+      SocketAddress connection,
+      long timestamp,
+      boolean primed,
+      Optional<StubMapping> stubOption) {
+    this.frame = frame;
+    this.connection = connection;
+    this.timestamp = timestamp;
+    this.primed = primed;
+
+    if (frame.message instanceof Query) {
+      Query query = (Query) frame.message;
+      this.query = query.query;
+      this.consistency = ConsistencyLevel.fromCode(query.options.consistency);
+      this.serialConsistency = ConsistencyLevel.fromCode(query.options.serialConsistency);
+    } else if (frame.message instanceof Execute) {
+      Execute execute = (Execute) frame.message;
+      this.consistency = ConsistencyLevel.fromCode(execute.options.consistency);
+      this.serialConsistency = ConsistencyLevel.fromCode(execute.options.serialConsistency);
+      if (stubOption.isPresent()) {
+        StubMapping stub = stubOption.get();
+        if (stub instanceof Prime) {
+          Prime prime = (Prime) stub;
+          if (prime.getPrimedRequest().when
+              instanceof com.datastax.oss.simulacron.common.request.Query) {
+            com.datastax.oss.simulacron.common.request.Query query =
+                (com.datastax.oss.simulacron.common.request.Query) prime.getPrimedRequest().when;
+            this.query = query.query;
+          }
+        }
+      }
+    } else {
+      // in the case where we don't know how to extract info from the message, just set the query to
+      // the type of message.
+      this.query = frame.message.getClass().getSimpleName().toUpperCase();
+    }
   }
 
   public String getQuery() {
@@ -78,5 +126,30 @@ public class QueryLog {
 
   public boolean isPrimed() {
     return primed;
+  }
+
+  /** @return The frame associated with this log if present. */
+  @JsonIgnore
+  public Frame getFrame() {
+    return this.frame;
+  }
+
+  @Override
+  public String toString() {
+    return "QueryLog{"
+        + "query='"
+        + query
+        + '\''
+        + ", consistency="
+        + consistency
+        + ", serialConsistency="
+        + serialConsistency
+        + ", connection="
+        + connection
+        + ", timestamp="
+        + timestamp
+        + ", primed="
+        + primed
+        + '}';
   }
 }
