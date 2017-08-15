@@ -17,14 +17,32 @@ package com.datastax.oss.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
-import com.datastax.oss.protocol.internal.request.*;
+import com.datastax.oss.protocol.internal.request.Batch;
+import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Options;
+import com.datastax.oss.protocol.internal.request.Prepare;
+import com.datastax.oss.protocol.internal.request.Query;
+import com.datastax.oss.protocol.internal.request.Register;
+import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Supported;
 import com.datastax.oss.protocol.internal.response.error.Unprepared;
 import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
-import com.datastax.oss.simulacron.common.cluster.*;
-import com.datastax.oss.simulacron.common.stubbing.*;
+import com.datastax.oss.simulacron.common.cluster.AbstractNode;
+import com.datastax.oss.simulacron.common.cluster.ActivityLog;
+import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
+import com.datastax.oss.simulacron.common.cluster.ClusterQueryLogReport;
+import com.datastax.oss.simulacron.common.cluster.NodeConnectionReport;
+import com.datastax.oss.simulacron.common.cluster.NodeQueryLogReport;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
+import com.datastax.oss.simulacron.common.stubbing.Action;
+import com.datastax.oss.simulacron.common.stubbing.CloseType;
+import com.datastax.oss.simulacron.common.stubbing.DisconnectAction;
+import com.datastax.oss.simulacron.common.stubbing.MessageResponseAction;
+import com.datastax.oss.simulacron.common.stubbing.NoResponseAction;
+import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.common.stubbing.PrimeDsl.PrimeBuilder;
+import com.datastax.oss.simulacron.common.stubbing.StubMapping;
 import com.datastax.oss.simulacron.server.listener.QueryListener;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.netty.bootstrap.ServerBootstrap;
@@ -39,12 +57,17 @@ import io.netty.util.Timeout;
 import io.netty.util.Timer;
 import io.netty.util.TimerTask;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.math.BigInteger;
 import java.net.SocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
@@ -55,6 +78,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.datastax.oss.protocol.internal.response.result.Void.INSTANCE;
 import static com.datastax.oss.simulacron.common.stubbing.DisconnectAction.Scope.CLUSTER;
@@ -319,7 +344,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     if (activityLogging) {
       queryLog =
           activityLog.addLog(
-              frame, ctx.channel().remoteAddress(), stubOption, System.currentTimeMillis());
+              frame, ctx.channel().remoteAddress(), System.currentTimeMillis(), stubOption);
       notifyQueryListeners(queryLog, false);
     }
 
