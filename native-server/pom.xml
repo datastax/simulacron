@@ -20,7 +20,7 @@
   <parent>
     <groupId>com.datastax.oss.simulacron</groupId>
     <artifactId>simulacron-parent</artifactId>
-    <version>0.5.2</version>
+    <version>0.5.3-SNAPSHOT</version>
   </parent>
 
   <artifactId>simulacron-native-server</artifactId>
