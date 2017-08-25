@@ -163,7 +163,7 @@
       </plugin>
       <plugin>
         <groupId>com.coveo</groupId>
-        <version>1.5.0</version>
+        <version>1.8.0</version>
         <artifactId>fmt-maven-plugin</artifactId>
         <configuration>
           <validateOnly>${format.validateOnly}</validateOnly>

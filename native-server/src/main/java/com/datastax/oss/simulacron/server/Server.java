@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.server;
 
+import static com.datastax.oss.simulacron.server.CompletableFutures.getUninterruptibly;
+
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
@@ -61,8 +63,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-
-import static com.datastax.oss.simulacron.server.CompletableFutures.getUninterruptibly;
 
 /**
  * The main point of entry for registering and binding Clusters to the network. Provides methods for

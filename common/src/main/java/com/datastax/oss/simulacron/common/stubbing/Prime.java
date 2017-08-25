@@ -25,6 +25,7 @@ import com.datastax.oss.simulacron.common.cluster.AbstractNode;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.CodecUtils;
 import com.datastax.oss.simulacron.common.request.Query;
+import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -73,14 +74,20 @@ public class Prime extends StubMapping {
   }
 
   public Prepared toPrepared() {
-    if (this.primedRequest.when instanceof Query
-        && this.primedRequest.then instanceof SuccessResult) {
+    if (this.primedRequest.when instanceof Query) {
       Query query = (Query) this.primedRequest.when;
-      SuccessResult result = (SuccessResult) this.primedRequest.then;
       ByteBuffer b = ByteBuffer.allocate(4);
       b.putInt(query.getQueryId());
-      return new Prepared(
-          b.array(), fetchRowMetadataForParams(query), fetchRowMetadataForResults(result));
+      if (this.primedRequest.then instanceof SuccessResult) {
+        SuccessResult result = (SuccessResult) this.primedRequest.then;
+        return new Prepared(
+            b.array(), fetchRowMetadataForParams(query), fetchRowMetadataForResults(result));
+      } else if (this.primedRequest.then instanceof ErrorResult) {
+        return new Prepared(
+            b.array(),
+            new RowsMetadata(new LinkedList<ColumnSpec>(), null, null),
+            new RowsMetadata(new LinkedList<ColumnSpec>(), null, null));
+      }
     }
     return null;
   }
@@ -94,8 +101,12 @@ public class Prime extends StubMapping {
   @Override
   public List<Action> getActions(AbstractNode node, Frame frame) {
     if (frame.message instanceof Prepare) {
-      if (primedRequest.when instanceof Query && primedRequest.then instanceof SuccessResult) {
-        return this.toPreparedAction();
+      if (primedRequest.when instanceof Query) {
+        if (primedRequest.then instanceof SuccessResult
+            || (primedRequest.then instanceof ErrorResult
+                && ((ErrorResult) primedRequest.then).isignoreOnPrepare())) {
+          return this.toPreparedAction();
+        }
       }
     }
     return primedRequest.then.toActions(node, frame);

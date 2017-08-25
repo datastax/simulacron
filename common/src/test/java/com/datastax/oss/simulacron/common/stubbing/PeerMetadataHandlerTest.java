@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.stubbing;
 
+import static com.datastax.oss.simulacron.common.Assertions.assertThat;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Options;
@@ -34,8 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
-
-import static com.datastax.oss.simulacron.common.Assertions.assertThat;
 
 public class PeerMetadataHandlerTest {
 

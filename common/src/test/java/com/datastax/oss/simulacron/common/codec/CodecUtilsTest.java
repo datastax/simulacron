@@ -15,16 +15,6 @@
  */
 package com.datastax.oss.simulacron.common.codec;
 
-import com.datastax.oss.protocol.internal.response.result.RawType;
-import com.datastax.oss.protocol.internal.response.result.RawType.RawCustom;
-import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
-import com.datastax.oss.protocol.internal.response.result.RawType.RawMap;
-import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
-import com.datastax.oss.protocol.internal.response.result.RawType.RawTuple;
-import java.util.ArrayList;
-import java.util.List;
-import org.junit.Test;
-
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BIGINT;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BLOB;
@@ -43,6 +33,16 @@ import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARC
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARINT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+
+import com.datastax.oss.protocol.internal.response.result.RawType;
+import com.datastax.oss.protocol.internal.response.result.RawType.RawCustom;
+import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
+import com.datastax.oss.protocol.internal.response.result.RawType.RawMap;
+import com.datastax.oss.protocol.internal.response.result.RawType.RawSet;
+import com.datastax.oss.protocol.internal.response.result.RawType.RawTuple;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.Test;
 
 public class CodecUtilsTest {
 

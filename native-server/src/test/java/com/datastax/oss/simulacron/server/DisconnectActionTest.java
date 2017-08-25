@@ -15,6 +15,9 @@
  */
 package com.datastax.oss.simulacron.server;
 
+import static com.datastax.oss.simulacron.server.AddressResolver.localAddressResolver;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Startup;
@@ -42,9 +45,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Test;
-
-import static com.datastax.oss.simulacron.server.AddressResolver.localAddressResolver;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class DisconnectActionTest {
 

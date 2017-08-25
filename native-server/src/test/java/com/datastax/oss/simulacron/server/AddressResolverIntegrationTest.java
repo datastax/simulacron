@@ -15,14 +15,14 @@
  */
 package com.datastax.oss.simulacron.server;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import java.net.SocketAddress;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class AddressResolverIntegrationTest {
 

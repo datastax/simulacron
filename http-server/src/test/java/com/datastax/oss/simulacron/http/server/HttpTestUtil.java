@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
+
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ResultSet;
@@ -35,8 +37,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 
 public class HttpTestUtil {
 

@@ -15,6 +15,9 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
@@ -32,9 +35,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import org.junit.Rule;
 import org.junit.Test;
-
-import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class EndpointIntegrationTest {
   private final ObjectMapper om = ObjectMapperHolder.getMapper();

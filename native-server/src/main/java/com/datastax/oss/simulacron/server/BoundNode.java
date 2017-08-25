@@ -15,6 +15,14 @@
  */
 package com.datastax.oss.simulacron.server;
 
+import static com.datastax.oss.protocol.internal.response.result.Void.INSTANCE;
+import static com.datastax.oss.simulacron.common.stubbing.DisconnectAction.Scope.CLUSTER;
+import static com.datastax.oss.simulacron.common.stubbing.DisconnectAction.Scope.NODE;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.noRows;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
+import static com.datastax.oss.simulacron.common.utils.FrameUtils.wrapResponse;
+import static com.datastax.oss.simulacron.server.ChannelUtils.completable;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Batch;
@@ -80,14 +88,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.datastax.oss.protocol.internal.response.result.Void.INSTANCE;
-import static com.datastax.oss.simulacron.common.stubbing.DisconnectAction.Scope.CLUSTER;
-import static com.datastax.oss.simulacron.common.stubbing.DisconnectAction.Scope.NODE;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.noRows;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
-import static com.datastax.oss.simulacron.common.utils.FrameUtils.wrapResponse;
-import static com.datastax.oss.simulacron.server.ChannelUtils.completable;
 
 public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     implements BoundTopic<NodeConnectionReport, NodeQueryLogReport> {

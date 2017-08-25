@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.cluster;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,8 +24,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class ClusterSpecTest {
 

@@ -15,21 +15,22 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.SERVER_ERROR;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.SERVER_ERROR;
 
 public class ServerErrorResult extends ErrorResult {
 
   public ServerErrorResult(String errorMessage) {
-    this(errorMessage, 0);
+    this(errorMessage, 0, false);
   }
 
   @JsonCreator
   public ServerErrorResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
-      @JsonProperty("delay_in_ms") long delayInMs) {
-    super(SERVER_ERROR, errorMessage, delayInMs);
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(SERVER_ERROR, errorMessage, delayInMs, ignoreOnPrepare);
   }
 }

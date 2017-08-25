@@ -15,6 +15,12 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.rows;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
+import static com.datastax.oss.simulacron.driver.DriverTypeAdapters.adapt;
+import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
@@ -32,12 +38,6 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.Rule;
 import org.junit.Test;
-
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.rows;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
-import static com.datastax.oss.simulacron.driver.DriverTypeAdapters.adapt;
-import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class ActivityLogIntegrationTest {
 

@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.READ_FAILURE;
+
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.error.ReadFailure;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -23,8 +25,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.InetAddress;
 import java.util.Map;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.READ_FAILURE;
 
 public class ReadFailureResult extends RequestFailureResult {
 
@@ -37,7 +37,7 @@ public class ReadFailureResult extends RequestFailureResult {
       int blockFor,
       Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       boolean dataPresent) {
-    this(cl, received, blockFor, failureReasonByEndpoint, dataPresent, 0);
+    this(cl, received, blockFor, failureReasonByEndpoint, dataPresent, 0, false);
   }
 
   @JsonCreator
@@ -48,8 +48,10 @@ public class ReadFailureResult extends RequestFailureResult {
       @JsonProperty(value = "failure_reasons", required = true)
           Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       @JsonProperty(value = "data_present", required = true) boolean dataPresent,
-      @JsonProperty("delay_in_ms") long delayInMs) {
-    super(READ_FAILURE, cl, received, blockFor, failureReasonByEndpoint, delayInMs);
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(
+        READ_FAILURE, cl, received, blockFor, failureReasonByEndpoint, delayInMs, ignoreOnPrepare);
     this.dataPresent = dataPresent;
   }
 

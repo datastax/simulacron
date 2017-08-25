@@ -15,13 +15,13 @@
  */
 package com.datastax.oss.simulacron.driver;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.NettyOptions;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
 import io.netty.channel.EventLoopGroup;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /** Convenience class for creating ClusterSpec and NodeSpec builders with ideal defaults. */
 public class SimulacronDriverSupport {

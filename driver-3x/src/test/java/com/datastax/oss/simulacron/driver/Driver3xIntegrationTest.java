@@ -15,6 +15,9 @@
  */
 package com.datastax.oss.simulacron.driver;
 
+import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.NodeSpec;
@@ -22,9 +25,6 @@ import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
 import com.datastax.oss.simulacron.server.Server;
 import org.junit.Test;
-
-import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class Driver3xIntegrationTest {
 

@@ -15,6 +15,27 @@
  */
 package com.datastax.oss.simulacron.common.codec;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BIGINT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BLOB;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BOOLEAN;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.COUNTER;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DATE;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DECIMAL;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DOUBLE;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.FLOAT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INET;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.SMALLINT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIME;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIMESTAMP;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIMEUUID;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TINYINT;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARCHAR;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARINT;
+import static com.datastax.oss.simulacron.common.codec.CodecUtils.primitive;
+
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawList;
 import com.datastax.oss.protocol.internal.response.result.RawType.RawMap;
@@ -48,27 +69,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BIGINT;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BLOB;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BOOLEAN;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.COUNTER;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DATE;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DECIMAL;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.DOUBLE;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.FLOAT;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INET;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INT;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.SMALLINT;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIME;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIMESTAMP;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TIMEUUID;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.TINYINT;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARCHAR;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.VARINT;
-import static com.datastax.oss.simulacron.common.codec.CodecUtils.primitive;
 
 public class CqlMapper {
 

@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.WRITE_FAILURE;
+
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.error.WriteFailure;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -24,8 +26,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.InetAddress;
 import java.util.Map;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.WRITE_FAILURE;
 
 public class WriteFailureResult extends RequestFailureResult {
 
@@ -38,7 +38,7 @@ public class WriteFailureResult extends RequestFailureResult {
       int blockFor,
       Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       WriteType writeType) {
-    this(cl, received, blockFor, failureReasonByEndpoint, writeType, 0);
+    this(cl, received, blockFor, failureReasonByEndpoint, writeType, 0, false);
   }
 
   @JsonCreator
@@ -49,8 +49,10 @@ public class WriteFailureResult extends RequestFailureResult {
       @JsonProperty(value = "failure_reasons", required = true)
           Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       @JsonProperty(value = "write_type", required = true) WriteType writeType,
-      @JsonProperty("delay_in_ms") long delayInMs) {
-    super(WRITE_FAILURE, cl, received, blockFor, failureReasonByEndpoint, delayInMs);
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(
+        WRITE_FAILURE, cl, received, blockFor, failureReasonByEndpoint, delayInMs, ignoreOnPrepare);
     this.writeType = writeType;
   }
 

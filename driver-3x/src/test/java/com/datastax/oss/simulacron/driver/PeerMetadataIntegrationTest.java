@@ -15,6 +15,9 @@
  */
 package com.datastax.oss.simulacron.driver;
 
+import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
@@ -30,9 +33,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.Test;
-
-import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class PeerMetadataIntegrationTest {
 

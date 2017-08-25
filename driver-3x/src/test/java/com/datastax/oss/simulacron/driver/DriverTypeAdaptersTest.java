@@ -15,10 +15,6 @@
  */
 package com.datastax.oss.simulacron.driver;
 
-import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.WriteType;
-import org.junit.Test;
-
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ALL;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.ANY;
 import static com.datastax.oss.simulacron.common.codec.ConsistencyLevel.EACH_QUORUM;
@@ -39,6 +35,10 @@ import static com.datastax.oss.simulacron.common.codec.WriteType.UNLOGGED_BATCH;
 import static com.datastax.oss.simulacron.driver.DriverTypeAdapters.adapt;
 import static com.datastax.oss.simulacron.driver.DriverTypeAdapters.extract;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.WriteType;
+import org.junit.Test;
 
 public class DriverTypeAdaptersTest {
 

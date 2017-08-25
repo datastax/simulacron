@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.cluster;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -24,8 +26,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Map;
 import java.util.Optional;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 public class AbstractNode<C extends AbstractCluster, D extends AbstractDataCenter<C, ?>>
     extends AbstractNodeProperties implements NodeStructure<C, D> {

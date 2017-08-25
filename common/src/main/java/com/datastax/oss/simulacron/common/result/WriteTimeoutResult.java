@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.WRITE_TIMEOUT;
+
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.error.WriteTimeout;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -22,15 +24,13 @@ import com.datastax.oss.simulacron.common.codec.WriteType;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.WRITE_TIMEOUT;
-
 public class WriteTimeoutResult extends RequestTimeoutResult {
 
   @JsonProperty("write_type")
   private final WriteType writeType;
 
   public WriteTimeoutResult(ConsistencyLevel cl, int received, int blockFor, WriteType writeType) {
-    this(cl, received, blockFor, writeType, 0);
+    this(cl, received, blockFor, writeType, 0, false);
   }
 
   @JsonCreator
@@ -39,8 +39,9 @@ public class WriteTimeoutResult extends RequestTimeoutResult {
       @JsonProperty(value = "received", required = true) int received,
       @JsonProperty(value = "block_for", required = true) int blockFor,
       @JsonProperty(value = "write_type", required = true) WriteType writeType,
-      @JsonProperty("delay_in_ms") long delayInMs) {
-    super(WRITE_TIMEOUT, cl, received, blockFor, delayInMs);
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(WRITE_TIMEOUT, cl, received, blockFor, delayInMs, ignoreOnPrepare);
     this.writeType = writeType;
   }
 

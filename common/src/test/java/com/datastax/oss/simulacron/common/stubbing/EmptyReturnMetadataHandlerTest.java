@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.stubbing;
 
+import static com.datastax.oss.simulacron.common.Assertions.assertThat;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.request.Options;
@@ -23,8 +25,6 @@ import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.simulacron.common.utils.FrameUtils;
 import java.util.List;
 import org.junit.Test;
-
-import static com.datastax.oss.simulacron.common.Assertions.assertThat;
 
 public class EmptyReturnMetadataHandlerTest {
 
