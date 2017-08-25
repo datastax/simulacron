@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static com.datastax.oss.simulacron.http.server.HttpUtils.handleError;
+
 import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.ConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.ObjectMapperHolder;
@@ -32,8 +34,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.datastax.oss.simulacron.http.server.HttpUtils.handleError;
 
 public class EndpointManager implements HttpListener {
   private final Logger logger = LoggerFactory.getLogger(EndpointManager.class);

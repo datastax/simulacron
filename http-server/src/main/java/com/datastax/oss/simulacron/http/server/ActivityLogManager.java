@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static com.datastax.oss.simulacron.http.server.HttpUtils.handleError;
+
 import com.datastax.oss.simulacron.common.cluster.ClusterQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.oss.simulacron.common.cluster.QueryLogReport;
@@ -23,8 +25,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-
-import static com.datastax.oss.simulacron.http.server.HttpUtils.handleError;
 
 public class ActivityLogManager implements HttpListener {
   Server server;

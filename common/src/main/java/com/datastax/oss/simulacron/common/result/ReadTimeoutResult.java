@@ -15,13 +15,13 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.READ_TIMEOUT;
+
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.error.ReadTimeout;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.READ_TIMEOUT;
 
 public class ReadTimeoutResult extends RequestTimeoutResult {
 
@@ -29,7 +29,7 @@ public class ReadTimeoutResult extends RequestTimeoutResult {
   private final boolean dataPresent;
 
   public ReadTimeoutResult(ConsistencyLevel cl, int received, int blockFor, boolean dataPresent) {
-    this(cl, received, blockFor, dataPresent, 0);
+    this(cl, received, blockFor, dataPresent, 0, false);
   }
 
   @JsonCreator
@@ -38,8 +38,9 @@ public class ReadTimeoutResult extends RequestTimeoutResult {
       @JsonProperty(value = "received", required = true) int received,
       @JsonProperty(value = "block_for", required = true) int blockFor,
       @JsonProperty(value = "data_present", required = true) boolean dataPresent,
-      @JsonProperty("delay_in_ms") long delayInMs) {
-    super(READ_TIMEOUT, cl, received, blockFor, delayInMs);
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(READ_TIMEOUT, cl, received, blockFor, delayInMs, ignoreOnPrepare);
     this.dataPresent = dataPresent;
   }
 

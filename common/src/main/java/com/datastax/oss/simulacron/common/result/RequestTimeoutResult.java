@@ -29,12 +29,21 @@ public abstract class RequestTimeoutResult extends ErrorResult {
   @JsonProperty("block_for")
   protected final int blockFor;
 
+  @JsonProperty("ignore_on_prepare")
+  boolean ignoreOnPrepare;
+
   protected RequestTimeoutResult(
-      int errorCode, ConsistencyLevel cl, int received, int blockFor, long delayInMs) {
+      int errorCode,
+      ConsistencyLevel cl,
+      int received,
+      int blockFor,
+      long delayInMs,
+      boolean ignoreOnPrepare) {
     super(
         errorCode,
         String.format("Operation timed out - received only %d responses.", received),
-        delayInMs);
+        delayInMs,
+        ignoreOnPrepare);
     this.cl = cl;
     this.received = received;
     this.blockFor = blockFor;

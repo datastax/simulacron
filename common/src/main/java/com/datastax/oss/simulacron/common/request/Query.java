@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.request;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Execute;
 import com.datastax.oss.protocol.internal.request.Prepare;
@@ -31,8 +33,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 
 public final class Query extends Request {
   public final String query;

@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.server;
 
+import static com.datastax.oss.simulacron.server.CompletableFutures.getUninterruptibly;
+
 import com.datastax.oss.simulacron.common.cluster.ConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.NodeProperties;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
@@ -31,8 +33,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
-import static com.datastax.oss.simulacron.server.CompletableFutures.getUninterruptibly;
 
 public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport>
     extends AutoCloseable, NodeProperties {

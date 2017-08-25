@@ -15,12 +15,12 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.ALREADY_EXISTS;
+
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.error.AlreadyExists;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.ALREADY_EXISTS;
 
 public class AlreadyExistsResult extends ErrorResult {
 
@@ -31,7 +31,7 @@ public class AlreadyExistsResult extends ErrorResult {
   private final String table;
 
   public AlreadyExistsResult(String errorMessage, String keyspace, String table) {
-    this(errorMessage, keyspace, table, 0);
+    this(errorMessage, keyspace, table, 0, false);
   }
 
   @JsonCreator
@@ -39,8 +39,9 @@ public class AlreadyExistsResult extends ErrorResult {
       @JsonProperty("message") String errorMessage,
       @JsonProperty(value = "keyspace", required = true) String keyspace,
       @JsonProperty(value = "table", required = true) String table,
-      @JsonProperty("delayInMs") long delayInMs) {
-    super(ALREADY_EXISTS, errorMessage, delayInMs);
+      @JsonProperty("delayInMs") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(ALREADY_EXISTS, errorMessage, delayInMs, ignoreOnPrepare);
     this.keyspace = keyspace;
     this.table = table;
   }

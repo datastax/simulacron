@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static com.datastax.oss.simulacron.http.server.HttpUtils.handleMessage;
+
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import com.datastax.oss.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
@@ -28,8 +30,6 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.datastax.oss.simulacron.http.server.HttpUtils.handleMessage;
 
 public class QueryManager implements HttpListener {
   private static Logger logger = LoggerFactory.getLogger(QueryManager.class);

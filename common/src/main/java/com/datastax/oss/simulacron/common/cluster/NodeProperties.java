@@ -15,14 +15,14 @@
  */
 package com.datastax.oss.simulacron.common.cluster;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static java.util.Optional.ofNullable;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static java.util.Optional.ofNullable;
 
 /**
  * Interface that defines an Object having a name, id, cassandra version a mapping of peer info and

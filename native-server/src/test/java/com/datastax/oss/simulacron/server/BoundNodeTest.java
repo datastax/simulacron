@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.server;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.ProtocolConstants;
@@ -53,8 +55,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class BoundNodeTest {
 

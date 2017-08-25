@@ -15,19 +15,21 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.IS_BOOTSTRAPPING;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.IS_BOOTSTRAPPING;
 
 public class IsBootstrappingResult extends ErrorResult {
 
   public IsBootstrappingResult() {
-    this(0);
+    this(0, false);
   }
 
   @JsonCreator
-  public IsBootstrappingResult(@JsonProperty("delay_in_ms") long delayInMs) {
-    super(IS_BOOTSTRAPPING, "Cannot read from a bootstrapping node", delayInMs);
+  public IsBootstrappingResult(
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(IS_BOOTSTRAPPING, "Cannot read from a bootstrapping node", delayInMs, ignoreOnPrepare);
   }
 }

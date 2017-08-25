@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.request;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.oss.protocol.internal.request.Execute;
 import com.datastax.oss.protocol.internal.request.query.QueryOptions;
 import com.datastax.oss.simulacron.common.utils.FrameUtils;
@@ -26,8 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class QueryTest {
 

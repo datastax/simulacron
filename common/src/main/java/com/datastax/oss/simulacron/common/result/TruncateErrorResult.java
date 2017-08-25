@@ -15,21 +15,22 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.TRUNCATE_ERROR;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.TRUNCATE_ERROR;
 
 public class TruncateErrorResult extends ErrorResult {
 
   public TruncateErrorResult(String message) {
-    this(message, 0);
+    this(message, 0, false);
   }
 
   @JsonCreator
   public TruncateErrorResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
-      @JsonProperty("delay_in_ms") long delayInMs) {
-    super(TRUNCATE_ERROR, errorMessage, delayInMs);
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(TRUNCATE_ERROR, errorMessage, delayInMs, ignoreOnPrepare);
   }
 }

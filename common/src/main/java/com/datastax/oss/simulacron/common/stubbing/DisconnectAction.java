@@ -15,9 +15,9 @@
  */
 package com.datastax.oss.simulacron.common.stubbing;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import static com.datastax.oss.simulacron.common.stubbing.DisconnectAction.Scope.CONNECTION;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class DisconnectAction implements Action {
 

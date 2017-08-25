@@ -36,19 +36,24 @@ public abstract class RequestFailureResult extends ErrorResult {
   @JsonProperty("failure_reasons")
   protected final Map<InetAddress, RequestFailureReason> failureReasonByEndpoint;
 
+  @JsonProperty("ignore_on_prepare")
+  boolean ignoreOnPrepare;
+
   protected RequestFailureResult(
       int errorCode,
       ConsistencyLevel cl,
       int received,
       int blockFor,
       Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
-      long delayInMs) {
+      long delayInMs,
+      boolean ignoreOnPrepare) {
     super(
         errorCode,
         String.format(
             "Operation failed - received %d responses and %d failures",
             received, failureReasonByEndpoint.size()),
-        delayInMs);
+        delayInMs,
+        ignoreOnPrepare);
     this.cl = cl;
     this.received = received;
     this.blockFor = blockFor;

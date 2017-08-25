@@ -15,13 +15,13 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.FUNCTION_FAILURE;
+
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.error.FunctionFailure;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.FUNCTION_FAILURE;
 
 public class FunctionFailureResult extends ErrorResult {
 
@@ -36,7 +36,7 @@ public class FunctionFailureResult extends ErrorResult {
 
   public FunctionFailureResult(
       String keyspace, String function, List<String> argTypes, String detail) {
-    this(keyspace, function, argTypes, detail, 0);
+    this(keyspace, function, argTypes, detail, 0, false);
   }
 
   @JsonCreator
@@ -45,11 +45,13 @@ public class FunctionFailureResult extends ErrorResult {
       @JsonProperty(value = "function", required = true) String function,
       @JsonProperty("arg_types") List<String> argTypes,
       @JsonProperty("detail") String detail,
-      @JsonProperty("delay_in_ms") long delayInMs) {
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
     super(
         FUNCTION_FAILURE,
         "execution of '" + functionName(keyspace, function) + argTypes + "' failed: " + detail,
-        delayInMs);
+        delayInMs,
+        ignoreOnPrepare);
     this.keyspace = keyspace;
     this.name = function;
     this.argTypes = argTypes;

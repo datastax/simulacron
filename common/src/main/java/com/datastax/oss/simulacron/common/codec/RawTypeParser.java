@@ -15,13 +15,13 @@
  */
 package com.datastax.oss.simulacron.common.codec;
 
+import static com.datastax.oss.simulacron.common.codec.CodecUtils.nativeTypeMap;
+
 import com.datastax.oss.protocol.internal.response.result.RawType;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.datastax.oss.simulacron.common.codec.CodecUtils.nativeTypeMap;
 
 /**
  * A parser for parsing a type name as a {@link String} to a {@link RawType}, i.e. 'ascii' -> new

@@ -2042,6 +2042,16 @@ definitions:
               key: "bigint"
               description: "ascii"
               dates: "map<ascii,date>"
+  ErrorResult:
+    allOf:
+      - $ref: '#/definitions/Then'
+      - type: object
+        required:
+          - ignore_on_prepare
+        properties:
+          ignore_on_prepare:
+            type: boolean
+            example: false
   SuccessResultBatch:
     allOf:
       - $ref: '#/definitions/Then'
@@ -2065,7 +2075,7 @@ definitions:
               applied: "boolean"
   AlreadyExistsResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2085,7 +2095,7 @@ definitions:
             example: tbl
   AuthenticationErrorResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2097,7 +2107,7 @@ definitions:
             example: Invalid username or password!
   ConfigErrorResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2109,7 +2119,7 @@ definitions:
             example: Invalid Configuration!
   FunctionFailureResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - function
@@ -2129,7 +2139,7 @@ definitions:
             example: Could not execute function!
   InvalidResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2160,7 +2170,7 @@ definitions:
             example: Server is overloaded!
   ProtocolErrorResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2172,7 +2182,7 @@ definitions:
             example: Invalid protocol version 98
   ReadFailureResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - consistency_level
@@ -2202,7 +2212,7 @@ definitions:
             example: true
   ReadTimeoutResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - consistency_level
@@ -2225,7 +2235,7 @@ definitions:
             example: true
   ServerErrorResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2237,7 +2247,7 @@ definitions:
             example: This is a server error
   SyntaxErrorResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2249,7 +2259,7 @@ definitions:
             example: Invalid syntax, expected ')'
   TruncateErrorResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2261,7 +2271,7 @@ definitions:
             example: Could not truncate table
   UnauthorizedResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2273,7 +2283,7 @@ definitions:
             example: User lacks permissions to update table 'x'
   UnavailableResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - consistency_level
@@ -2292,7 +2302,7 @@ definitions:
             example: 2
   UnpreparedResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - message
@@ -2304,7 +2314,7 @@ definitions:
             example: Prepared query with ID 8657309 not found
   WriteFailureResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - consistency_level
@@ -2333,7 +2343,7 @@ definitions:
             $ref: '#/definitions/WriteType'
   WriteTimeoutResult:
     allOf:
-      - $ref: '#/definitions/Then'
+      - $ref: '#/definitions/ErrorResult'
       - type: object
         required:
           - consistency_level

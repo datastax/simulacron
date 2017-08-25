@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.server;
 
+import static com.datastax.oss.simulacron.common.utils.FrameUtils.wrapRequest;
+
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.FrameCodec;
@@ -34,8 +36,6 @@ import java.net.SocketAddress;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import static com.datastax.oss.simulacron.common.utils.FrameUtils.wrapRequest;
 
 public class MockClient implements Closeable {
 

@@ -15,13 +15,13 @@
  */
 package com.datastax.oss.simulacron.common.result;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.UNAVAILABLE;
+
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.error.Unavailable;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.UNAVAILABLE;
 
 public class UnavailableResult extends ErrorResult {
 
@@ -41,7 +41,7 @@ public class UnavailableResult extends ErrorResult {
   private final int alive;
 
   public UnavailableResult(ConsistencyLevel cl, int required, int alive) {
-    this("Cannot achieve consistency level " + cl, cl, required, alive, 0);
+    this("Cannot achieve consistency level " + cl, cl, required, alive, 0, false);
   }
 
   @JsonCreator
@@ -50,8 +50,9 @@ public class UnavailableResult extends ErrorResult {
       @JsonProperty(value = "consistency_level", required = true) ConsistencyLevel cl,
       @JsonProperty(value = "required", required = true) int required,
       @JsonProperty(value = "alive", required = true) int alive,
-      @JsonProperty("delay_in_ms") long delayInMs) {
-    super(UNAVAILABLE, errorMessage, delayInMs);
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+    super(UNAVAILABLE, errorMessage, delayInMs, ignoreOnPrepare);
     this.cl = cl;
     this.required = required;
     this.alive = alive;

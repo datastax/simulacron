@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.stubbing;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INT;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
@@ -29,8 +31,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INT;
 
 public class EmptyReturnMetadataHandler extends StubMapping implements InternalStubMapping {
 

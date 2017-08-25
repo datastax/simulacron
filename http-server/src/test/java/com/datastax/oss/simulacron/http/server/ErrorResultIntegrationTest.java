@@ -15,6 +15,35 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.alreadyExists;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.authenticationError;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.closeConnection;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.configurationError;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.functionFailure;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.invalid;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.isBootstrapping;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.noResult;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.overloaded;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.protocolError;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.readFailure;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.readTimeout;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.serverError;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.syntaxError;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.truncateError;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.unauthorized;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.unavailable;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.unprepared;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.void_;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.writeFailure;
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.writeTimeout;
+import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
+import static com.datastax.oss.simulacron.http.server.FluentMatcher.match;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.endsWith;
+import static org.hamcrest.CoreMatchers.instanceOf;
+
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
@@ -58,35 +87,6 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.alreadyExists;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.authenticationError;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.closeConnection;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.configurationError;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.functionFailure;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.invalid;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.isBootstrapping;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.noResult;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.overloaded;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.protocolError;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.readFailure;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.readTimeout;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.serverError;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.syntaxError;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.truncateError;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.unauthorized;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.unavailable;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.unprepared;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.void_;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.writeFailure;
-import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.writeTimeout;
-import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
-import static com.datastax.oss.simulacron.http.server.FluentMatcher.match;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.endsWith;
-import static org.hamcrest.CoreMatchers.instanceOf;
 
 public class ErrorResultIntegrationTest {
 

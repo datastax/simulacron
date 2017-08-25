@@ -15,6 +15,9 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
+
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
@@ -46,9 +49,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
 
 public class HttpContainerIntegrationTest {
   private HttpContainer httpContainer;

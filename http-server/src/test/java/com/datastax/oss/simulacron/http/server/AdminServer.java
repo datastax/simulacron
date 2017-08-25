@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static org.junit.Assert.fail;
+
 import com.datastax.oss.simulacron.common.cluster.AbstractNodeProperties;
 import com.datastax.oss.simulacron.common.cluster.ClusterQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
@@ -36,8 +38,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.rules.ExternalResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.junit.Assert.fail;
 
 public class AdminServer extends ExternalResource {
 

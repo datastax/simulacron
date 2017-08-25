@@ -15,6 +15,11 @@
  */
 package com.datastax.oss.simulacron.common.stubbing;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BOOLEAN;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INET;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
@@ -44,11 +49,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BOOLEAN;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INET;
-import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID;
 
 public class PeerMetadataHandler extends StubMapping implements InternalStubMapping {
 

@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.common.cluster;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.simulacron.common.request.Options;
 import com.datastax.oss.simulacron.common.request.Query;
@@ -31,8 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class ObjectMapperHolderTest {
 

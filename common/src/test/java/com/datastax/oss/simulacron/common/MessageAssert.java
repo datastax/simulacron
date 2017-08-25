@@ -15,11 +15,11 @@
  */
 package com.datastax.oss.simulacron.common;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import org.assertj.core.api.AbstractAssert;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class MessageAssert<S extends AbstractAssert<S, A>, A extends Message>
     extends AbstractAssert<S, A> {

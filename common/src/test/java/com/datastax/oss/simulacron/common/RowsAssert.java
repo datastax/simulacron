@@ -15,13 +15,13 @@
  */
 package com.datastax.oss.simulacron.common;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.simulacron.common.codec.CqlMapper;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class RowsAssert extends MessageAssert<RowsAssert, Rows> {
   RowsAssert(Rows actual) {
