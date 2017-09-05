@@ -30,6 +30,9 @@ import java.util.Optional;
 
 public class QueryLog {
 
+  @JsonProperty("type")
+  private String type;
+
   @JsonProperty("query")
   private String query;
 
@@ -76,6 +79,7 @@ public class QueryLog {
     this.connection = connection;
     this.timestamp = timestamp;
     this.primed = primed;
+    this.type = frame.message.getClass().getSimpleName().toUpperCase();
 
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
@@ -100,14 +104,16 @@ public class QueryLog {
       }
     } else if (frame.message instanceof Prepare) {
       Prepare prepare = (Prepare) frame.message;
-      this.consistency = ConsistencyLevel.ANY;
-      this.serialConsistency = ConsistencyLevel.SERIAL;
-      this.query = String.format("PREPARE (%s)", prepare.cqlQuery);
+      this.query = prepare.cqlQuery;
     } else {
       // in the case where we don't know how to extract info from the message, just set the query to
       // the type of message.
       this.query = frame.message.getClass().getSimpleName().toUpperCase();
     }
+  }
+
+  public String getType() {
+    return type;
   }
 
   public String getQuery() {
@@ -143,7 +149,10 @@ public class QueryLog {
   @Override
   public String toString() {
     return "QueryLog{"
-        + "query='"
+        + "type='"
+        + type
+        + '\''
+        + ", query='"
         + query
         + '\''
         + ", consistency="
