@@ -2615,6 +2615,9 @@ definitions:
   QueryLog:
     type: object
     properties:
+      type:
+        type: string
+        example: "QUERY"
       query:
         type: string
         example: "select * from tbl"

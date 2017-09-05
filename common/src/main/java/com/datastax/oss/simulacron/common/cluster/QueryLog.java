@@ -17,6 +17,7 @@ package com.datastax.oss.simulacron.common.cluster;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Prepare;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
@@ -28,6 +29,9 @@ import java.net.SocketAddress;
 import java.util.Optional;
 
 public class QueryLog {
+
+  @JsonProperty("type")
+  private String type;
 
   @JsonProperty("query")
   private String query;
@@ -75,6 +79,7 @@ public class QueryLog {
     this.connection = connection;
     this.timestamp = timestamp;
     this.primed = primed;
+    this.type = frame.message.getClass().getSimpleName().toUpperCase();
 
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
@@ -97,11 +102,18 @@ public class QueryLog {
           }
         }
       }
+    } else if (frame.message instanceof Prepare) {
+      Prepare prepare = (Prepare) frame.message;
+      this.query = prepare.cqlQuery;
     } else {
       // in the case where we don't know how to extract info from the message, just set the query to
       // the type of message.
       this.query = frame.message.getClass().getSimpleName().toUpperCase();
     }
+  }
+
+  public String getType() {
+    return type;
   }
 
   public String getQuery() {
@@ -137,7 +149,10 @@ public class QueryLog {
   @Override
   public String toString() {
     return "QueryLog{"
-        + "query='"
+        + "type='"
+        + type
+        + '\''
+        + ", query='"
         + query
         + '\''
         + ", consistency="
