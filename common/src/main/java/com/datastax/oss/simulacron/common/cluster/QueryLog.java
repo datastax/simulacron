@@ -17,6 +17,7 @@ package com.datastax.oss.simulacron.common.cluster;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.Prepare;
 import com.datastax.oss.protocol.internal.request.Query;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
@@ -97,6 +98,11 @@ public class QueryLog {
           }
         }
       }
+    } else if (frame.message instanceof Prepare) {
+      Prepare prepare = (Prepare) frame.message;
+      this.consistency = ConsistencyLevel.ANY;
+      this.serialConsistency = ConsistencyLevel.SERIAL;
+      this.query = String.format("PREPARE (%s)", prepare.cqlQuery);
     } else {
       // in the case where we don't know how to extract info from the message, just set the query to
       // the type of message.
