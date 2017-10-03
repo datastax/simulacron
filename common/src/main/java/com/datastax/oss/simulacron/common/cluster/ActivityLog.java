@@ -22,11 +22,13 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 public class ActivityLog {
 
-  private List<QueryLog> queryLog = new ArrayList<QueryLog>();
+  private Queue<QueryLog> queryLog = new ConcurrentLinkedQueue<>();
 
   public QueryLog addLog(
       Frame frame, SocketAddress socketAddress, long timestamp, Optional<StubMapping> stubOption) {
@@ -49,10 +51,10 @@ public class ActivityLog {
   }
 
   public List<QueryLog> getLogs() {
-    return queryLog;
+    return new ArrayList<>(queryLog);
   }
 
   public List<QueryLog> getLogs(boolean primed) {
-    return queryLog.stream().filter(l -> l.isPrimed() == primed).collect(Collectors.toList());
+    return getLogs().stream().filter(l -> l.isPrimed() == primed).collect(Collectors.toList());
   }
 }
