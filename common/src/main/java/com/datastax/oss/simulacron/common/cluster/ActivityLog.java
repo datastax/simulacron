@@ -55,6 +55,6 @@ public class ActivityLog {
   }
 
   public List<QueryLog> getLogs(boolean primed) {
-    return getLogs().stream().filter(l -> l.isPrimed() == primed).collect(Collectors.toList());
+    return queryLog.stream().filter(l -> l.isPrimed() == primed).collect(Collectors.toList());
   }
 }
