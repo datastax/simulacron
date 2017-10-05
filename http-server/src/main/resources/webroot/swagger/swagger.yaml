@@ -954,12 +954,12 @@ paths:
           description: Contains a then section that defines a write timeout to be returned with the given message.
           required: true
           schema:
-            $ref: '#/definitions/PrimeQueryWriteFailure'
+            $ref: '#/definitions/PrimeQueryWriteTimeout'
       responses:
         '201':
           description: PrimedQuery
           schema:
-            $ref: '#/definitions/PrimeQueryWriteFailure'
+            $ref: '#/definitions/PrimeQueryWriteTimeout'
         '400':
           description: Unable to parse provided query
   '/prime/{clusterId}#(close_connection)':
