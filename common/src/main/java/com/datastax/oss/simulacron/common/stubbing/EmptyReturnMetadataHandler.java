@@ -67,6 +67,6 @@ public class EmptyReturnMetadataHandler extends StubMapping implements InternalS
     List<ColumnSpec> systemPeersSpecs =
         CodecUtils.columnSpecs(systemPeers.apply("key", CodecUtils.primitive(INT)));
 
-    return new RowsMetadata(systemPeersSpecs, null, new int[] {0});
+    return new RowsMetadata(systemPeersSpecs, null, new int[] {0}, null);
   }
 }

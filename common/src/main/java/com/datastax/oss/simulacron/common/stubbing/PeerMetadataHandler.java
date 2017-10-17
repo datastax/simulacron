@@ -64,7 +64,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     CodecUtils.ColumnSpecBuilder systemLocal = CodecUtils.columnSpecBuilder("system", "local");
     List<ColumnSpec> queryClusterNameSpecs =
         CodecUtils.columnSpecs(systemLocal.apply("cluster_name", CodecUtils.primitive(ASCII)));
-    queryClusterNameMetadata = new RowsMetadata(queryClusterNameSpecs, null, new int[] {});
+    queryClusterNameMetadata = new RowsMetadata(queryClusterNameSpecs, null, new int[] {}, null);
   }
 
   private static final Pattern queryPeers = Pattern.compile("SELECT (.*) FROM system\\.peers");
@@ -274,7 +274,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
       systemPeersSpecs.add(systemPeers.apply("dse_version", CodecUtils.primitive(ASCII)));
       systemPeersSpecs.add(systemPeers.apply("graph", CodecUtils.primitive(BOOLEAN)));
     }
-    return new RowsMetadata(systemPeersSpecs, null, new int[] {0});
+    return new RowsMetadata(systemPeersSpecs, null, new int[] {0}, null);
   }
 
   private RowsMetadata buildSystemLocalRowsMetadata(AbstractNode node) {
@@ -298,6 +298,6 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
       systemLocalSpecs.add(systemLocal.apply("dse_version", CodecUtils.primitive(ASCII)));
       systemLocalSpecs.add(systemLocal.apply("graph", CodecUtils.primitive(BOOLEAN)));
     }
-    return new RowsMetadata(systemLocalSpecs, null, new int[] {0});
+    return new RowsMetadata(systemLocalSpecs, null, new int[] {0}, null);
   }
 }

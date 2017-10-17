@@ -145,7 +145,8 @@ public class BoundNodeTest {
   }
 
   private QueryOptions options =
-      new QueryOptions(1, Collections.emptyList(), Collections.emptyMap(), true, 0, null, 8, 0L);
+      new QueryOptions(
+          1, Collections.emptyList(), Collections.emptyMap(), true, 0, null, 8, 0L, null);
 
   @Test
   public void shouldRespondWithUnpreparedToExecute() {
@@ -197,8 +198,8 @@ public class BoundNodeTest {
   @Test
   public void shouldRespondWithStubActionsWhenMatched() throws Exception {
     String query = "select * from foo where bar = ?";
-    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0]);
-    Prepared response = new Prepared(new byte[] {1, 7, 9}, rowsMetadata, rowsMetadata);
+    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0], null);
+    Prepared response = new Prepared(new byte[] {1, 7, 9}, null, rowsMetadata, rowsMetadata);
     node.getStubStore()
         .register(
             new StubMapping() {
@@ -230,8 +231,8 @@ public class BoundNodeTest {
   @Test
   public void shouldRespondWithDelay() throws Exception {
     String query = "select * from foo where bar = ?";
-    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0]);
-    Prepared response = new Prepared(new byte[] {1, 7, 9}, rowsMetadata, rowsMetadata);
+    RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0], null);
+    Prepared response = new Prepared(new byte[] {1, 7, 9}, null, rowsMetadata, rowsMetadata);
     node.getStubStore()
         .register(
             new StubMapping() {
@@ -286,7 +287,8 @@ public class BoundNodeTest {
             -1,
             null,
             ProtocolConstants.ConsistencyLevel.SERIAL,
-            Long.MIN_VALUE);
+            Long.MIN_VALUE,
+            null);
     Query query2 = new Query("select * from table1", options);
     Frame request2 = FrameUtils.wrapRequest(query2);
     loggedChannel.writeInbound(request1);
