@@ -306,7 +306,8 @@ public class PeerMetadataHandlerTest {
     Map<String, ByteBuffer> params = new HashMap<>();
     params.put("address", ByteBuffer.wrap(addr.getAddress()));
     QueryOptions queryOptions =
-        new QueryOptions(0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE);
+        new QueryOptions(
+            0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
     List<Action> node0Actions =
         handler.getActions(
             node0, queryFrame("SELECT * FROM system.peers WHERE peer = :address", queryOptions));

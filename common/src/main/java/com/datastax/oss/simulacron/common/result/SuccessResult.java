@@ -87,7 +87,7 @@ public class SuccessResult extends Result {
       meta_constructed = true;
       rows.add(rowByteBuffer);
     }
-    RowsMetadata rowMetadata = new RowsMetadata(columnMetadata, null, new int[] {0});
+    RowsMetadata rowMetadata = new RowsMetadata(columnMetadata, null, new int[] {0}, null);
     MessageResponseAction action =
         new MessageResponseAction(new DefaultRows(rowMetadata, rows), getDelayInMs());
     return Collections.singletonList(action);

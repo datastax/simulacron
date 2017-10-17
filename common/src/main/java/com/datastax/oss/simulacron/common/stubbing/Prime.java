@@ -57,7 +57,7 @@ public class Prime extends StubMapping {
         columnMetadata.add(columnBuilder.apply(key, type));
       }
     }
-    return new RowsMetadata(columnMetadata, null, new int[] {0});
+    return new RowsMetadata(columnMetadata, null, new int[] {0}, null);
   }
 
   private RowsMetadata fetchRowMetadataForResults(SuccessResult result) {
@@ -68,7 +68,7 @@ public class Prime extends StubMapping {
         RawType type = CodecUtils.getTypeFromName(result.columnTypes.get(key));
         columnMetadata.add(columnBuilder.apply(key, type));
       }
-      return new RowsMetadata(columnMetadata, null, new int[] {0});
+      return new RowsMetadata(columnMetadata, null, new int[] {0}, null);
     }
     return null;
   }
@@ -81,12 +81,13 @@ public class Prime extends StubMapping {
       if (this.primedRequest.then instanceof SuccessResult) {
         SuccessResult result = (SuccessResult) this.primedRequest.then;
         return new Prepared(
-            b.array(), fetchRowMetadataForParams(query), fetchRowMetadataForResults(result));
+            b.array(), null, fetchRowMetadataForParams(query), fetchRowMetadataForResults(result));
       } else if (this.primedRequest.then instanceof ErrorResult) {
         return new Prepared(
             b.array(),
-            new RowsMetadata(new LinkedList<ColumnSpec>(), null, null),
-            new RowsMetadata(new LinkedList<ColumnSpec>(), null, null));
+            null,
+            new RowsMetadata(new LinkedList<ColumnSpec>(), null, null, null),
+            new RowsMetadata(new LinkedList<ColumnSpec>(), null, null, null));
       }
     }
     return null;

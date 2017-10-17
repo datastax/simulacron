@@ -51,7 +51,7 @@ public class QueryTest {
     List<ByteBuffer> posValues = new ArrayList<>();
     posValues.add(ByteBuffer.wrap(new byte[] {1, 2, 3, 4}));
     QueryOptions queryOptions =
-        new QueryOptions(0, posValues, Collections.emptyMap(), true, 0, null, 10, -1);
+        new QueryOptions(0, posValues, Collections.emptyMap(), true, 0, null, 10, -1, null);
     com.datastax.oss.protocol.internal.request.Query simpleQueryWithArgs =
         new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
 
@@ -60,7 +60,8 @@ public class QueryTest {
     Map<String, ByteBuffer> namedValues = new HashMap<>();
     namedValues.put("z", ByteBuffer.wrap(new byte[] {0, 0, 0, 5}));
 
-    queryOptions = new QueryOptions(0, Collections.emptyList(), namedValues, true, 0, null, 10, -1);
+    queryOptions =
+        new QueryOptions(0, Collections.emptyList(), namedValues, true, 0, null, 10, -1, null);
     com.datastax.oss.protocol.internal.request.Query simpleQueryWithNamedArgs =
         new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
 
