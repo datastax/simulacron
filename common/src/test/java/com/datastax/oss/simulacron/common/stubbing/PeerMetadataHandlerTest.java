@@ -143,7 +143,7 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(13)
+        .hasColumnSpecs(14)
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, ((InetSocketAddress) node0.getAddress()).getAddress())
@@ -156,7 +156,7 @@ public class PeerMetadataHandlerTest {
         .hasColumn(0, 9, "rack1")
         .hasColumn(0, 10, "3.0.12")
         .hasColumn(0, 11, Collections.singleton("0"))
-        .hasColumn(0, 12, PeerMetadataHandler.schemaVersion);
+        .hasColumn(0, 13, PeerMetadataHandler.schemaVersion);
   }
 
   @Test
@@ -174,7 +174,7 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(15) // should include dse_version and graph columns
+        .hasColumnSpecs(16) // should include dse_version and graph columns
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, InetAddress.getLoopbackAddress())
@@ -187,9 +187,9 @@ public class PeerMetadataHandlerTest {
         .hasColumn(0, 9, "rack1")
         .hasColumn(0, 10, "3.0.12")
         .hasColumn(0, 11, Collections.singleton("0"))
-        .hasColumn(0, 12, PeerMetadataHandler.schemaVersion)
-        .hasColumn(0, 13, "5.0.8")
-        .hasColumn(0, 14, true);
+        .hasColumn(0, 13, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 14, "5.0.8")
+        .hasColumn(0, 15, true);
   }
 
   @Test
@@ -207,7 +207,7 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(13)
+        .hasColumnSpecs(14)
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, ((InetSocketAddress) node1.getAddress()).getAddress())
@@ -220,7 +220,7 @@ public class PeerMetadataHandlerTest {
         .hasColumn(0, 9, "rack1")
         .hasColumn(0, 10, "3.0.12")
         .hasColumn(0, 11, Collections.singleton("0"))
-        .hasColumn(0, 12, PeerMetadataHandler.schemaVersion);
+        .hasColumn(0, 13, PeerMetadataHandler.schemaVersion);
   }
 
   @Test

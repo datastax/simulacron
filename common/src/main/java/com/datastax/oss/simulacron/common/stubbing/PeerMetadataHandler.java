@@ -181,6 +181,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
             CodecUtils.encodePeerInfo(node, mapper.ascii::encode, "rack", "rack1"),
             mapper.ascii.encode(node.resolveCassandraVersion()),
             tokenCodec.encode(resolveTokens(node)),
+            mapper.uuid.encode(node.resolvePeerInfo("host_id", schemaVersion)),
             mapper.uuid.encode(schemaVersion));
 
     if (node.resolveDSEVersion() != null) {
@@ -293,6 +294,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
             systemLocal.apply("rack", CodecUtils.primitive(ASCII)),
             systemLocal.apply("release_version", CodecUtils.primitive(ASCII)),
             systemLocal.apply("tokens", new RawType.RawSet(CodecUtils.primitive(ASCII))),
+            systemLocal.apply("host_id", CodecUtils.primitive(UUID)),
             systemLocal.apply("schema_version", CodecUtils.primitive(UUID)));
     if (node.resolveDSEVersion() != null) {
       systemLocalSpecs.add(systemLocal.apply("dse_version", CodecUtils.primitive(ASCII)));
