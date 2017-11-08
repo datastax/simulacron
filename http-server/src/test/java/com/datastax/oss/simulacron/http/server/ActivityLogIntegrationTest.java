@@ -79,13 +79,6 @@ public class ActivityLogIntegrationTest {
   public void testVerifyQueriesFromDataCenterAndNode() throws Exception {
     String[] queries = new String[] {"select * from table1", "select * from table2"};
     primeAndExecuteQueries(queries, queries);
-    // List<QueryLog> queryLogs = server.getLogs(server.getCluster().resolveId() + "/dc1");
-
-    //assertThat(queryLogs).hasSize(2);
-
-    //queryLogs = server.getLogs(server.getCluster().getName() + "/dc2/node1");
-
-    //assertThat(queryLogs).hasSize(0);
   }
 
   @Test
@@ -110,15 +103,10 @@ public class ActivityLogIntegrationTest {
         getAllQueryLogs(server.getLogs(server.getCluster().resolveId() + "/dc1?filter=primed"));
     assertThat(queryLogs).hasSize(2);
 
-    //int expectedPrimedForNode1 = (int) queryLogs.stream().filter(q -> q.getNodeId() == 0).count();
-
     //verify for datacenter level filter: nonprimed
     queryLogs =
         getAllQueryLogs(server.getLogs(server.getCluster().resolveId() + "/dc1?filter=nonprimed"));
     assertThat(queryLogs).hasSize(1);
-
-    //int expectedNonPrimedForNode1 =
-    //    (int) queryLogs.stream().filter(q -> q.getNodeId() == 0).count();
 
     //verify for node level filter: primed
     queryLogs =
@@ -207,8 +195,8 @@ public class ActivityLogIntegrationTest {
     QueryLog log = queryLogs.get(0);
     assertThat(log.getConnection()).isNotNull();
     assertThat(log.getConsistency()).isEqualTo(adapt(ConsistencyLevel.LOCAL_ONE));
-    assertThat(log.getTimestamp()).isNotZero();
-    assertThat(log.getTimestamp()).isGreaterThan(currentTimestamp);
+    assertThat(log.getReceivedTimestamp()).isNotZero();
+    assertThat(log.getReceivedTimestamp()).isGreaterThan(currentTimestamp);
     assertThat(log.isPrimed()).isTrue();
   }
 
