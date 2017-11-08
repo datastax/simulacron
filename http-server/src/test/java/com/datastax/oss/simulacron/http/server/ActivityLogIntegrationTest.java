@@ -70,7 +70,9 @@ public class ActivityLogIntegrationTest {
       Session session = driverCluster.connect();
       server.getCluster().clearLogs();
       for (String executeQuery : queries) {
-        session.execute(new SimpleStatement(executeQuery));
+        SimpleStatement stmt = new SimpleStatement(executeQuery);
+        stmt.setDefaultTimestamp(100);
+        session.execute(stmt);
       }
     }
   }
@@ -197,6 +199,7 @@ public class ActivityLogIntegrationTest {
     assertThat(log.getConsistency()).isEqualTo(adapt(ConsistencyLevel.LOCAL_ONE));
     assertThat(log.getReceivedTimestamp()).isNotZero();
     assertThat(log.getReceivedTimestamp()).isGreaterThan(currentTimestamp);
+    assertThat(log.getClientTimestamp()).isEqualTo(100);
     assertThat(log.isPrimed()).isTrue();
   }
 

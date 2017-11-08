@@ -16,6 +16,7 @@
 package com.datastax.oss.simulacron.common.cluster;
 
 import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.oss.protocol.internal.request.Batch;
 import com.datastax.oss.protocol.internal.request.Execute;
 import com.datastax.oss.protocol.internal.request.Prepare;
 import com.datastax.oss.protocol.internal.request.Query;
@@ -45,8 +46,11 @@ public class QueryLog {
   @JsonProperty("connection")
   private SocketAddress connection;
 
-  @JsonProperty("timestamp")
-  private long timestamp;
+  @JsonProperty("received_timestamp")
+  private long receivedTimestamp;
+
+  @JsonProperty("client_timestamp")
+  private long clientTimestamp;
 
   @JsonProperty("primed")
   private boolean primed;
@@ -59,25 +63,27 @@ public class QueryLog {
       @JsonProperty("consistency_level") ConsistencyLevel consistency,
       @JsonProperty("serial_consistency_level") ConsistencyLevel serialConsistency,
       @JsonProperty("connection") SocketAddress connection,
-      @JsonProperty("timestamp") long timestamp,
+      @JsonProperty("received_timestamp") long receivedTimestamp,
+      @JsonProperty("client_timestamp") long clientTimestamp,
       @JsonProperty("primed") boolean primed) {
     this.query = query;
     this.consistency = consistency;
     this.serialConsistency = serialConsistency;
     this.connection = connection;
-    this.timestamp = timestamp;
+    this.clientTimestamp = clientTimestamp;
+    this.receivedTimestamp = receivedTimestamp;
     this.primed = primed;
   }
 
   QueryLog(
       Frame frame,
       SocketAddress connection,
-      long timestamp,
+      long receivedTimestamp,
       boolean primed,
       Optional<StubMapping> stubOption) {
     this.frame = frame;
     this.connection = connection;
-    this.timestamp = timestamp;
+    this.receivedTimestamp = receivedTimestamp;
     this.primed = primed;
     this.type = frame.message.getClass().getSimpleName().toUpperCase();
 
@@ -86,10 +92,12 @@ public class QueryLog {
       this.query = query.query;
       this.consistency = ConsistencyLevel.fromCode(query.options.consistency);
       this.serialConsistency = ConsistencyLevel.fromCode(query.options.serialConsistency);
+      this.clientTimestamp = query.options.defaultTimestamp;
     } else if (frame.message instanceof Execute) {
       Execute execute = (Execute) frame.message;
       this.consistency = ConsistencyLevel.fromCode(execute.options.consistency);
       this.serialConsistency = ConsistencyLevel.fromCode(execute.options.serialConsistency);
+      this.clientTimestamp = execute.options.defaultTimestamp;
       if (stubOption.isPresent()) {
         StubMapping stub = stubOption.get();
         if (stub instanceof Prime) {
@@ -105,6 +113,9 @@ public class QueryLog {
     } else if (frame.message instanceof Prepare) {
       Prepare prepare = (Prepare) frame.message;
       this.query = prepare.cqlQuery;
+    } else if (frame.message instanceof Batch) {
+      Batch batch = (Batch) frame.message;
+      this.clientTimestamp = batch.defaultTimestamp;
     } else {
       // in the case where we don't know how to extract info from the message, just set the query to
       // the type of message.
@@ -132,8 +143,12 @@ public class QueryLog {
     return connection;
   }
 
-  public long getTimestamp() {
-    return timestamp;
+  public long getReceivedTimestamp() {
+    return receivedTimestamp;
+  }
+
+  public long getClientTimestamp() {
+    return clientTimestamp;
   }
 
   public boolean isPrimed() {
@@ -161,8 +176,10 @@ public class QueryLog {
         + serialConsistency
         + ", connection="
         + connection
-        + ", timestamp="
-        + timestamp
+        + ", received_timestamp="
+        + receivedTimestamp
+        + ", client_timestamp="
+        + clientTimestamp
         + ", primed="
         + primed
         + '}';
