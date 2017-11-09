@@ -2630,9 +2630,13 @@ definitions:
       connection:
         type: string
         example: "/127.0.0.1:34662"
-      timestamp:
+      received_timestamp:
         type: long
-        description: Epoch time in milliseconds
+        description: Timestamp when query was received (Epoch time in milliseconds)
+        example: 1496955368551
+      client_timestamp:
+        type: long
+        description: Timestamp specified in query (Epoch time in milliseconds)
         example: 1496955368551
       primed:
         type: boolean
