@@ -95,7 +95,8 @@ public class Prime extends StubMapping {
 
   public List<Action> toPreparedAction() {
     Prepared preparedResponse = toPrepared();
-    MessageResponseAction action = new MessageResponseAction(preparedResponse);
+    MessageResponseAction action =
+        new MessageResponseAction(preparedResponse, this.primedRequest.then.getDelayInMs());
     return Collections.singletonList(action);
   }
 
