@@ -24,7 +24,6 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
-import com.datastax.driver.core.exceptions.WriteFailureException;
 import com.datastax.oss.simulacron.common.cluster.NodeSpec;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
@@ -85,7 +84,7 @@ public class HttpTestUtil {
   }
 
   public static ResultSet makeNativeBoundQueryWithPositionalParam(
-      String query, String contactPoint, Object param){
+      String query, String contactPoint, Object param) {
     com.datastax.driver.core.Cluster cluster =
         defaultBuilder().addContactPoint(contactPoint).build();
     Session session = cluster.connect();
@@ -95,19 +94,27 @@ public class HttpTestUtil {
   }
 
   public static void makeNativeBoundQueryWithPositionalParamExpectingError(
-          String query, String contactPoint, Object param) throws Exception {
+      String query, String contactPoint, Object param, boolean errorOnPrepare) throws Exception {
     com.datastax.driver.core.Cluster cluster =
-            defaultBuilder().addContactPoint(contactPoint).build();
+        defaultBuilder().addContactPoint(contactPoint).build();
     Session session = cluster.connect();
-    com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
 
-    BoundStatement bound = getBoundStatement(query, contactPoint, param);
-    try {
-      executeQueryWithFreshSession(bound, contactPoint, session, cluster);
-      throw new Exception("Bound statement should have thrown exception");
-    }
-    catch (QueryExecutionException e) {
-      // An exception should be throw for the bound statement, not the prepared one
+    if (errorOnPrepare) {
+      try {
+        com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+        throw new Exception("Prepared statement should have thrown exception");
+      } catch (QueryExecutionException e) {
+        // An exception should be throw for the prepared statement
+      }
+    } else {
+      com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+      BoundStatement bound = getBoundStatement(query, contactPoint, param);
+      try {
+        executeQueryWithFreshSession(bound, contactPoint, session, cluster);
+        throw new Exception("Bound statement should have thrown exception");
+      } catch (QueryExecutionException e) {
+        // An exception should be throw for the bound statement, not the prepared one
+      }
     }
   }
 
@@ -165,7 +172,10 @@ public class HttpTestUtil {
   }
 
   public static RequestPrime createPrimedErrorOnQuery(
-          String query, HashMap<String, Object> params, HashMap<String, String> paramTypes) {
+      String query,
+      HashMap<String, Object> params,
+      HashMap<String, String> paramTypes,
+      boolean ignoreOnPrepare) {
     Query when = new Query(query, Collections.emptyList(), params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
     HashMap row1 = new HashMap<String, String>();
@@ -175,7 +185,8 @@ public class HttpTestUtil {
     Map<String, String> column_types = new HashMap<String, String>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
-    Result then = new WriteTimeoutResult(ConsistencyLevel.ALL, 2, 1, WriteType.SIMPLE, 0, false);
+    Result then =
+        new WriteTimeoutResult(ConsistencyLevel.ALL, 2, 1, WriteType.SIMPLE, 0, ignoreOnPrepare);
     RequestPrime requestPrime = new RequestPrime(when, then);
     return requestPrime;
   }

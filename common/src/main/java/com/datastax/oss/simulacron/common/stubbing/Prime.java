@@ -103,13 +103,14 @@ public class Prime extends StubMapping {
   public List<Action> getActions(AbstractNode node, Frame frame) {
     if (frame.message instanceof Prepare) {
       if (primedRequest.when instanceof Query) {
-        if (primedRequest.then instanceof SuccessResult
-            || (primedRequest.then instanceof ErrorResult
-                && ((ErrorResult) primedRequest.then).isignoreOnPrepare())) {
+        if (primedRequest.then instanceof SuccessResult) {
           return this.toPreparedAction();
+        } else if (primedRequest.then instanceof ErrorResult) {
+          if (((ErrorResult) primedRequest.then).isignoreOnPrepare()) {
+            return Collections.emptyList();
+          }
         }
       }
-      return Collections.emptyList();
     }
     return primedRequest.then.toActions(node, frame);
   }
