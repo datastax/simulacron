@@ -109,6 +109,7 @@ public class Prime extends StubMapping {
           return this.toPreparedAction();
         }
       }
+      return Collections.emptyList();
     }
     return primedRequest.then.toActions(node, frame);
   }

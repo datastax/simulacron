@@ -225,4 +225,22 @@ public class HttpPrimeQueryIntegrationTest {
             "SELECT * FROM users2 WHERE id = :id and id2 = :id2", contactPoint, values2);
     assertThat(set.all().size()).isEqualTo(0);
   }
+
+  @Test
+  public void testErrorOnBoundStatement() throws Exception {
+    HashMap<String, String> paramTypes = new HashMap<>();
+    paramTypes.put("c1", "ascii");
+    HashMap<String, Object> params = new HashMap<>();
+    params.put("c1", "c1");
+    RequestPrime prime =
+            HttpTestUtil.createPrimedErrorOnQuery(
+                    "SELECT table_ignore FROM foo WHERE c1=?", params, paramTypes);
+    HttpTestResponse response = server.prime(prime);
+    assertNotNull(response);
+    RequestPrime responseQuery = om.readValue(response.body, RequestPrime.class);
+    assertThat(responseQuery).isEqualTo(prime);
+    String contactPoint = HttpTestUtil.getContactPointString(server.getCluster(), 0);
+    HttpTestUtil.makeNativeBoundQueryWithPositionalParamExpectingError(
+                    "SELECT table_ignore FROM foo WHERE c1=?", contactPoint, "c1");
+  }
 }
