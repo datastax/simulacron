@@ -60,7 +60,7 @@ public abstract class ErrorResult extends Result {
     return new Error(getErrorCode(), getErrorMessage());
   }
 
-  public boolean isignoreOnPrepare() {
+  public boolean isIgnoreOnPrepare() {
     return ignoreOnPrepare;
   }
 

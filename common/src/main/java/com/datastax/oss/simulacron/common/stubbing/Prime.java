@@ -106,7 +106,7 @@ public class Prime extends StubMapping {
         if (primedRequest.then instanceof SuccessResult) {
           return this.toPreparedAction();
         } else if (primedRequest.then instanceof ErrorResult) {
-          if (((ErrorResult) primedRequest.then).isignoreOnPrepare()) {
+          if (((ErrorResult) primedRequest.then).isIgnoreOnPrepare()) {
             return Collections.emptyList();
           }
         }
