@@ -36,7 +36,7 @@ public class FunctionFailureResult extends ErrorResult {
 
   public FunctionFailureResult(
       String keyspace, String function, List<String> argTypes, String detail) {
-    this(keyspace, function, argTypes, detail, 0, false);
+    this(keyspace, function, argTypes, detail, 0, null);
   }
 
   @JsonCreator
@@ -46,7 +46,7 @@ public class FunctionFailureResult extends ErrorResult {
       @JsonProperty("arg_types") List<String> argTypes,
       @JsonProperty("detail") String detail,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(
         FUNCTION_FAILURE,
         "execution of '" + functionName(keyspace, function) + argTypes + "' failed: " + detail,

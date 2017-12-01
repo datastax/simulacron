@@ -37,7 +37,7 @@ public class ReadFailureResult extends RequestFailureResult {
       int blockFor,
       Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       boolean dataPresent) {
-    this(cl, received, blockFor, failureReasonByEndpoint, dataPresent, 0, false);
+    this(cl, received, blockFor, failureReasonByEndpoint, dataPresent, 0, null);
   }
 
   @JsonCreator
@@ -49,7 +49,7 @@ public class ReadFailureResult extends RequestFailureResult {
           Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       @JsonProperty(value = "data_present", required = true) boolean dataPresent,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(
         READ_FAILURE, cl, received, blockFor, failureReasonByEndpoint, delayInMs, ignoreOnPrepare);
     this.dataPresent = dataPresent;

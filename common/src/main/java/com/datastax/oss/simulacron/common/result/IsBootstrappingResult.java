@@ -23,13 +23,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class IsBootstrappingResult extends ErrorResult {
 
   public IsBootstrappingResult() {
-    this(0, false);
+    this(0, null);
   }
 
   @JsonCreator
   public IsBootstrappingResult(
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(IS_BOOTSTRAPPING, "Cannot read from a bootstrapping node", delayInMs, ignoreOnPrepare);
   }
 }

@@ -30,12 +30,14 @@ public class VoidResult extends Result {
   private List<Action> actions;
 
   public VoidResult() {
-    this(0);
+    this(0, null);
   }
 
   @JsonCreator
-  public VoidResult(@JsonProperty("delay_in_ms") long delayInMs) {
-    super(delayInMs);
+  public VoidResult(
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
+    super(delayInMs, ignoreOnPrepare);
     updateActions();
   }
 

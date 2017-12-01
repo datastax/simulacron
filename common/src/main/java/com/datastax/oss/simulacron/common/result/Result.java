@@ -56,9 +56,15 @@ public abstract class Result {
   @JsonProperty("delay_in_ms")
   protected long delayInMs;
 
+  @JsonProperty("ignore_on_prepare")
+  protected Boolean ignoreOnPrepare;
+
   @JsonCreator
-  public Result(@JsonProperty("delay_in_ms") long delayInMs) {
+  public Result(
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     this.delayInMs = delayInMs;
+    this.ignoreOnPrepare = ignoreOnPrepare;
   }
 
   @JsonIgnore
@@ -68,6 +74,26 @@ public abstract class Result {
 
   public void setDelay(long delay, TimeUnit delayUnit) {
     this.delayInMs = TimeUnit.MILLISECONDS.convert(delay, delayUnit);
+  }
+
+  /**
+   * @return Whether or not this result should be applied to a matching prepare statement. Note that
+   *     in the case of {@link SuccessResult} this only applies to delay, as we do not want to
+   *     return rows responses for prepare messages.
+   */
+  public boolean isIgnoreOnPrepare() {
+    // if not set, return true as that should be the default behavior.
+    return ignoreOnPrepare == null ? true : ignoreOnPrepare;
+  }
+
+  /**
+   * Sets whether or not this result should be applied to a matching prepare statement.
+   *
+   * @param ignoreOnPrepare Value to set.
+   */
+  @JsonIgnore
+  public void setIgnoreOnPrepare(boolean ignoreOnPrepare) {
+    this.ignoreOnPrepare = ignoreOnPrepare;
   }
 
   public abstract List<Action> toActions(AbstractNode node, Frame frame);

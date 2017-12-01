@@ -15,19 +15,26 @@
  */
 package com.datastax.oss.simulacron.http.server;
 
+import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.noRows;
+import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 
+import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Session;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.oss.simulacron.common.cluster.RequestPrime;
+import com.datastax.oss.simulacron.common.stubbing.Prime;
+import com.datastax.oss.simulacron.common.stubbing.PrimeDsl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -260,5 +267,60 @@ public class HttpPrimeQueryIntegrationTest {
     String contactPoint = HttpTestUtil.getContactPointString(server.getCluster(), 0);
     HttpTestUtil.makeNativeBoundQueryWithPositionalParamExpectingError(
         "SELECT table_ignore FROM foo WHERE c1=?", contactPoint, "c1", true);
+  }
+
+  @Test
+  public void testDelayOnPreparedStatementWhenIgnoreOnPrepareIsFalse() throws Exception {
+    Prime prime =
+        PrimeDsl.when("select * from table where c1=?")
+            .then(noRows())
+            .delay(2, TimeUnit.SECONDS)
+            .applyToPrepare()
+            .build();
+    HttpTestResponse response = server.prime(prime.getPrimedRequest());
+    assertNotNull(response);
+    RequestPrime responseQuery = om.readValue(response.body, RequestPrime.class);
+    assertThat(responseQuery).isEqualTo(prime.getPrimedRequest());
+
+    String contactPoint = HttpTestUtil.getContactPointString(server.getCluster(), 0);
+    try (com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build()) {
+      Session session = cluster.connect();
+      long start = System.currentTimeMillis();
+      session.prepare("select * from table where c1=?");
+      long duration = System.currentTimeMillis() - start;
+      // should have taken longer than 2 seconds.
+      assertThat(duration).isGreaterThan(2000);
+    }
+  }
+
+  @Test
+  public void testNoDelayOnPreparedStatementWhenIgnoreOnPrepareIsFalse() throws Exception {
+    Prime prime =
+        PrimeDsl.when("select * from table where c1=?")
+            .then(noRows())
+            .delay(2, TimeUnit.SECONDS)
+            .ignoreOnPrepare()
+            .build();
+    HttpTestResponse response = server.prime(prime.getPrimedRequest());
+    assertNotNull(response);
+    RequestPrime responseQuery = om.readValue(response.body, RequestPrime.class);
+    assertThat(responseQuery).isEqualTo(prime.getPrimedRequest());
+
+    String contactPoint = HttpTestUtil.getContactPointString(server.getCluster(), 0);
+    try (com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build()) {
+      Session session = cluster.connect();
+      long start = System.currentTimeMillis();
+      PreparedStatement prepared = session.prepare("select * from table where c1=?");
+      long duration = System.currentTimeMillis() - start;
+      // should not have applied delay to prepare.
+      assertThat(duration).isLessThan(2000);
+      start = System.currentTimeMillis();
+      session.execute(prepared.bind());
+      duration = System.currentTimeMillis() - start;
+      // should have taken longer than 2 seconds as delay is applied to execute.
+      assertThat(duration).isGreaterThan(2000);
+    }
   }
 }

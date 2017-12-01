@@ -31,7 +31,7 @@ public class AlreadyExistsResult extends ErrorResult {
   private final String table;
 
   public AlreadyExistsResult(String errorMessage, String keyspace, String table) {
-    this(errorMessage, keyspace, table, 0, false);
+    this(errorMessage, keyspace, table, 0, null);
   }
 
   @JsonCreator
@@ -40,7 +40,7 @@ public class AlreadyExistsResult extends ErrorResult {
       @JsonProperty(value = "keyspace", required = true) String keyspace,
       @JsonProperty(value = "table", required = true) String table,
       @JsonProperty("delayInMs") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(ALREADY_EXISTS, errorMessage, delayInMs, ignoreOnPrepare);
     this.keyspace = keyspace;
     this.table = table;

@@ -44,15 +44,16 @@ public class SuccessResult extends Result {
   public final Map<String, String> columnTypes;
 
   public SuccessResult(List<Map<String, Object>> rows, Map<String, String> columnTypes) {
-    this(rows, columnTypes, 0);
+    this(rows, columnTypes, 0, null);
   }
 
   @JsonCreator
   public SuccessResult(
       @JsonProperty("rows") List<Map<String, Object>> rows,
       @JsonProperty("column_types") Map<String, String> columnTypes,
-      @JsonProperty("delay_in_ms") long delayInMs) {
-    super(delayInMs);
+      @JsonProperty("delay_in_ms") long delayInMs,
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
+    super(delayInMs, ignoreOnPrepare);
     if ((rows != null) ^ (columnTypes != null)) {
       throw new IllegalArgumentException(
           "Both \"rows\" and \"columnTypes\" are required or none of them");

@@ -29,7 +29,7 @@ public class ReadTimeoutResult extends RequestTimeoutResult {
   private final boolean dataPresent;
 
   public ReadTimeoutResult(ConsistencyLevel cl, int received, int blockFor, boolean dataPresent) {
-    this(cl, received, blockFor, dataPresent, 0, false);
+    this(cl, received, blockFor, dataPresent, 0, null);
   }
 
   @JsonCreator
@@ -39,7 +39,7 @@ public class ReadTimeoutResult extends RequestTimeoutResult {
       @JsonProperty(value = "block_for", required = true) int blockFor,
       @JsonProperty(value = "data_present", required = true) boolean dataPresent,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(READ_TIMEOUT, cl, received, blockFor, delayInMs, ignoreOnPrepare);
     this.dataPresent = dataPresent;
   }

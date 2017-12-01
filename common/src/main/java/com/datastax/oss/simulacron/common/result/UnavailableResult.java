@@ -41,7 +41,7 @@ public class UnavailableResult extends ErrorResult {
   private final int alive;
 
   public UnavailableResult(ConsistencyLevel cl, int required, int alive) {
-    this("Cannot achieve consistency level " + cl, cl, required, alive, 0, false);
+    this("Cannot achieve consistency level " + cl, cl, required, alive, 0, null);
   }
 
   @JsonCreator
@@ -51,7 +51,7 @@ public class UnavailableResult extends ErrorResult {
       @JsonProperty(value = "required", required = true) int required,
       @JsonProperty(value = "alive", required = true) int alive,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(UNAVAILABLE, errorMessage, delayInMs, ignoreOnPrepare);
     this.cl = cl;
     this.required = required;

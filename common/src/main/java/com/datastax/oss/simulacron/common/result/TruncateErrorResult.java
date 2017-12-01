@@ -23,14 +23,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class TruncateErrorResult extends ErrorResult {
 
   public TruncateErrorResult(String message) {
-    this(message, 0, false);
+    this(message, 0, null);
   }
 
   @JsonCreator
   public TruncateErrorResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(TRUNCATE_ERROR, errorMessage, delayInMs, ignoreOnPrepare);
   }
 }

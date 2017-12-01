@@ -93,9 +93,9 @@ public class Prime extends StubMapping {
     return null;
   }
 
-  public List<Action> toPreparedAction() {
+  List<Action> toPreparedAction(long delayInMs) {
     Prepared preparedResponse = toPrepared();
-    MessageResponseAction action = new MessageResponseAction(preparedResponse);
+    MessageResponseAction action = new MessageResponseAction(preparedResponse, delayInMs);
     return Collections.singletonList(action);
   }
 
@@ -104,9 +104,13 @@ public class Prime extends StubMapping {
     if (frame.message instanceof Prepare) {
       if (primedRequest.when instanceof Query) {
         if (primedRequest.then instanceof SuccessResult) {
-          return this.toPreparedAction();
+          // Apply delay if not ignore on prepare.
+          long delayInMs =
+              !primedRequest.then.isIgnoreOnPrepare() ? primedRequest.then.getDelayInMs() : 0;
+          return this.toPreparedAction(delayInMs);
         } else if (primedRequest.then instanceof ErrorResult) {
-          if (((ErrorResult) primedRequest.then).isIgnoreOnPrepare()) {
+          // If ignore on prepare, delegate.
+          if (primedRequest.then.isIgnoreOnPrepare()) {
             return Collections.emptyList();
           }
         }

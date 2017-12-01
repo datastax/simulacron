@@ -23,14 +23,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class InvalidResult extends ErrorResult {
 
   public InvalidResult(String errorMessage) {
-    this(errorMessage, 0, false);
+    this(errorMessage, 0, null);
   }
 
   @JsonCreator
   public InvalidResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(INVALID, errorMessage, delayInMs, ignoreOnPrepare);
   }
 }
