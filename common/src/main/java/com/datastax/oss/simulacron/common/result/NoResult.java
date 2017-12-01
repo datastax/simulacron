@@ -25,7 +25,7 @@ import java.util.List;
 public class NoResult extends Result {
 
   public NoResult() {
-    super(0);
+    super(0, null);
   }
 
   @Override

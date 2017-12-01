@@ -44,7 +44,9 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.instanceOf;
 
+import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.AlreadyExistsException;
@@ -212,6 +214,45 @@ public class ErrorResultIntegrationTest {
   }
 
   @Test
+  public void testShouldReturnSyntaxErrorOnPrepare() throws Exception {
+    String message = "this syntax is no good";
+    server.prime(when(query).then(syntaxError(message)).applyToPrepare());
+
+    thrown.expect(SyntaxError.class);
+    thrown.expectMessage(message);
+
+    prepare();
+  }
+
+  @Test
+  public void testShouldNotReturnSyntaxErrorOnPrepare() throws Exception {
+    String message = "this syntax is no good";
+    server.prime(when(query).then(syntaxError(message)).ignoreOnPrepare());
+
+    // should not throw error here.
+    prepare();
+
+    thrown.expect(SyntaxError.class);
+    thrown.expectMessage(message);
+
+    prepareAndQuery();
+  }
+
+  @Test
+  public void testShouldNotReturnSyntaxErrorOnPrepareByDefault() throws Exception {
+    String message = "this syntax is no good";
+    server.prime(when(query).then(syntaxError(message)));
+
+    // should not throw error here.
+    prepare();
+
+    thrown.expect(SyntaxError.class);
+    thrown.expectMessage(message);
+
+    prepareAndQuery();
+  }
+
+  @Test
   public void testShouldReturnTruncateError() throws Exception {
     String message = "This is a truncate error";
     server.prime(when(query).then(truncateError(message)));
@@ -254,8 +295,6 @@ public class ErrorResultIntegrationTest {
         match(
             (ReadFailureException rfe) ->
                 rfe.getFailures() == 1
-                    && rfe.getFailuresMap().get(addr)
-                        == RequestFailureReason.READ_TOO_MANY_TOMBSTONES.getCode()
                     && rfe.getReceivedAcknowledgements() == 1
                     && rfe.getRequiredAcknowledgements() == 4
                     && rfe.wasDataRetrieved()
@@ -278,7 +317,6 @@ public class ErrorResultIntegrationTest {
         match(
             (WriteFailureException wfe) ->
                 wfe.getFailures() == 1
-                    && wfe.getFailuresMap().get(addr) == RequestFailureReason.UNKNOWN.getCode()
                     && wfe.getReceivedAcknowledgements() == 1
                     && wfe.getRequiredAcknowledgements() == 7
                     && wfe.getWriteType() == com.datastax.driver.core.WriteType.SIMPLE
@@ -361,10 +399,29 @@ public class ErrorResultIntegrationTest {
     return query(new SimpleStatement(query));
   }
 
+  private PreparedStatement prepare() throws Exception {
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder(server.getCluster())
+            .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
+            .build()) {
+      return driverCluster.connect().prepare(query);
+    }
+  }
+
+  private ResultSet prepareAndQuery() throws Exception {
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder(server.getCluster())
+            .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
+            .build()) {
+      Session session = driverCluster.connect();
+      PreparedStatement prepared = session.prepare(query);
+      return session.execute(prepared.bind());
+    }
+  }
+
   private ResultSet query(Statement statement) throws Exception {
     try (com.datastax.driver.core.Cluster driverCluster =
         defaultBuilder(server.getCluster())
-            .allowBetaProtocolVersion()
             .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
             .build()) {
       return driverCluster.connect().execute(statement);

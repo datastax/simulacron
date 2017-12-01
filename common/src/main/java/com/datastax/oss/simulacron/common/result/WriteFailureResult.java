@@ -38,7 +38,7 @@ public class WriteFailureResult extends RequestFailureResult {
       int blockFor,
       Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       WriteType writeType) {
-    this(cl, received, blockFor, failureReasonByEndpoint, writeType, 0, false);
+    this(cl, received, blockFor, failureReasonByEndpoint, writeType, 0, null);
   }
 
   @JsonCreator
@@ -50,7 +50,7 @@ public class WriteFailureResult extends RequestFailureResult {
           Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       @JsonProperty(value = "write_type", required = true) WriteType writeType,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(
         WRITE_FAILURE, cl, received, blockFor, failureReasonByEndpoint, delayInMs, ignoreOnPrepare);
     this.writeType = writeType;

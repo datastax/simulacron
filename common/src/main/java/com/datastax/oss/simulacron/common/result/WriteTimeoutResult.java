@@ -30,7 +30,7 @@ public class WriteTimeoutResult extends RequestTimeoutResult {
   private final WriteType writeType;
 
   public WriteTimeoutResult(ConsistencyLevel cl, int received, int blockFor, WriteType writeType) {
-    this(cl, received, blockFor, writeType, 0, false);
+    this(cl, received, blockFor, writeType, 0, null);
   }
 
   @JsonCreator
@@ -40,7 +40,7 @@ public class WriteTimeoutResult extends RequestTimeoutResult {
       @JsonProperty(value = "block_for", required = true) int blockFor,
       @JsonProperty(value = "write_type", required = true) WriteType writeType,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(WRITE_TIMEOUT, cl, received, blockFor, delayInMs, ignoreOnPrepare);
     this.writeType = writeType;
   }

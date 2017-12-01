@@ -22,13 +22,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class AuthenticationErrorResult extends ErrorResult {
 
   public AuthenticationErrorResult(String errorMessage) {
-    this(errorMessage, 0, false);
+    this(errorMessage, 0, null);
   }
 
   public AuthenticationErrorResult(
       @JsonProperty(value = "message", required = true) String errorMessage,
       @JsonProperty("delay_in_ms") long delayInMs,
-      @JsonProperty("ignore_on_prepare") boolean ignoreOnPrepare) {
+      @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(AUTH_ERROR, errorMessage, delayInMs, ignoreOnPrepare);
   }
 }

@@ -104,7 +104,7 @@ public class ObjectMapperHolderTest {
     String json = mapper.writeValueAsString(requestPrime);
 
     String expectedJson =
-        "{\"when\":{\"request\":\"query\",\"query\":\"SELECT * table_name\"},\"then\":{\"result\":\"success\",\"rows\":[{\"column1\":\"column1\",\"column2\":\"2\"}],\"column_types\":{\"column1\":\"ascii\",\"column2\":\"bigint\"},\"delay_in_ms\":0}}";
+        "{\"when\":{\"request\":\"query\",\"query\":\"SELECT * table_name\"},\"then\":{\"result\":\"success\",\"rows\":[{\"column1\":\"column1\",\"column2\":\"2\"}],\"column_types\":{\"column1\":\"ascii\",\"column2\":\"bigint\"},\"delay_in_ms\":0,\"ignore_on_prepare\":true}}";
 
     assertThat(json).isEqualTo(expectedJson);
 
@@ -156,12 +156,13 @@ public class ObjectMapperHolderTest {
   public void testPrimeOptions() throws Exception {
     Options when = Options.INSTANCE;
     Result then = new NoResult();
+    then.setIgnoreOnPrepare(false);
     RequestPrime requestPrime = new RequestPrime(when, then);
 
     String json = mapper.writeValueAsString(requestPrime);
 
     String expectedJson =
-        "{\"when\":{\"request\":\"options\"},\"then\":{\"result\":\"no_result\",\"delay_in_ms\":0}}";
+        "{\"when\":{\"request\":\"options\"},\"then\":{\"result\":\"no_result\",\"delay_in_ms\":0,\"ignore_on_prepare\":false}}";
 
     assertThat(json).isEqualTo(expectedJson);
 

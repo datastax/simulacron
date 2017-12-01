@@ -2001,7 +2001,14 @@ definitions:
         example: success
       delay_in_ms:
         type: integer
+        description: Adds delay to send response back to client.
         example: 0
+      ignore_on_prepare:
+        type: boolean
+        description: >
+          Whether or not this result be applied to a matching prepare statement.  If not specified,
+          defaults to true (does not apply) and applies to the execution of statements tied to that
+          prepared statement.
   Row:
     type: object
     description: |
@@ -2048,10 +2055,6 @@ definitions:
       - type: object
         required:
           - ignore_on_prepare
-        properties:
-          ignore_on_prepare:
-            type: boolean
-            example: false
   SuccessResultBatch:
     allOf:
       - $ref: '#/definitions/Then'

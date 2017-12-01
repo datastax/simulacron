@@ -31,16 +31,12 @@ public abstract class ErrorResult extends Result {
   @JsonProperty("message")
   protected final String errorMessage;
 
-  @JsonProperty("ignore_on_prepare")
-  protected final boolean ignoreOnPrepare;
-
   @JsonIgnore private final transient int errorCode;
 
-  ErrorResult(int errorCode, String errorMessage, long delayInMs, boolean ignoreOnPrepare) {
-    super(delayInMs);
+  ErrorResult(int errorCode, String errorMessage, long delayInMs, Boolean ignoreOnPrepare) {
+    super(delayInMs, ignoreOnPrepare);
     this.errorCode = errorCode;
     this.errorMessage = errorMessage;
-    this.ignoreOnPrepare = ignoreOnPrepare;
   }
 
   public String getErrorMessage() {
@@ -58,10 +54,6 @@ public abstract class ErrorResult extends Result {
 
   public Message toMessage() {
     return new Error(getErrorCode(), getErrorMessage());
-  }
-
-  public boolean isignoreOnPrepare() {
-    return ignoreOnPrepare;
   }
 
   @Override

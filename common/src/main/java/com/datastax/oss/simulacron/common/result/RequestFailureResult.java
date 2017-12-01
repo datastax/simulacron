@@ -36,9 +36,6 @@ public abstract class RequestFailureResult extends ErrorResult {
   @JsonProperty("failure_reasons")
   protected final Map<InetAddress, RequestFailureReason> failureReasonByEndpoint;
 
-  @JsonProperty("ignore_on_prepare")
-  boolean ignoreOnPrepare;
-
   protected RequestFailureResult(
       int errorCode,
       ConsistencyLevel cl,
@@ -46,7 +43,7 @@ public abstract class RequestFailureResult extends ErrorResult {
       int blockFor,
       Map<InetAddress, RequestFailureReason> failureReasonByEndpoint,
       long delayInMs,
-      boolean ignoreOnPrepare) {
+      Boolean ignoreOnPrepare) {
     super(
         errorCode,
         String.format(

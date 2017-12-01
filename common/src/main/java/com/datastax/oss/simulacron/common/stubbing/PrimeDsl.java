@@ -217,7 +217,7 @@ public class PrimeDsl {
    */
   public static CloseConnectionResult closeConnection(
       DisconnectAction.Scope scope, CloseType closeType) {
-    return new CloseConnectionResult(scope, closeType, 0);
+    return new CloseConnectionResult(scope, closeType);
   }
 
   /**
@@ -448,11 +448,46 @@ public class PrimeDsl {
       return this;
     }
 
+    /**
+     * Adds a delay to the prime.
+     *
+     * @param delay How long to delay
+     * @param delayUnit The unit of the delay
+     * @return this builder
+     */
     public PrimeBuilder delay(long delay, TimeUnit delayUnit) {
       if (then == null) {
         throw new RuntimeException("then must be called before delay.");
       }
       then.setDelay(delay, delayUnit);
+      return this;
+    }
+
+    /**
+     * Indicates that the prime should not apply to a matched prepare message. This is the default
+     * behavior so this method doesn't need to be used unless you want your code to be more
+     * explicit.
+     *
+     * @return this builder
+     */
+    public PrimeBuilder ignoreOnPrepare() {
+      if (then == null) {
+        throw new RuntimeException("then must be called before ignoreOnPrepare.");
+      }
+      then.setIgnoreOnPrepare(true);
+      return this;
+    }
+
+    /**
+     * Indicates that the prime should apply to a matched prepare message.
+     *
+     * @return this builder
+     */
+    public PrimeBuilder applyToPrepare() {
+      if (then == null) {
+        throw new RuntimeException("then must be called before applyToPrepare.");
+      }
+      then.setIgnoreOnPrepare(false);
       return this;
     }
 
