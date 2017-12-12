@@ -70,7 +70,8 @@ public class PeerMetadataIntegrationTest {
 
   @Test
   public void testVnodeSupport() throws Exception {
-    // Validate that peers as appropriately discovered when connecting to a node and vnodes are assigned.
+    // Validate that peers as appropriately discovered when connecting to a node and vnodes are
+    // assigned.
     try (BoundCluster boundCluster =
             server.register(ClusterSpec.builder().withNumberOfTokens(256).withNodes(3, 3, 3));
         Cluster driverCluster = defaultBuilder(boundCluster).build()) {

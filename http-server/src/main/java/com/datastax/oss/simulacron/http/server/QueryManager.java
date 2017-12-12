@@ -167,7 +167,7 @@ public class QueryManager implements HttpListener {
         .route(HttpMethod.POST, "/prime/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::primeQuery);
 
-    //Deleting primed queries
+    // Deleting primed queries
     router.route(HttpMethod.DELETE, "/prime/:clusterIdOrName").handler(this::clearPrimedQueries);
     router
         .route(HttpMethod.DELETE, "/prime/:clusterIdOrName/:datacenterIdOrName")

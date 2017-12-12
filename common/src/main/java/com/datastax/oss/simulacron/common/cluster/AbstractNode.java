@@ -125,8 +125,9 @@ public class AbstractNode<C extends AbstractCluster, D extends AbstractDataCente
 
   @Override
   public Long getActiveConnections() {
-    // In the case of a concrete 'NodeSpec' instance, active connections will always be 0 since there is no actual
-    // connection state here.  We expect specialized implementations of NodeSpec to override this.
+    // In the case of a concrete 'NodeSpec' instance, active connections will always be 0 since
+    // there is no actual connection state here.  We expect specialized implementations of NodeSpec
+    // to override this.
     return 0L;
   }
 }

@@ -639,7 +639,8 @@ public class CqlMapperTest {
     }
 
     // Values of map should be mapped using encodeObject
-    // In this case we have a codec that calls for map<ascii, int> but we give it a Map<Integer, String>
+    // In this case we have a codec that calls for map<ascii, int> but we give it a Map<Integer,
+    // String>
     // The codec should properly convert to Map<String, Integer> when encoding.
     Map<Integer, String> swapMap1 = new HashMap<>();
     swapMap1.put(0, "1");

@@ -240,6 +240,9 @@ public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport
   @JsonIgnore
   Server getServer();
 
+  @JsonIgnore
+  FrameCodecWrapper getFrameCodec();
+
   @Override
   default void close() {
     try {

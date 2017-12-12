@@ -53,7 +53,7 @@ public final class Batch extends Request {
           (com.datastax.oss.protocol.internal.request.Batch) frame.message;
 
       ConsistencyLevel level = ConsistencyLevel.fromCode(batch.consistency);
-      //NOTE: Absent CL level means it will match all CL levels
+      // NOTE: Absent CL level means it will match all CL levels
       if (this.consistencyEnum.contains(level) || this.consistencyEnum.size() == 0) {
 
         if (batch.values.size() != queries.size()) {

@@ -63,8 +63,8 @@ public class DisconnectActionTest {
 
   @Test
   public void testCloseConnection() throws Exception {
-    // Validate that when a stub dictates to close a connection it does so and does not close the NodeSpec's channel so it
-    // can remain accepting traffic.
+    // Validate that when a stub dictates to close a connection it does so and does not close the
+    // NodeSpec's channel so it can remain accepting traffic.
     NodeSpec node = NodeSpec.builder().build();
     BoundNode boundNode = localServer.register(node);
 

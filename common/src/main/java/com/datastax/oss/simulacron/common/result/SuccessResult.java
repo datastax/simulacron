@@ -69,7 +69,8 @@ public class SuccessResult extends Result {
   @Override
   public List<Action> toActions(AbstractNode node, Frame frame) {
     CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
-    //This will return all the rows specified in the query, along with any corresponding metadata about the row
+    // This will return all the rows specified in the query, along with any corresponding metadata
+    // about the row
     boolean meta_constructed = false;
     List<ColumnSpec> columnMetadata = new LinkedList<ColumnSpec>();
     Queue<List<ByteBuffer>> rows = new LinkedList<List<ByteBuffer>>();
@@ -77,7 +78,7 @@ public class SuccessResult extends Result {
     for (Map<String, Object> row : this.rows) {
       List<ByteBuffer> rowByteBuffer = new LinkedList<ByteBuffer>();
       CodecUtils.ColumnSpecBuilder columnBuilder = CodecUtils.columnSpecBuilder();
-      //Iterate over all the rows and create column meta data if needed
+      // Iterate over all the rows and create column meta data if needed
       for (String key : row.keySet()) {
         RawType type = CodecUtils.getTypeFromName(columnTypes.get(key));
         if (!meta_constructed) {

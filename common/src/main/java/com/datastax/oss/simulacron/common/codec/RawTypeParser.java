@@ -211,8 +211,8 @@ class RawTypeParser {
       if (isEOS()) throw new InvalidTypeException("Non closed angle brackets");
 
       // Only parse for '<' and '>' characters if not within a quoted identifier.
-      // Note we don't need to handle escaped quotes ("") in type names here, because they just cause inQuotes to flip
-      // to false and immediately back to true
+      // Note we don't need to handle escaped quotes ("") in type names here, because they just
+      // cause inQuotes to flip to false and immediately back to true
       if (!inQuotes) {
         if (str.charAt(idx) == '"') {
           inQuotes = true;

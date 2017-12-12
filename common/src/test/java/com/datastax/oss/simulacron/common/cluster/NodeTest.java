@@ -75,7 +75,8 @@ public class NodeTest {
 
   @Test
   public void testDefaultConstructor() {
-    // This is only used by jackson mapper, but ensure it has sane defaults and doesn't throw any exceptions.
+    // This is only used by jackson mapper, but ensure it has sane defaults and doesn't throw any
+    // exceptions.
     NodeSpec node = new NodeSpec();
     assertThat(node.getDataCenter()).isNull();
     assertThat(node.getCluster()).isNull();

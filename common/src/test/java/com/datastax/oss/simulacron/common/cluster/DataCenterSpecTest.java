@@ -77,7 +77,8 @@ public class DataCenterSpecTest {
 
   @Test
   public void testDefaultConstructor() {
-    // This is only used by jackson mapper, but ensure it has sane defaults and doesn't throw any exceptions.
+    // This is only used by jackson mapper, but ensure it has sane defaults and doesn't throw any
+    // exceptions.
     DataCenterSpec dc = new DataCenterSpec();
     assertThat(dc.getCluster()).isNull();
     assertThat(dc.getParent()).isEmpty();

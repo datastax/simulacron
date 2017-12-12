@@ -36,10 +36,10 @@ public interface AddressResolver extends Supplier<SocketAddress> {
   byte[] defaultStartingIp = new byte[] {127, 0, 1, 1};
   int defaultStartingPort = 9042;
 
-  // TODO: make this configurable when needed.  For now we'll just use incrementing IPs from 127.0.1.1
-  // but eventually it might be nice to have a resolver that returns incrementing ips + ports when C*
-  // supports multiple instances per IP.  Also might be nice if a user wants to use a different IP range
-  // or run multiple instances.
+  // TODO: make this configurable when needed.  For now we'll just use incrementing IPs from
+  // 127.0.1.1 but eventually it might be nice to have a resolver that returns incrementing ips +
+  // ports when C* supports multiple instances per IP.  Also might be nice if a user wants to use a
+  // different IP range or run multiple instances.
   AddressResolver defaultResolver = new Inet4Resolver();
 
   AddressResolver localAddressResolver = () -> new LocalAddress(UUID.randomUUID().toString());
@@ -66,7 +66,8 @@ public interface AddressResolver extends Supplier<SocketAddress> {
               byte[] o1Bytes = o1.getAddress().getAddress();
               byte[] o2Bytes = o2.getAddress().getAddress();
 
-              // If comparing ipv6 and ipv4 addresses, consider ipv6 greater, this in practice shouldn't happen.
+              // If comparing ipv6 and ipv4 addresses, consider ipv6 greater, this in practice
+              // shouldn't happen.
               if (o1Bytes.length != o2Bytes.length) {
                 return o1Bytes.length - o2Bytes.length;
               }

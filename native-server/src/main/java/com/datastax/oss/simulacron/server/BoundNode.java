@@ -22,6 +22,7 @@ import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.noRows;
 import static com.datastax.oss.simulacron.common.stubbing.PrimeDsl.when;
 import static com.datastax.oss.simulacron.common.utils.FrameUtils.wrapResponse;
 import static com.datastax.oss.simulacron.server.ChannelUtils.completable;
+import static com.datastax.oss.simulacron.server.FrameCodecUtils.buildFrameCodec;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.Message;
@@ -42,6 +43,7 @@ import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.ClusterQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.NodeQueryLogReport;
+import com.datastax.oss.simulacron.common.cluster.NodeSpec;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.stubbing.Action;
 import com.datastax.oss.simulacron.common.stubbing.CloseType;
@@ -101,15 +103,17 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
 
   private final transient ServerBootstrap bootstrap;
 
-  // TODO: Isn't really a good reason for this to be an AtomicReference as if binding fails we don't reset
+  // TODO: Isn't really a good reason for this to be an AtomicReference as if binding fails we don't
+  // reset
   // the channel, but leaving it this way for now in case there is a future use case.
   final transient AtomicReference<Channel> channel;
 
   final transient ChannelGroup clientChannelGroup =
       new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
-  // TODO: There could be a lot of concurrency issues around simultaneous calls to reject/accept, however
-  // in the general case we don't expect it.   Leave this as AtomicReference in case we want to handle it better.
+  // TODO: There could be a lot of concurrency issues around simultaneous calls to reject/accept,
+  // however in the general case we don't expect it.   Leave this as AtomicReference in case we want
+  // to handle it better.
   private final transient AtomicReference<RejectState> rejectState =
       new AtomicReference<>(new RejectState());
 
@@ -126,6 +130,8 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
   private final transient List<QueryListenerWrapper> queryListeners = new ArrayList<>();
 
   final transient ActivityLog activityLog = new ActivityLog();
+
+  private final transient FrameCodecWrapper frameCodec;
 
   private static class RejectState {
     private final RejectScope scope;
@@ -145,10 +151,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
 
   BoundNode(
       SocketAddress address,
-      String name,
-      Long id,
-      String cassandraVersion,
-      String dseVersion,
+      NodeSpec delegate,
       Map<String, Object> peerInfo,
       BoundCluster cluster,
       BoundDataCenter parent,
@@ -156,7 +159,14 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
       Timer timer,
       Channel channel,
       boolean activityLogging) {
-    super(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
+    super(
+        address,
+        delegate.getName(),
+        delegate.getId() != null ? delegate.getId() : 0,
+        delegate.getCassandraVersion(),
+        delegate.getDSEVersion(),
+        peerInfo,
+        parent);
     this.cluster = cluster;
     this.server = server;
     // for test purposes server may be null.
@@ -165,6 +175,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     this.channel = new AtomicReference<>(channel);
     this.stubStore = new StubStore();
     this.activityLogging = activityLogging;
+    this.frameCodec = buildFrameCodec(delegate).orElse(parent.getFrameCodec());
   }
 
   @Override
@@ -340,7 +351,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     }
 
     QueryLog queryLog = null;
-    //store the frame in history
+    // store the frame in history
     if (activityLogging) {
       queryLog =
           activityLog.addLog(
@@ -349,7 +360,8 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     }
 
     if (actions != null && !actions.isEmpty()) {
-      // TODO: It might be useful to tie behavior to completion of actions but for now this isn't necessary.
+      // TODO: It might be useful to tie behavior to completion of actions but for now this isn't
+      // necessary.
       CompletableFuture<Void> future = new CompletableFuture<>();
       handleActions(actions.iterator(), ctx, frame, future, queryLog);
     } else {
@@ -365,7 +377,8 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
           // Decrement rejectAfter indicating a new initialization attempt.
           state.rejectAfter--;
           if (state.rejectAfter == 0) {
-            // If reject after is now 0, indicate that it's time to stop listening (but allow this one)
+            // If reject after is now 0, indicate that it's time to stop listening (but allow this
+            // one)
             state.rejectAfter = -1;
             state.listeningForNewConnections = false;
             deferFuture = rejectConnectionsAsync(-1, state.scope).toCompletableFuture();
@@ -389,7 +402,8 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
           // should always match.
           assert matcher.matches();
           if (matcher.matches()) {
-            // unquote keyspace if quoted, cassandra doesn't expect keyspace to be quoted coming back
+            // unquote keyspace if quoted, cassandra doesn't expect keyspace to be quoted coming
+            // back
             String keyspace = matcher.group(1).replaceAll("^\"|\"$", "");
             response = new SetKeyspace(keyspace);
           }
@@ -661,6 +675,12 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
   @Override
   public Server getServer() {
     return server;
+  }
+
+  @Override
+  @JsonIgnore
+  public FrameCodecWrapper getFrameCodec() {
+    return frameCodec;
   }
 
   /**

@@ -261,7 +261,8 @@ public class PeerMetadataHandlerTest {
 
   @Test
   public void shouldHandleQueryAllPeersDSE() {
-    // querying for peers should return a row for each other node in the cluster and return DSE columns
+    // querying for peers should return a row for each other node in the cluster and return DSE
+    // columns
     List<Action> node0Actions =
         handler.getActions(dseNode0, queryFrame("SELECT * FROM system.peers"));
 
@@ -301,7 +302,8 @@ public class PeerMetadataHandlerTest {
 
   @Test
   public void shouldHandleQuerySpecificPeerNamedParameter() throws UnknownHostException {
-    // when peer query is made for a peer in the cluster using named parameters, we should get 1 row back.
+    // when peer query is made for a peer in the cluster using named parameters, we should get 1 row
+    // back.
     InetAddress addr = InetAddress.getByAddress(new byte[] {127, 0, 11, 17});
     Map<String, ByteBuffer> params = new HashMap<>();
     params.put("address", ByteBuffer.wrap(addr.getAddress()));

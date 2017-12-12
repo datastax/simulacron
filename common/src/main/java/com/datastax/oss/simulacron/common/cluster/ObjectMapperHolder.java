@@ -93,8 +93,8 @@ public class ObjectMapperHolder {
     @Override
     public void serialize(InetAddress value, JsonGenerator gen, SerializerProvider serializers)
         throws IOException {
-      // Adapted from com.fasterxml.jackson.databind.ser.std.InetAddressSerializer but writes field name instead
-      // of string.
+      // Adapted from com.fasterxml.jackson.databind.ser.std.InetAddressSerializer but writes field
+      // name instead of string.
       // Ok: get textual description; choose "more specific" part
       String str = value.toString().trim();
       int ix = str.indexOf('/');

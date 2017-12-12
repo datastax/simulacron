@@ -26,11 +26,13 @@ import java.util.stream.Collectors;
 public abstract class AbstractDataCenter<C extends AbstractCluster, N extends AbstractNode>
     extends AbstractNodeProperties implements DataCenterStructure<C, N> {
 
-  // json managed reference is used to indicate a two way linking between the 'parent' (datacenter) and 'children'
-  // (nodes) in a json tree.  This tells the jackson mapping to tie child nodes to this dc on deserialization.
+  // json managed reference is used to indicate a two way linking between the 'parent' (datacenter)
+  // and 'children' (nodes) in a json tree.  This tells the jackson mapping to tie child nodes to
+  // this dc on deserialization.
   @JsonManagedReference private final Collection<N> nodes = new ConcurrentSkipListSet<>();
 
-  // back reference is used to indicate the parent of this node while deserializing should be tied to this field.
+  // back reference is used to indicate the parent of this node while deserializing should be tied
+  // to this field.
   @JsonBackReference private final C parent;
 
   @SuppressWarnings("unchecked")

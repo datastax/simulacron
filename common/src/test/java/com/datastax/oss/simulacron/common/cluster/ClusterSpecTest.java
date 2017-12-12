@@ -82,7 +82,8 @@ public class ClusterSpecTest {
 
   @Test
   public void testDefaultConstructor() {
-    // This is only used by jackson mapper, but ensure it has sane defaults and doesn't throw any exceptions.
+    // This is only used by jackson mapper, but ensure it has sane defaults and doesn't throw any
+    // exceptions.
     ClusterSpec cluster = new ClusterSpec();
     assertThat(cluster.getParent()).isEmpty();
     assertThat(cluster.getId()).isEqualTo(null);

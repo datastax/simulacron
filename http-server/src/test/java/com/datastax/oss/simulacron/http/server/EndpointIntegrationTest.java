@@ -236,7 +236,7 @@ public class EndpointIntegrationTest {
     driverCluster.init();
     driverCluster.close();
 
-    //Second try
+    // Second try
     driverCluster =
         defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
     driverCluster.init();

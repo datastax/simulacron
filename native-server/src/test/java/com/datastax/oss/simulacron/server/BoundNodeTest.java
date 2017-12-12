@@ -36,6 +36,7 @@ import com.datastax.oss.protocol.internal.response.result.SetKeyspace;
 import com.datastax.oss.protocol.internal.response.result.Void;
 import com.datastax.oss.simulacron.common.cluster.AbstractNode;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
+import com.datastax.oss.simulacron.common.cluster.NodeSpec;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.stubbing.Action;
@@ -64,10 +65,7 @@ public class BoundNodeTest {
   private final BoundNode node =
       new BoundNode(
           new LocalAddress(UUID.randomUUID().toString()),
-          "node0",
-          0L,
-          "1.2.19",
-          null,
+          NodeSpec.builder().withName("node0").withId(0L).withCassandraVersion("1.2.19").build(),
           Collections.emptyMap(),
           cluster,
           dc,
@@ -79,10 +77,7 @@ public class BoundNodeTest {
   private final BoundNode loggedNode =
       new BoundNode(
           new LocalAddress(UUID.randomUUID().toString()),
-          "node0",
-          0L,
-          "1.2.19",
-          null,
+          NodeSpec.builder().withName("node0").withId(0L).withCassandraVersion("1.2.19").build(),
           Collections.emptyMap(),
           cluster,
           dc,
@@ -196,7 +191,7 @@ public class BoundNodeTest {
   }
 
   @Test
-  public void shouldRespondWithStubActionsWhenMatched() throws Exception {
+  public void shouldRespondWithStubActionsWhenMatched() {
     String query = "select * from foo where bar = ?";
     RowsMetadata rowsMetadata = new RowsMetadata(Collections.emptyList(), null, new int[0], null);
     Prepared response = new Prepared(new byte[] {1, 7, 9}, null, rowsMetadata, rowsMetadata);
@@ -209,9 +204,7 @@ public class BoundNodeTest {
                 Message msg = frame.message;
                 if (msg instanceof Prepare) {
                   Prepare p = (Prepare) msg;
-                  if (p.cqlQuery.equals(query)) {
-                    return true;
-                  }
+                  return p.cqlQuery.equals(query);
                 }
                 return false;
               }
@@ -242,9 +235,7 @@ public class BoundNodeTest {
                 Message msg = frame.message;
                 if (msg instanceof Prepare) {
                   Prepare p = (Prepare) msg;
-                  if (p.cqlQuery.equals(query)) {
-                    return true;
-                  }
+                  return p.cqlQuery.equals(query);
                 }
                 return false;
               }
