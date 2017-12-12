@@ -74,6 +74,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.assertj.core.util.Lists;
 import org.junit.After;
 import org.junit.Test;
 
@@ -233,7 +234,8 @@ public class ServerTest {
             .handler(new SlowBindHandler(slowAddr))
             .childHandler(new Server.Initializer());
 
-    // Define server with 500ms timeout, which should cause binding of slow address to timeout and fail register.
+    // Define server with 500ms timeout, which should cause binding of slow address to timeout and
+    // fail register.
     Server flakyServer =
         new Server(
             localAddressResolver,
@@ -279,9 +281,9 @@ public class ServerTest {
 
       try (MockClient client =
           new MockClient(eventLoop).connect(boundCluster.node(0).getAddress())) {
-        // Use a client, this makes sure that the client channel is initialized and added to channel group.
-        // Usually this will be the case, but in some constrained environments there may be a window where
-        // the unregister happens before the channel is added to the channel group.
+        // Use a client, this makes sure that the client channel is initialized and added to channel
+        // group. Usually this will be the case, but in some constrained environments there may be a
+        // window where the unregister happens before the channel is added to the channel group.
         client.write(new Startup());
         // Expect a Ready response.
         Frame response = client.next();
@@ -299,8 +301,8 @@ public class ServerTest {
           assertThat((node).channel.get().isOpen()).isFalse();
         }
 
-        // Channel should be closed.  Send a write so client probes connection status (otherwise it may not get close
-        // notification right away).
+        // Channel should be closed.  Send a write so client probes connection status (otherwise it
+        // may not get close notification right away).
         try {
           ChannelFuture future = client.write(new Startup());
           future.get(5, TimeUnit.SECONDS);
@@ -458,7 +460,8 @@ public class ServerTest {
         // client should remain connected.
         assertThat(client.channel.isOpen()).isTrue();
 
-        // New client should open connection, but fail to get response to startup since not listening.
+        // New client should open connection, but fail to get response to startup since not
+        // listening.
         try (MockClient client2 = new MockClient(eventLoop)) {
           client2.connect(boundNode.getAddress());
           client2.write(new Startup());
@@ -615,8 +618,10 @@ public class ServerTest {
   }
 
   @Test
-  public void testShouldReturnProtocolErrorWhenUsingUnsupportedProtocolVersion() throws Exception {
-    // If connecting with a newer protocol version than simulacron supports, a protocol error should be sent back.
+  public void testShouldReturnProtocolErrorWhenUsingUnsupportedProtocolVersionV6()
+      throws Exception {
+    // If connecting with a newer protocol version than simulacron supports by default, a protocol
+    // error should be sent back.
     NodeSpec node = NodeSpec.builder().build();
     try (BoundNode boundNode = localServer.register(node)) {
 
@@ -675,9 +680,68 @@ public class ServerTest {
         assertThat(err.code).isEqualTo(ProtocolConstants.ErrorCode.PROTOCOL_ERROR);
         assertThat(err.message).isEqualTo("Invalid or unsupported protocol version");
 
-        // Try again with protocol version 4, which is supported, this should work on the same connection
-        // since the previous message was simply discarded.
+        // Try again with protocol version 4, which is supported, this should work on the same
+        // connection since the previous message was simply discarded.
         client.write(new Startup());
+
+        // Expect a Ready response.
+        response = client.next();
+        assertThat(response.message).isInstanceOf(Ready.class);
+      }
+    }
+  }
+
+  @Test
+  public void testShouldReturnProtocolErrorWhenUsingUnsupportedProtocolVersionV4()
+      throws Exception {
+    // If connecting with a newer protocol version than the node supports, a protocol error should
+    // be sent back.
+    NodeSpec node =
+        NodeSpec.builder().withPeerInfo("protocol_versions", Lists.newArrayList(3)).build();
+    try (BoundNode boundNode = localServer.register(node)) {
+
+      FrameCodec<ByteBuf> frameCodec =
+          new FrameCodec<>(
+              new ByteBufCodec(),
+              Compressor.none(),
+              new ProtocolV3ClientCodecs(),
+              new ProtocolV4ClientCodecs());
+
+      try (MockClient client = new MockClient(eventLoop, frameCodec)) {
+        client.connect(boundNode.getAddress());
+        // Write a startup message with protocol version 4 (which is not supported by this node)
+        client.write(
+            new Frame(
+                4,
+                false,
+                0,
+                false,
+                null,
+                FrameUtils.emptyCustomPayload,
+                Collections.emptyList(),
+                new Startup()));
+
+        // Expect a protocol error indicating invalid protocol version.
+        Frame response = client.next();
+        assertThat(response.message).isInstanceOf(Error.class);
+        assertThat(response.protocolVersion).isEqualTo(3);
+        Error err = (Error) response.message;
+        assertThat(err.code).isEqualTo(ProtocolConstants.ErrorCode.PROTOCOL_ERROR);
+        assertThat(err.message).isEqualTo("Invalid or unsupported protocol version");
+
+        // Try again with protocol version 3, which is supported, this should work on the same
+        // connection
+        // since the previous message was simply discarded.
+        client.write(
+            new Frame(
+                3,
+                false,
+                0,
+                false,
+                null,
+                FrameUtils.emptyCustomPayload,
+                Collections.emptyList(),
+                new Startup()));
 
         // Expect a Ready response.
         response = client.next();

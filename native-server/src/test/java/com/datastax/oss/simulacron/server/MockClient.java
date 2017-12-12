@@ -47,7 +47,8 @@ public class MockClient implements Closeable {
   Channel channel;
 
   MockClient(EventLoopGroup elg, FrameCodec<ByteBuf> frameCodec) {
-    // Set up so written Frames are encoded into bytes, received bytes are encoded into Frames put on queue.
+    // Set up so written Frames are encoded into bytes, received bytes are encoded into Frames put
+    // on queue.
     cb.group(elg)
         .channel(LocalChannel.class)
         .handler(
@@ -56,7 +57,7 @@ public class MockClient implements Closeable {
               protected void initChannel(LocalChannel ch) throws Exception {
                 ch.pipeline()
                     .addLast(new FrameEncoder(frameCodec))
-                    .addLast(new FrameDecoder(frameCodec))
+                    .addLast(new TestFrameDecoder(frameCodec))
                     .addLast(
                         new ChannelInboundHandlerAdapter() {
                           @Override
@@ -101,7 +102,7 @@ public class MockClient implements Closeable {
         this.channel.close().sync();
       }
     } catch (InterruptedException e) {
-      //no op
+      // no op
     }
   }
 }

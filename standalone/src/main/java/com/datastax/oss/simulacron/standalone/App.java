@@ -82,7 +82,8 @@ public class App {
             .withActivityLoggingEnabled(!cli.disableActivityLogging)
             .build();
 
-    // TODO: There should probably be a module in http-server for setting up the http server instead of doing it here.
+    // TODO: There should probably be a module in http-server for setting up the http server instead
+    // of doing it here.
     ClusterManager provisioner = new ClusterManager(nativeServer);
     provisioner.registerWithRouter(httpServer.getRouter());
 

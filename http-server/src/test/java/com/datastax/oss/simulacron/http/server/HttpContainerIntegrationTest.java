@@ -122,13 +122,13 @@ public class HttpContainerIntegrationTest {
     try {
       HttpTestResponse responseToValidate = future.get();
       ObjectMapper om = ObjectMapperHolder.getMapper();
-      //create cluster object from json return code
+      // create cluster object from json return code
       ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
       assertThat(new Long(0)).isEqualTo(cluster.getId());
       assertThat("0").isEqualTo(cluster.getName());
       assertThat(cluster.getPeerInfo()).isEmpty();
-      //create cluster object from json return code
+      // create cluster object from json return code
       Collection<DataCenterSpec> centers = cluster.getDataCenters();
       assertThat(centers.size()).isEqualTo(1);
       DataCenterSpec center = centers.iterator().next();
@@ -169,7 +169,7 @@ public class HttpContainerIntegrationTest {
     HttpTestResponse responseToValidate = future.get();
     validateCluster(responseToValidate, 201);
 
-    //create cluster object from json return code
+    // create cluster object from json return code
     ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
 
     client = vertx.createHttpClient();
@@ -389,13 +389,13 @@ public class HttpContainerIntegrationTest {
     try {
       HttpTestResponse responseToValidate = future.get();
       ObjectMapper om = ObjectMapperHolder.getMapper();
-      //create cluster object from json return code
+      // create cluster object from json return code
       ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
       assertThat(new Long(0)).isEqualTo(cluster.getId());
       assertThat("0").isEqualTo(cluster.getName());
       assertThat(cluster.getPeerInfo()).isEmpty();
-      //create cluster object from json return code
+      // create cluster object from json return code
       Collection<DataCenterSpec> centers = cluster.getDataCenters();
       assertThat(centers.size()).isEqualTo(1);
       DataCenterSpec center = centers.iterator().next();
@@ -446,13 +446,13 @@ public class HttpContainerIntegrationTest {
     try {
       HttpTestResponse responseToValidate = future.get();
       ObjectMapper om = ObjectMapperHolder.getMapper();
-      //create cluster object from json return code
+      // create cluster object from json return code
       ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
       assertThat(new Long(0)).isEqualTo(cluster.getId());
       assertThat("0").isEqualTo(cluster.getName());
       assertThat(cluster.getPeerInfo()).isEmpty();
-      //create cluster object from json return code
+      // create cluster object from json return code
       Collection<DataCenterSpec> centers = cluster.getDataCenters();
       assertThat(centers.size()).isEqualTo(3);
       long currentCenterId = 0;
@@ -723,7 +723,7 @@ public class HttpContainerIntegrationTest {
     try {
       HttpTestResponse responseToValidate = future.get();
       ObjectMapper om = ObjectMapperHolder.getMapper();
-      //create cluster object from json return code
+      // create cluster object from json return code
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
       ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
       return cluster;
@@ -754,7 +754,7 @@ public class HttpContainerIntegrationTest {
     try {
       HttpTestResponse responseToValidate = future.get();
       ObjectMapper om = ObjectMapperHolder.getMapper();
-      //create cluster object from json return code
+      // create cluster object from json return code
       assertThat(responseToValidate.response.statusCode()).isEqualTo(201);
       ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
       return cluster;
@@ -767,13 +767,13 @@ public class HttpContainerIntegrationTest {
   private void validateCluster(HttpTestResponse responseToValidate, int expectedStatusCode)
       throws Exception {
     ObjectMapper om = ObjectMapperHolder.getMapper();
-    //create cluster object from json return code
+    // create cluster object from json return code
     ClusterSpec cluster = om.readValue(responseToValidate.body, ClusterSpec.class);
     assertThat(responseToValidate.response.statusCode()).isEqualTo(expectedStatusCode);
     assertThat(new Long(0)).isEqualTo(cluster.getId());
     assertThat("0").isEqualTo(cluster.getName());
     assertThat(cluster.getPeerInfo()).isEmpty();
-    //create cluster object from json return code
+    // create cluster object from json return code
     Collection<DataCenterSpec> centers = cluster.getDataCenters();
     assertThat(centers.size()).isEqualTo(3);
     for (DataCenterSpec center : centers.toArray(new DataCenterSpec[centers.size()])) {

@@ -27,8 +27,9 @@ import java.util.stream.Collectors;
 public abstract class AbstractCluster<D extends AbstractDataCenter<?, N>, N extends AbstractNode>
     extends AbstractNodeProperties implements ClusterStructure<D, N> {
 
-  // json managed reference is used to indicate a two way linking between the 'parent' (cluster) and 'children'
-  // (datacenters) in a json tree.  This tells the jackson mapping to tie child DCs to this cluster on deserialization.
+  // json managed reference is used to indicate a two way linking between the 'parent' (cluster) and
+  // 'children' (datacenters) in a json tree.  This tells the jackson mapping to tie child DCs to
+  // this cluster on deserialization.
   @JsonManagedReference
   @JsonProperty("data_centers")
   private final Collection<D> dataCenters = new ConcurrentSkipListSet<>();

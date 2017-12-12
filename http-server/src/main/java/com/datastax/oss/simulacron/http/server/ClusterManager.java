@@ -76,7 +76,7 @@ public class ClusterManager implements HttpListener {
                 String name = context.request().getParam("name");
                 StringBuilder response = new StringBuilder();
                 ClusterSpec cluster = null;
-                //General parameters were provided for us.
+                // General parameters were provided for us.
                 if (dcRawString != null) {
                   String[] dcStrs = dcRawString.split(",");
                   int[] dcs = new int[dcStrs.length];
@@ -92,7 +92,7 @@ public class ClusterManager implements HttpListener {
                             .build();
                   }
                 } else {
-                  //A specific cluster object was provided.
+                  // A specific cluster object was provided.
                   // We could add special handling here, but I'm not sure it's worth it
                   String jsonBody = totalBuffer.toString();
                   cluster = om.readValue(jsonBody, ClusterSpec.class);

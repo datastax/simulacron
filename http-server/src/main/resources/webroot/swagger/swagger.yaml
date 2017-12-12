@@ -1839,6 +1839,13 @@ definitions:
       graph:
         type: boolean
         example: false
+      protocol_versions:
+        type: list
+        example:
+          - 3
+          - 4
+          - 5
+        description: Protocol versions to support, if not supplied, supported versions are based on cassandra version.
   Node:
     type: object
     required:

@@ -533,12 +533,7 @@ public final class Server implements AutoCloseable {
                 BoundNode node =
                     new BoundNode(
                         address,
-                        refNode.getName(),
-                        refNode.getId() != null
-                            ? refNode.getId()
-                            : 0, // assign id 0 if this is a standalone node.
-                        refNode.getCassandraVersion(),
-                        refNode.getDSEVersion(),
+                        refNode,
                         newPeerInfo,
                         cluster,
                         parent,
@@ -618,8 +613,8 @@ public final class Server implements AutoCloseable {
                         }
                         // If event loop was created for Server, shut it down.
                         if (!customEventLoop) {
-                          // Immediate shutdown should be appropriate since we unregister first so nothing should be
-                          // happening on event loop.
+                          // Immediate shutdown should be appropriate since we unregister first so
+                          // nothing should be happening on event loop.
                           Future<?> future =
                               eventLoopGroup.shutdownGracefully(0, 1, TimeUnit.SECONDS);
                           // adapt future to completable future by calling get on common pool.
@@ -837,8 +832,8 @@ public final class Server implements AutoCloseable {
         logger.debug("Got new connection {}", channel);
 
         pipeline
-            .addLast("decoder", new FrameDecoder(frameCodec))
-            .addLast("encoder", new FrameEncoder(frameCodec))
+            .addLast("decoder", new FrameDecoder(node.getFrameCodec()))
+            .addLast("encoder", new FrameEncoder(node.getFrameCodec()))
             .addLast("requestHandler", new RequestHandler(node));
       } finally {
         MDC.remove("node");

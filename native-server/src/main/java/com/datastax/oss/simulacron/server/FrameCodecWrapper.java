@@ -15,9 +15,23 @@
  */
 package com.datastax.oss.simulacron.server;
 
-public enum RejectScope {
-  UNBIND, // unbind the channel so can't establish TCP connection
-  STOP, // unbind the channel and close all nodes, similar to as if a node had been stopped.
-  REJECT_STARTUP // keep channel bound so can establish TCP connection, but doesn't reply to
-  // startup.
+import com.datastax.oss.protocol.internal.Compressor;
+import com.datastax.oss.protocol.internal.FrameCodec;
+import io.netty.buffer.ByteBuf;
+import java.util.Set;
+
+class FrameCodecWrapper extends FrameCodec<ByteBuf> {
+
+  private static final ByteBufCodec codec = new ByteBufCodec();
+
+  private final Set<Integer> supportedProtocolVersions;
+
+  FrameCodecWrapper(Set<Integer> supportedProtocolVersions, CodecGroup... codecGroups) {
+    super(codec, Compressor.none(), codecGroups);
+    this.supportedProtocolVersions = supportedProtocolVersions;
+  }
+
+  Set<Integer> getSupportedProtocolVersions() {
+    return supportedProtocolVersions;
+  }
 }

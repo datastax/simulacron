@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.simulacron.server;
 
+import static com.datastax.oss.simulacron.server.FrameCodecUtils.buildFrameCodec;
+
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.simulacron.common.cluster.AbstractDataCenter;
 import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
@@ -48,6 +50,8 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
 
   private final transient List<QueryListenerWrapper> queryListeners = new ArrayList<>();
 
+  private final transient FrameCodecWrapper frameCodec;
+
   BoundDataCenter(BoundCluster parent) {
     super(
         "dummy",
@@ -59,6 +63,7 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
     this.server = parent.getServer();
     this.cluster = parent;
     this.stubStore = new StubStore();
+    this.frameCodec = parent.getFrameCodec();
   }
 
   BoundDataCenter(DataCenterSpec delegate, BoundCluster parent) {
@@ -72,6 +77,7 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
     this.server = parent.getServer();
     this.cluster = parent;
     this.stubStore = new StubStore();
+    this.frameCodec = buildFrameCodec(delegate).orElse(parent.getFrameCodec());
   }
 
   @Override
@@ -173,6 +179,12 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
   @Override
   public Server getServer() {
     return server;
+  }
+
+  @Override
+  @JsonIgnore
+  public FrameCodecWrapper getFrameCodec() {
+    return frameCodec;
   }
 
   Optional<StubMapping> find(BoundNode node, Frame frame) {

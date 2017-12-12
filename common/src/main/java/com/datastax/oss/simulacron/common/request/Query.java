@@ -95,14 +95,14 @@ public final class Query extends Request {
       }
     }
     if (frame.message instanceof com.datastax.oss.protocol.internal.request.Query) {
-      //If the query expected matches the primed query example and CL levels match. Return true;
+      // If the query expected matches the primed query example and CL levels match. Return true;
       com.datastax.oss.protocol.internal.request.Query query =
           (com.datastax.oss.protocol.internal.request.Query) frame.message;
       if (this.query.equals(query.query)) {
         ConsistencyLevel level = ConsistencyLevel.fromCode(query.options.consistency);
-        //NOTE: Absent CL level means it will match all CL levels
+        // NOTE: Absent CL level means it will match all CL levels
         if (this.consistencyEnum.contains(level) || this.consistencyEnum.size() == 0) {
-          //Id any parameters are present we must make sure they match those in the primed queries
+          // Id any parameters are present we must make sure they match those in the primed queries
           return checkParamsMatch(query.options, frame);
         }
       }
@@ -152,7 +152,7 @@ public final class Query extends Request {
         if (options.namedValues.size() != params.size()) {
           return false;
         }
-        //look up each parameter and make sure they match
+        // look up each parameter and make sure they match
         for (String key : options.namedValues.keySet()) {
           String stringType = paramTypes.get(key);
 

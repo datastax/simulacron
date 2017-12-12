@@ -35,8 +35,8 @@ public class AddressResolverIntegrationTest {
 
   @Test
   public void testAddressesReused() throws Exception {
-    // Validate that when a Cluster is unregistered, the ip addresses used can be reassigned to subsequently
-    // created clusters.
+    // Validate that when a Cluster is unregistered, the ip addresses used can be reassigned to
+    // subsequently created clusters.
     ClusterSpec cluster0 = ClusterSpec.builder().withNodes(3, 3, 3).build();
     BoundCluster boundCluster0 = server.register(cluster0);
 
@@ -60,8 +60,8 @@ public class AddressResolverIntegrationTest {
 
   @Test
   public void testAddressesReassignedInSameOrder() throws Exception {
-    // Validate that when a Cluster is unregistered, the ip addresses used can be reassigned to subsequently
-    // created clusters.
+    // Validate that when a Cluster is unregistered, the ip addresses used can be reassigned to
+    // subsequently created clusters.
     // Also affirms that the order of nodes and data centers within clusters is consistent.
     List<SocketAddress> lastAddresses = null;
 

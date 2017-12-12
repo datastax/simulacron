@@ -89,33 +89,33 @@ public class ActivityLogIntegrationTest {
     String[] queries =
         new String[] {"select * from table1", "select * from table2", "select * from table3"};
     primeAndExecuteQueries(primedQueries, queries);
-    //verify for cluster level filter: primed
+    // verify for cluster level filter: primed
     ClusterQueryLogReport queryLogReport =
         server.getLogs(server.getCluster().resolveId() + "?filter=primed");
     List<QueryLog> queryLogs = getAllQueryLogs(queryLogReport);
     assertThat(queryLogs).hasSize(2);
 
-    //verify for cluster level filter: nonprimed
+    // verify for cluster level filter: nonprimed
     queryLogs =
         getAllQueryLogs(server.getLogs(server.getCluster().resolveId() + "?filter=nonprimed"));
     assertThat(queryLogs).hasSize(1);
 
-    //verify for datacenter level filter: primed
+    // verify for datacenter level filter: primed
     queryLogs =
         getAllQueryLogs(server.getLogs(server.getCluster().resolveId() + "/dc1?filter=primed"));
     assertThat(queryLogs).hasSize(2);
 
-    //verify for datacenter level filter: nonprimed
+    // verify for datacenter level filter: nonprimed
     queryLogs =
         getAllQueryLogs(server.getLogs(server.getCluster().resolveId() + "/dc1?filter=nonprimed"));
     assertThat(queryLogs).hasSize(1);
 
-    //verify for node level filter: primed
+    // verify for node level filter: primed
     queryLogs =
         getAllQueryLogs(server.getLogs(server.getCluster().getName() + "/dc1/0?filter=primed"));
     assertThat(queryLogs).hasSize(1);
 
-    //verify for node level filter: nonprimed
+    // verify for node level filter: nonprimed
     queryLogs =
         getAllQueryLogs(server.getLogs(server.getCluster().getName() + "/dc1/0?filter=nonprimed"));
     assertThat(queryLogs).hasSize(0);
@@ -127,12 +127,12 @@ public class ActivityLogIntegrationTest {
 
     try (com.datastax.driver.core.Cluster driverCluster =
         defaultBuilder(server.getCluster())
-            .allowBetaProtocolVersion()
             .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
             .build()) {
       driverCluster.init();
     }
-    //verify for node level filter: primed.  This should be empty as no primed queries were made other than internal.
+    // verify for node level filter: primed.  This should be empty as no primed queries were made
+    // other than internal.
     List<QueryLog> queryLogs =
         getAllQueryLogs(server.getLogs(server.getCluster().getName() + "?filter=primed"));
     assertThat(queryLogs).isEmpty();
@@ -227,7 +227,6 @@ public class ActivityLogIntegrationTest {
         com.datastax.driver.core.Cluster.builder()
             .addContactPointsWithPorts(cluster.node(0).inetSocketAddress())
             .withNettyOptions(SimulacronDriverSupport.nonQuietClusterCloseOptions)
-            .allowBetaProtocolVersion()
             .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
             .build()) {
       driverCluster.connect().execute(statement);

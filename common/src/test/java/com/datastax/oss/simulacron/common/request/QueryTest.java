@@ -33,8 +33,8 @@ public class QueryTest {
 
   @Test
   public void shouldAlwaysMatchWhenParamValuesAreNotSet() {
-    // Ensures that if a query prime is set up where there are no param values configured that it matches every
-    // query matching the query text.
+    // Ensures that if a query prime is set up where there are no param values configured that it
+    // matches every query matching the query text.
     String queryStr = "update x set y = ?, z = ?, a = ? where b = ?";
     Map<String, String> paramTypes = new HashMap<>();
     paramTypes.put("y", "int");
