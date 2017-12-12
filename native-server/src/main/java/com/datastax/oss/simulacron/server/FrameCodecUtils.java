@@ -58,7 +58,8 @@ class FrameCodecUtils {
       if (topic.getCassandraVersion() != null && !topic.isPeerInfoPresent(PROTOCOL_VERSIONS)) {
         if (topic.getCassandraVersion().startsWith("4.")) {
           return Optional.of(buildFrameCodec(3, 4, 5));
-        } else if (topic.getCassandraVersion().startsWith("2.2")) {
+        } else if (topic.getCassandraVersion().startsWith("3.0")
+            || topic.getCassandraVersion().startsWith("2.2")) {
           return Optional.of(buildFrameCodec(3, 4));
         } else if (topic.getCassandraVersion().startsWith("2.1")) {
           return Optional.of(buildFrameCodec(3));
