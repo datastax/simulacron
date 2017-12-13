@@ -23,10 +23,10 @@
     <version>0.7.1-SNAPSHOT</version>
   </parent>
 
-  <artifactId>simulacron-common</artifactId>
+  <artifactId>simulacron-native-protocol-json</artifactId>
   <packaging>jar</packaging>
 
-  <name>simulacron common</name>
+  <name>simulacron native protocol json serializers</name>
 
   <dependencies>
     <dependency>
@@ -38,11 +38,6 @@
       <groupId>com.datastax.oss</groupId>
       <artifactId>native-protocol</artifactId>
       <version>${native-protocol.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.datastax.oss.simulacron</groupId>
-      <artifactId>simulacron-native-protocol-json</artifactId>
-      <version>${project.parent.version}</version>
     </dependency>
   </dependencies>
 

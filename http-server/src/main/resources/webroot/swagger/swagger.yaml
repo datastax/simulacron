@@ -2625,18 +2625,6 @@ definitions:
   QueryLog:
     type: object
     properties:
-      type:
-        type: string
-        example: "QUERY"
-      query:
-        type: string
-        example: "select * from tbl"
-      consistency_level:
-        type: string
-        example: "LOCAL_QUORUM"
-      serial_consistency_level:
-        type: string
-        example: "SERIAL"
       connection:
         type: string
         example: "/127.0.0.1:34662"
@@ -2644,14 +2632,34 @@ definitions:
         type: long
         description: Timestamp when query was received (Epoch time in milliseconds)
         example: 1496955368551
-      client_timestamp:
-        type: long
-        description: Timestamp specified in query (Epoch time in milliseconds)
-        example: 1496955368551
       primed:
         type: boolean
         description: Whether or not the query had a matching prime
         example: true
+      frame:
+        type: object
+        example:
+          protocol_version: 4
+          beta: false
+          stream_id: 128
+          tracing_id: null
+          custom_payload: {}
+          warnings: []
+          message:
+            type: QUERY
+            opcode: 7
+            is_response: false
+            query: select * from tbl
+            options:
+              consistency: LOCAL_ONE
+              positional_values: []
+              named_values: {}
+              skip_metadata: false
+              page_size: 5000
+              paging_state: null
+              serial_consistency: SERIAL
+              default_timestamp: 100
+              keyspace: null
   NodeQueryLogReport:
     type: object
     required:

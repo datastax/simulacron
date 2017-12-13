@@ -24,7 +24,6 @@ import com.datastax.oss.simulacron.common.codec.ConsistencyLevel;
 import com.datastax.oss.simulacron.common.stubbing.Prime;
 import com.datastax.oss.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.SocketAddress;
 import java.util.Optional;
@@ -55,7 +54,8 @@ public class QueryLog {
   @JsonProperty("primed")
   private boolean primed;
 
-  @JsonIgnore private Frame frame;
+  @JsonProperty(value = "frame", access = JsonProperty.Access.READ_ONLY)
+  private Frame frame;
 
   @JsonCreator
   public QueryLog(
@@ -123,18 +123,22 @@ public class QueryLog {
     }
   }
 
+  /** @deprecated Use frame instead. */
   public String getType() {
     return type;
   }
 
+  /** @deprecated Use frame instead. */
   public String getQuery() {
     return query;
   }
 
+  /** @deprecated Use frame instead. */
   public ConsistencyLevel getConsistency() {
     return consistency;
   }
 
+  /** @deprecated Use frame instead. */
   public ConsistencyLevel getSerialConsistency() {
     return serialConsistency;
   }
@@ -147,6 +151,8 @@ public class QueryLog {
     return receivedTimestamp;
   }
 
+  /** @deprecated Use frame instead. */
+  @Deprecated
   public long getClientTimestamp() {
     return clientTimestamp;
   }
@@ -156,7 +162,6 @@ public class QueryLog {
   }
 
   /** @return The frame associated with this log if present. */
-  @JsonIgnore
   public Frame getFrame() {
     return this.frame;
   }
