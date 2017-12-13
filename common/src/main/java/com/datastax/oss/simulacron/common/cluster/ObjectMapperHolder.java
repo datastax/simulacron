@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.simulacron.common.cluster;
 
+import com.datastax.oss.simulacron.protocol.json.NativeProtocolModule;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -41,6 +42,7 @@ public class ObjectMapperHolder {
     mod.addKeySerializer(InetAddress.class, new InetAddressSerializer());
     mod.addKeyDeserializer(InetAddress.class, new InetAddressDeserializer());
     om.registerModule(mod);
+    om.registerModule(NativeProtocolModule.module());
     OBJECT_MAPPER = om;
   }
 
