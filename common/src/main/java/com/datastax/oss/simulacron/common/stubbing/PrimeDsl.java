@@ -136,13 +136,21 @@ public class PrimeDsl {
     return query(query, Collections.singletonList(consistency));
   }
 
+  private static final Map<String, String> noRowsColumnTypes = new HashMap<>();
+
+  static {
+    noRowsColumnTypes.put("fake", "varchar");
+  }
+
+  private static final List<Map<String, Object>> emptyRows = new ArrayList<>();
+
   /**
    * Provides a Rows result with no rows.
    *
    * @return A rows response with no rows.
    */
   public static SuccessResult noRows() {
-    return new SuccessResult(null, null);
+    return new SuccessResult(emptyRows, noRowsColumnTypes);
   }
 
   /**
