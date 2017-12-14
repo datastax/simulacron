@@ -2638,6 +2638,7 @@ definitions:
         example: true
       frame:
         type: object
+        description: The full native protocol frame, contents depend on the message type.
         example:
           protocol_version: 4
           beta: false
