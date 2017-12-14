@@ -71,23 +71,32 @@ public class SuccessResult extends Result {
     CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
     // This will return all the rows specified in the query, along with any corresponding metadata
     // about the row
-    boolean meta_constructed = false;
     List<ColumnSpec> columnMetadata = new LinkedList<ColumnSpec>();
-    Queue<List<ByteBuffer>> rows = new LinkedList<List<ByteBuffer>>();
+    CodecUtils.ColumnSpecBuilder columnBuilder = CodecUtils.columnSpecBuilder();
+    Queue<List<ByteBuffer>> rows = new LinkedList<>();
 
-    for (Map<String, Object> row : this.rows) {
-      List<ByteBuffer> rowByteBuffer = new LinkedList<ByteBuffer>();
-      CodecUtils.ColumnSpecBuilder columnBuilder = CodecUtils.columnSpecBuilder();
-      // Iterate over all the rows and create column meta data if needed
-      for (String key : row.keySet()) {
-        RawType type = CodecUtils.getTypeFromName(columnTypes.get(key));
-        if (!meta_constructed) {
-          columnMetadata.add(columnBuilder.apply(key, type));
-        }
-        rowByteBuffer.add(mapper.codecFor(type).encodeObject(row.get(key)));
+    // Populate column metadata even if there are no rows.
+    if (this.rows.isEmpty()) {
+      for (Map.Entry<String, String> columnType : columnTypes.entrySet()) {
+        columnMetadata.add(
+            columnBuilder.apply(
+                columnType.getKey(), CodecUtils.getTypeFromName(columnType.getValue())));
       }
-      meta_constructed = true;
-      rows.add(rowByteBuffer);
+    } else {
+      boolean metaConstructed = false;
+      for (Map<String, Object> row : this.rows) {
+        List<ByteBuffer> rowByteBuffer = new LinkedList<>();
+        // Iterate over all the rows and create column meta data if needed
+        for (String key : row.keySet()) {
+          RawType type = CodecUtils.getTypeFromName(columnTypes.get(key));
+          if (!metaConstructed) {
+            columnMetadata.add(columnBuilder.apply(key, type));
+          }
+          rowByteBuffer.add(mapper.codecFor(type).encodeObject(row.get(key)));
+        }
+        metaConstructed = true;
+        rows.add(rowByteBuffer);
+      }
     }
     RowsMetadata rowMetadata = new RowsMetadata(columnMetadata, null, new int[] {0}, null);
     MessageResponseAction action =

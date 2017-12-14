@@ -27,6 +27,7 @@ import com.datastax.oss.simulacron.common.codec.CodecUtils;
 import com.datastax.oss.simulacron.common.request.Query;
 import com.datastax.oss.simulacron.common.result.ErrorResult;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
+import com.datastax.oss.simulacron.common.result.VoidResult;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -73,6 +74,9 @@ public class Prime extends StubMapping {
     return null;
   }
 
+  private static final RowsMetadata rowMetadataForVoid =
+      new RowsMetadata(new LinkedList<ColumnSpec>(), null, new int[] {0}, null);
+
   public Prepared toPrepared() {
     if (this.primedRequest.when instanceof Query) {
       Query query = (Query) this.primedRequest.when;
@@ -82,6 +86,8 @@ public class Prime extends StubMapping {
         SuccessResult result = (SuccessResult) this.primedRequest.then;
         return new Prepared(
             b.array(), null, fetchRowMetadataForParams(query), fetchRowMetadataForResults(result));
+      } else if (this.primedRequest.then instanceof VoidResult) {
+        return new Prepared(b.array(), null, fetchRowMetadataForParams(query), rowMetadataForVoid);
       } else if (this.primedRequest.then instanceof ErrorResult) {
         return new Prepared(
             b.array(),
