@@ -18,7 +18,6 @@ package com.datastax.oss.simulacron.http.server;
 import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.defaultBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
@@ -48,23 +47,25 @@ public class EndpointIntegrationTest {
     Iterator<BoundNode> nodeIterator = dc.getNodes().iterator();
     BoundNode node = nodeIterator.next();
 
-    com.datastax.driver.core.Cluster driverCluster = defaultBuilder(server.getCluster()).build();
-    driverCluster.init();
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder(server.getCluster()).build()) {
+      driverCluster.init();
 
-    assertThat(driverCluster.getMetadata().getAllHosts()).hasSize(6);
-    Session session = driverCluster.connect();
+      assertThat(driverCluster.getMetadata().getAllHosts()).hasSize(6);
+      driverCluster.connect();
 
-    ArrayList<Scope> list = new ArrayList<>();
-    list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
-    list.add(new Scope(server.getCluster().getId(), dc.getId(), null));
-    list.add(new Scope(server.getCluster().getId(), null, null));
+      ArrayList<Scope> list = new ArrayList<>();
+      list.add(new Scope(server.getCluster().getId(), dc.getId(), node.getId()));
+      list.add(new Scope(server.getCluster().getId(), dc.getId(), null));
+      list.add(new Scope(server.getCluster().getId(), null, null));
 
-    for (Scope scope : list) {
-      HttpTestResponse responseToValidate = server.get("/connections/" + scope.toString());
-      assertThat(responseToValidate.response.statusCode()).isEqualTo(200);
-      ClusterConnectionReport responseReport =
-          om.readValue(responseToValidate.body, ClusterConnectionReport.class);
-      this.verifyClusterConnectionReport(responseReport, scope, dc.getId(), node.getId());
+      for (Scope scope : list) {
+        HttpTestResponse responseToValidate = server.get("/connections/" + scope.toString());
+        assertThat(responseToValidate.response.statusCode()).isEqualTo(200);
+        ClusterConnectionReport responseReport =
+            om.readValue(responseToValidate.body, ClusterConnectionReport.class);
+        this.verifyClusterConnectionReport(responseReport, scope, dc.getId(), node.getId());
+      }
     }
   }
 
@@ -81,29 +82,32 @@ public class EndpointIntegrationTest {
     list.add(new Scope(server.getCluster().getId(), null, null));
 
     for (Scope scope : list) {
-      com.datastax.driver.core.Cluster driverCluster =
-          defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
-      driverCluster.init();
-      HttpTestResponse responseDelete =
-          server.delete("/connections/" + scope.toString() + "?type=disconnect");
+      try (com.datastax.driver.core.Cluster driverCluster =
+          defaultBuilder()
+              .addContactPointsWithPorts((InetSocketAddress) node.getAddress())
+              .build()) {
+        driverCluster.init();
+        HttpTestResponse responseDelete =
+            server.delete("/connections/" + scope.toString() + "?type=disconnect");
 
-      ClusterConnectionReport responseReport =
-          om.readValue(responseDelete.body, ClusterConnectionReport.class);
-      Collection<NodeConnectionReport> nodes = getNodeConnectionReports(responseReport, dc.getId());
+        ClusterConnectionReport responseReport =
+            om.readValue(responseDelete.body, ClusterConnectionReport.class);
+        Collection<NodeConnectionReport> nodes =
+            getNodeConnectionReports(responseReport, dc.getId());
 
-      assertThat(responseDelete.response.statusCode()).isEqualTo(200);
+        assertThat(responseDelete.response.statusCode()).isEqualTo(200);
 
-      HttpTestResponse responseNewConnections = server.get("/connections/" + scope.toString());
-      assertThat(responseNewConnections.body).isNotEqualTo(responseDelete.body);
-      for (NodeConnectionReport nodeReport : nodes) {
-        for (SocketAddress sA : nodeReport.getConnections()) {
-          String sAString = sA.toString();
-          assertThat(responseDelete.body).contains(sAString.substring(1, sAString.length()));
-          assertThat(responseNewConnections.body)
-              .doesNotContain(sAString.substring(1, sAString.length()));
+        HttpTestResponse responseNewConnections = server.get("/connections/" + scope.toString());
+        assertThat(responseNewConnections.body).isNotEqualTo(responseDelete.body);
+        for (NodeConnectionReport nodeReport : nodes) {
+          for (SocketAddress sA : nodeReport.getConnections()) {
+            String sAString = sA.toString();
+            assertThat(responseDelete.body).contains(sAString.substring(1, sAString.length()));
+            assertThat(responseNewConnections.body)
+                .doesNotContain(sAString.substring(1, sAString.length()));
+          }
         }
       }
-      driverCluster.close();
     }
   }
 
@@ -114,46 +118,46 @@ public class EndpointIntegrationTest {
     Iterator<BoundNode> nodeIterator = dc.getNodes().iterator();
     BoundNode node = nodeIterator.next();
 
-    com.datastax.driver.core.Cluster driverCluster =
-        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
-    driverCluster.init();
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build()) {
+      driverCluster.init();
 
-    assertThat(driverCluster.getMetadata().getAllHosts()).hasSize(6);
-    driverCluster.connect();
+      assertThat(driverCluster.getMetadata().getAllHosts()).hasSize(6);
+      driverCluster.connect();
 
-    Scope scope = new Scope(server.getCluster().getId(), dc.getId(), node.getId());
-    HttpTestResponse response = server.get("/connections/" + scope.toString());
+      Scope scope = new Scope(server.getCluster().getId(), dc.getId(), node.getId());
+      HttpTestResponse response = server.get("/connections/" + scope.toString());
 
-    ClusterConnectionReport clusterReport =
-        om.readValue(response.body, ClusterConnectionReport.class);
-    NodeConnectionReport connectionNode =
-        clusterReport
-            .getDataCenters()
-            .stream()
-            .filter(dce -> dce.getId().equals(dc.getId()))
-            .flatMap(d -> d.getNodes().stream())
-            .filter(n -> n.getId().equals(node.getId()))
-            .findAny()
-            .get();
-    InetSocketAddress connection = (InetSocketAddress) connectionNode.getConnections().get(0);
+      ClusterConnectionReport clusterReport =
+          om.readValue(response.body, ClusterConnectionReport.class);
+      NodeConnectionReport connectionNode =
+          clusterReport
+              .getDataCenters()
+              .stream()
+              .filter(dce -> dce.getId().equals(dc.getId()))
+              .flatMap(d -> d.getNodes().stream())
+              .filter(n -> n.getId().equals(node.getId()))
+              .findAny()
+              .get();
+      InetSocketAddress connection = (InetSocketAddress) connectionNode.getConnections().get(0);
 
-    HttpTestResponse deleteResponse =
-        server.delete(
-            "/connection/"
-                + server.getCluster().getId()
-                + connection.getAddress()
-                + "/"
-                + connection.getPort());
-    assertThat(deleteResponse.response.statusCode()).isEqualTo(200);
+      HttpTestResponse deleteResponse =
+          server.delete(
+              "/connection/"
+                  + server.getCluster().getId()
+                  + connection.getAddress()
+                  + "/"
+                  + connection.getPort());
+      assertThat(deleteResponse.response.statusCode()).isEqualTo(200);
 
-    HttpTestResponse responseAfter = server.get("/connections/" + scope.toString());
+      HttpTestResponse responseAfter = server.get("/connections/" + scope.toString());
 
-    String sAString = connection.getAddress() + ":" + connection.getPort();
-    String sAtrimmed = sAString.substring(1, sAString.length());
-    assertThat(responseAfter.body).isNotEqualTo(response.body);
-    assertThat(responseAfter.body).doesNotContain(sAtrimmed);
-    assertThat(deleteResponse.body).contains(sAtrimmed);
-    driverCluster.close();
+      String sAString = connection.getAddress() + ":" + connection.getPort();
+      String sAtrimmed = sAString.substring(1, sAString.length());
+      assertThat(responseAfter.body).isNotEqualTo(response.body);
+      assertThat(responseAfter.body).doesNotContain(sAtrimmed);
+      assertThat(deleteResponse.body).contains(sAtrimmed);
+    }
   }
 
   @Test
@@ -191,8 +195,8 @@ public class EndpointIntegrationTest {
           server.delete("/listener/" + scope + "?after=" + 0 + "&type=" + "unbind");
       assertThat(delete.response.statusCode()).isEqualTo(200);
 
+      com.datastax.driver.core.Cluster driverCluster = null;
       try {
-        com.datastax.driver.core.Cluster driverCluster;
         if (scope.getClusterId() == null) {
           driverCluster =
               defaultBuilder()
@@ -206,20 +210,27 @@ public class EndpointIntegrationTest {
         }
         driverCluster.init();
       } catch (NoHostAvailableException e) {
+      } finally {
+        if (driverCluster != null) {
+          driverCluster.close();
+        }
       }
 
       HttpTestResponse accept = server.put("/listener/" + scope);
       assertThat(accept.response.statusCode()).isEqualTo(200);
 
-      com.datastax.driver.core.Cluster driverCluster =
-          defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
-      driverCluster.init();
-      driverCluster.close();
+      try (com.datastax.driver.core.Cluster driverCluster2 =
+          defaultBuilder()
+              .addContactPointsWithPorts((InetSocketAddress) node.getAddress())
+              .build()) {
+        driverCluster2.init();
+        driverCluster2.close();
+      }
     }
   }
 
   @Test
-  public void testRejectAndAccepAfter() throws Exception {
+  public void testRejectAndAcceptAfter() throws Exception {
     Collection<BoundDataCenter> datacenters = server.getCluster().getDataCenters();
     BoundDataCenter dc = datacenters.iterator().next();
     Iterator<BoundNode> nodeIterator = dc.getNodes().iterator();
@@ -231,21 +242,20 @@ public class EndpointIntegrationTest {
     assertThat(delete.response.statusCode()).isEqualTo(200);
 
     // First try
-    com.datastax.driver.core.Cluster driverCluster =
-        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
-    driverCluster.init();
-    driverCluster.close();
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build()) {
+      driverCluster.init();
+    }
 
     // Second try
-    driverCluster =
-        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
-    driverCluster.init();
-    driverCluster.close();
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build()) {
+      driverCluster.init();
+    }
 
     // Now it should be rejected
-    try {
-      driverCluster =
-          defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build()) {
       driverCluster.init();
     } catch (NoHostAvailableException e) {
     }
@@ -254,10 +264,10 @@ public class EndpointIntegrationTest {
     assertThat(accept.response.statusCode()).isEqualTo(200);
 
     // Now it should go back to normal
-    driverCluster =
-        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build();
-    driverCluster.init();
-    driverCluster.close();
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder().addContactPointsWithPorts((InetSocketAddress) node.getAddress()).build()) {
+      driverCluster.init();
+    }
   }
 
   private Collection<NodeConnectionReport> getNodeConnectionReports(

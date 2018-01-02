@@ -85,8 +85,7 @@ public class EndpointManager implements HttpListener {
                     .setStatusCode(200)
                     .end(response.toString());
               } catch (Exception e) {
-                e.printStackTrace();
-                logger.error("Error ocurred while processing getConnections request");
+                logger.error("Error occurred while processing getConnections request", e);
                 handleError(new ErrorMessage(e.getMessage(), 400), context);
               }
             });
