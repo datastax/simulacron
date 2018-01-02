@@ -45,7 +45,7 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
   }
 
   @Override
-  protected Frame decode(ChannelHandlerContext ctx, ByteBuf buffer) throws Exception {
+  protected Object decode(ChannelHandlerContext ctx, ByteBuf buffer) throws Exception {
     int startIndex = buffer.readerIndex();
     if (isFirstResponse) {
       // Must read at least protocol v1/v2 header (see below)
@@ -79,7 +79,7 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
         buf.writeShort(message.length());
         buf.writeBytes(message.getBytes("UTF-8"));
         ctx.writeAndFlush(buf);
-        return null;
+        return new UnsupportedProtocolVersionMessage(protocolVersion, streamId);
       }
     }
 
@@ -94,7 +94,7 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
           "Received message with unsupported protocol version {}, sending back protocol error.",
           protocolVersion);
 
-      int streamId = contents.getShort(contents.readerIndex() + 2);
+      short streamId = contents.getShort(contents.readerIndex() + 2);
       Message message =
           new Error(
               ProtocolConstants.ErrorCode.PROTOCOL_ERROR,
@@ -115,7 +115,7 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
       int length = contents.getInt(contents.readerIndex() + 5);
       // discard the frame.
       contents.skipBytes(9 + length);
-      return null;
+      return new UnsupportedProtocolVersionMessage(protocolVersion, streamId);
     }
     return frameCodec.decode(contents);
   }
