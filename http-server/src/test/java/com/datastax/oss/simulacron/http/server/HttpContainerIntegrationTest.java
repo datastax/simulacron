@@ -591,7 +591,6 @@ public class HttpContainerIntegrationTest {
       if (node.equals(nodeQueried)) {
         assertThat(1).isEqualTo(results.size());
       } else {
-        System.out.println(node + ", " + node.getCluster());
         assertThat(0).isEqualTo(results.size());
       }
     }

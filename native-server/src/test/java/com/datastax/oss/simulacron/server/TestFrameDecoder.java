@@ -20,11 +20,8 @@ import com.datastax.oss.protocol.internal.FrameCodec;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TestFrameDecoder extends LengthFieldBasedFrameDecoder {
-  private static final Logger logger = LoggerFactory.getLogger(FrameDecoder.class);
   private final FrameCodec<ByteBuf> frameCodec;
 
   private static final int MAX_FRAME_LENGTH = 256 * 1024 * 1024; // 256 MB

@@ -19,19 +19,25 @@ import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.default
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.ProtocolVersion;
+import com.datastax.driver.core.exceptions.UnsupportedProtocolVersionException;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.NodeSpec;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
 import com.datastax.oss.simulacron.server.Server;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 public class Driver3xIntegrationTest {
 
   private Server server = Server.builder().build();
 
+  @Rule public ExpectedException thrown = ExpectedException.none();
+
   @Test
-  public void testShouldCreateAndConnectToCluster() throws Exception {
+  public void testShouldCreateAndConnectToCluster() {
     try (BoundCluster sCluster = server.register(ClusterSpec.builder().withNodes(3));
         Cluster cluster = defaultBuilder(sCluster).build()) {
       cluster.connect();
@@ -42,13 +48,24 @@ public class Driver3xIntegrationTest {
   }
 
   @Test
-  public void testShouldCreateAndConnectToNode() throws Exception {
+  public void testShouldCreateAndConnectToNode() {
     try (BoundNode node = server.register(NodeSpec.builder().build());
         Cluster cluster = defaultBuilder(node).build()) {
       cluster.connect();
 
       // 1 connection for each host + control connection
       assertThat(node.getActiveConnections()).isEqualTo(2);
+    }
+  }
+
+  @Test
+  public void testShouldFailToConnectWithOlderProtocolVersion() {
+    try (BoundNode node = server.register(NodeSpec.builder().build());
+        Cluster cluster = defaultBuilder(node).withProtocolVersion(ProtocolVersion.V2).build()) {
+      // Since simulacron does not support < V3, an exception should be thrown if we try to force
+      // an older version.
+      thrown.expect(UnsupportedProtocolVersionException.class);
+      cluster.connect();
     }
   }
 }

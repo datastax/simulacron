@@ -65,7 +65,7 @@ public class BoundNodeTest {
   private final BoundNode node =
       new BoundNode(
           new LocalAddress(UUID.randomUUID().toString()),
-          NodeSpec.builder().withName("node0").withId(0L).withCassandraVersion("1.2.19").build(),
+          NodeSpec.builder().withName("node0").withId(0L).withCassandraVersion("3.0.14").build(),
           Collections.emptyMap(),
           cluster,
           dc,
@@ -77,7 +77,7 @@ public class BoundNodeTest {
   private final BoundNode loggedNode =
       new BoundNode(
           new LocalAddress(UUID.randomUUID().toString()),
-          NodeSpec.builder().withName("node0").withId(0L).withCassandraVersion("1.2.19").build(),
+          NodeSpec.builder().withName("node0").withId(0L).withCassandraVersion("3.0.14").build(),
           Collections.emptyMap(),
           cluster,
           dc,

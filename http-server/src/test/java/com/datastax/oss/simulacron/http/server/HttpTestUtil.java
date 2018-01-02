@@ -95,49 +95,50 @@ public class HttpTestUtil {
 
   public static void makeNativeBoundQueryWithPositionalParamExpectingError(
       String query, String contactPoint, Object param, boolean errorOnPrepare) throws Exception {
-    com.datastax.driver.core.Cluster cluster =
-        defaultBuilder().addContactPoint(contactPoint).build();
-    Session session = cluster.connect();
+    try (com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build()) {
+      Session session = cluster.connect();
 
-    if (errorOnPrepare) {
-      try {
+      if (errorOnPrepare) {
+        try {
+          com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+          throw new Exception("Prepared statement should have thrown exception");
+        } catch (QueryExecutionException e) {
+          // An exception should be throw for the prepared statement
+        }
+      } else {
         com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
-        throw new Exception("Prepared statement should have thrown exception");
-      } catch (QueryExecutionException e) {
-        // An exception should be throw for the prepared statement
-      }
-    } else {
-      com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
-      BoundStatement bound = getBoundStatement(query, contactPoint, param);
-      try {
-        executeQueryWithFreshSession(bound, contactPoint, session, cluster);
-        throw new Exception("Bound statement should have thrown exception");
-      } catch (QueryExecutionException e) {
-        // An exception should be throw for the bound statement, not the prepared one
+        BoundStatement bound = getBoundStatement(query, contactPoint, param);
+        try {
+          executeQueryWithFreshSession(bound, contactPoint, session, cluster);
+          throw new Exception("Bound statement should have thrown exception");
+        } catch (QueryExecutionException e) {
+          // An exception should be throw for the bound statement, not the prepared one
+        }
       }
     }
   }
 
   public static BoundStatement getBoundStatement(String query, String contactPoint, Object param) {
-    com.datastax.driver.core.Cluster cluster =
-        defaultBuilder().addContactPoint(contactPoint).build();
-    Session session = cluster.connect();
-    com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
-    BoundStatement bound = prepared.bind(param);
-    cluster.close();
-    return bound;
+    try (com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build()) {
+      Session session = cluster.connect();
+      com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+      BoundStatement bound = prepared.bind(param);
+      return bound;
+    }
   }
 
   public static BoundStatement getBoundStatementNamed(
       String query, String contactPoint, Map<String, String> values) {
-    com.datastax.driver.core.Cluster cluster =
-        defaultBuilder().addContactPoint(contactPoint).build();
-    Session session = cluster.connect();
-    com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
-    BoundStatement bound = prepared.bind();
-    values.forEach((k, v) -> bound.setString(k, v));
-    cluster.close();
-    return bound;
+    try (com.datastax.driver.core.Cluster cluster =
+        defaultBuilder().addContactPoint(contactPoint).build()) {
+      Session session = cluster.connect();
+      com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+      BoundStatement bound = prepared.bind();
+      values.forEach((k, v) -> bound.setString(k, v));
+      return bound;
+    }
   }
 
   public static BatchStatement makeNativeBatchStatement(List<String> queries, List<List> values) {

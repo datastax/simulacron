@@ -29,7 +29,7 @@ public class ClusterSpec extends AbstractCluster<DataCenterSpec, NodeSpec> {
 
   ClusterSpec() {
     // Default constructor for jackson deserialization.
-    this(null, null, null, null, Collections.emptyMap(), 0);
+    this(null, null, null, null, Collections.emptyMap(), 1);
   }
 
   public ClusterSpec(

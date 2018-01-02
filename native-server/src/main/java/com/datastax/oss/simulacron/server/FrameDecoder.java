@@ -36,6 +36,8 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
       5; // size of the header = version (1) + flags (1) + stream id (2) + opcode (1)
   private static final int LENGTH_FIELD_LENGTH = 4; // length of the length field.
 
+  private boolean isFirstResponse = true;
+
   FrameDecoder(FrameCodecWrapper frameCodec) {
     super(MAX_FRAME_LENGTH, HEADER_LENGTH, LENGTH_FIELD_LENGTH, 0, 0, true);
 
@@ -44,6 +46,43 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
 
   @Override
   protected Frame decode(ChannelHandlerContext ctx, ByteBuf buffer) throws Exception {
+    int startIndex = buffer.readerIndex();
+    if (isFirstResponse) {
+      // Must read at least protocol v1/v2 header (see below)
+      if (buffer.readableBytes() < 8) {
+        return null;
+      }
+      isFirstResponse = false;
+
+      // Special case for obsolete protocol versions (< v3): the stream id is a a byte instead
+      // of a short, so we need to parse it by hand and return an error.
+      int protocolVersion = buffer.getByte(startIndex) & 0x7F;
+      if (protocolVersion < 3) {
+        byte streamId = buffer.getByte(startIndex + 2);
+        int length = buffer.getInt(startIndex + 4);
+        // We don't need a full-blown decoder, just to signal the protocol error. So discard the
+        // incoming data and spoof a server-side protocol error.
+        if (buffer.readableBytes() < 8 + length) {
+          return null; // keep reading until we can discard the whole message at once
+        } else {
+          buffer.readerIndex(startIndex + 8 + length);
+        }
+        String message = "Invalid or unsupported protocol version";
+        // 8 for header, 4 for error code, 2 for message length + message
+        ByteBuf buf = ctx.alloc().buffer(14 + message.length());
+        buf.writeByte(protocolVersion & 0x7F);
+        buf.writeByte(0);
+        buf.writeByte(streamId);
+        buf.writeByte(0); // error opcode
+        buf.writeInt(6 + message.length()); // frame length
+        buf.writeInt(0xA); // protocol error;
+        buf.writeShort(message.length());
+        buf.writeBytes(message.getBytes("UTF-8"));
+        ctx.writeAndFlush(buf);
+        return null;
+      }
+    }
+
     if (buffer.readableBytes() < HEADER_LENGTH) return null;
     ByteBuf contents = (ByteBuf) super.decode(ctx, buffer);
     if (contents == null) return null;
