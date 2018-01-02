@@ -63,6 +63,10 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.local.LocalServerChannel;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
+import org.assertj.core.util.Lists;
+import org.junit.After;
+import org.junit.Test;
+
 import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
@@ -75,9 +79,6 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.assertj.core.util.Lists;
-import org.junit.After;
-import org.junit.Test;
 
 public class ServerTest {
 
@@ -682,6 +683,10 @@ public class ServerTest {
         assertThat(err.message).isEqualTo("Invalid or unsupported protocol version");
 
         // Should get a query log indicating invalid protocol version was used.
+        // Since the error message is sent first, we sleep a little bit to allow activity log to be
+        // populated.
+        // This won't be an issue in practice.
+        Thread.sleep(50);
         assertThat(boundNode.getLogs().getQueryLogs()).hasSize(1);
         QueryLog log = boundNode.getLogs().getQueryLogs().get(0);
         Frame frame = log.getFrame();
