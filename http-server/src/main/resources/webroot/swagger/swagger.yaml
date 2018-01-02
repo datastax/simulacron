@@ -2090,7 +2090,6 @@ definitions:
         required:
           - message
           - keyspace
-          - table
         properties:
           result:
             example: already_exists

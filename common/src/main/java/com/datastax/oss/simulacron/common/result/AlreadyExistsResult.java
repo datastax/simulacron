@@ -21,6 +21,7 @@ import com.datastax.oss.protocol.internal.Message;
 import com.datastax.oss.protocol.internal.response.error.AlreadyExists;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Objects;
 
 public class AlreadyExistsResult extends ErrorResult {
 
@@ -34,11 +35,15 @@ public class AlreadyExistsResult extends ErrorResult {
     this(errorMessage, keyspace, table, 0, null);
   }
 
+  public AlreadyExistsResult(String errorMessage, String keyspace) {
+    this(errorMessage, keyspace, null, 0, null);
+  }
+
   @JsonCreator
   public AlreadyExistsResult(
       @JsonProperty("message") String errorMessage,
       @JsonProperty(value = "keyspace", required = true) String keyspace,
-      @JsonProperty(value = "table", required = true) String table,
+      @JsonProperty(value = "table") String table,
       @JsonProperty("delayInMs") long delayInMs,
       @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(ALREADY_EXISTS, errorMessage, delayInMs, ignoreOnPrepare);
@@ -48,7 +53,7 @@ public class AlreadyExistsResult extends ErrorResult {
 
   @Override
   public Message toMessage() {
-    return new AlreadyExists(errorMessage, keyspace, table);
+    return new AlreadyExists(errorMessage, keyspace, table != null ? table : "");
   }
 
   @Override
@@ -56,18 +61,12 @@ public class AlreadyExistsResult extends ErrorResult {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-
     AlreadyExistsResult that = (AlreadyExistsResult) o;
-
-    if (!keyspace.equals(that.keyspace)) return false;
-    return table.equals(that.table);
+    return Objects.equals(keyspace, that.keyspace) && Objects.equals(table, that.table);
   }
 
   @Override
   public int hashCode() {
-    int result = super.hashCode();
-    result = 31 * result + keyspace.hashCode();
-    result = 31 * result + table.hashCode();
-    return result;
+    return Objects.hash(super.hashCode(), keyspace, table);
   }
 }

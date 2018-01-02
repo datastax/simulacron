@@ -117,7 +117,17 @@ public class ErrorResultIntegrationTest {
   }
 
   @Test
-  public void testShouldReturnAlreadyExists() throws Exception {
+  public void testShouldReturnAlreadyExistsKeyspace() throws Exception {
+    String keyspace = "ks";
+    server.prime(when(query).then(alreadyExists(keyspace)));
+
+    thrown.expect(AlreadyExistsException.class);
+    thrown.expectMessage(containsString(keyspace));
+    query();
+  }
+
+  @Test
+  public void testShouldReturnAlreadyExistsTable() throws Exception {
     String keyspace = "ks";
     String table = "tbl";
     server.prime(when(query).then(alreadyExists(keyspace, table)));

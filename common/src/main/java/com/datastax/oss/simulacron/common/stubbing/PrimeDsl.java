@@ -184,7 +184,17 @@ public class PrimeDsl {
   }
 
   /**
-   * Provides an Already exists error response instance.
+   * Provides an Already exists error response instance for a given keyspace.
+   *
+   * @param keyspace The keyspace for the error.
+   * @return the generated error result.
+   */
+  public static AlreadyExistsResult alreadyExists(String keyspace) {
+    return new AlreadyExistsResult("unused", keyspace);
+  }
+
+  /**
+   * Provides an Already exists error response instance for a given table.
    *
    * @param keyspace The keyspace for the error.
    * @param table The table for the error.
