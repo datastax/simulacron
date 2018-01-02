@@ -21,20 +21,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.exceptions.UnsupportedProtocolVersionException;
+import com.datastax.oss.protocol.internal.Frame;
+import com.datastax.oss.protocol.internal.request.Startup;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.NodeSpec;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import com.datastax.oss.simulacron.server.BoundNode;
 import com.datastax.oss.simulacron.server.Server;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 public class Driver3xIntegrationTest {
 
   private Server server = Server.builder().build();
-
-  @Rule public ExpectedException thrown = ExpectedException.none();
 
   @Test
   public void testShouldCreateAndConnectToCluster() {
@@ -64,8 +63,22 @@ public class Driver3xIntegrationTest {
         Cluster cluster = defaultBuilder(node).withProtocolVersion(ProtocolVersion.V2).build()) {
       // Since simulacron does not support < V3, an exception should be thrown if we try to force
       // an older version.
-      thrown.expect(UnsupportedProtocolVersionException.class);
-      cluster.connect();
+      try {
+        cluster.connect();
+      } catch (UnsupportedProtocolVersionException e) {
+        // expected
+      }
+
+      // Should get a query log indicating invalid protocol version was used.
+      assertThat(node.getLogs().getQueryLogs()).hasSize(1);
+      QueryLog log = node.getLogs().getQueryLogs().get(0);
+      Frame frame = log.getFrame();
+      assertThat(frame.protocolVersion).isEqualTo(2);
+      assertThat(frame.warnings).hasSize(1);
+      assertThat(frame.warnings.get(0))
+          .isEqualTo(
+              "This message contains a non-supported protocol version by this node.  STARTUP is inferred, but may not reflect the actual message sent.");
+      assertThat(frame.message).isInstanceOf(Startup.class);
     }
   }
 }

@@ -48,6 +48,7 @@ import com.datastax.oss.simulacron.common.cluster.DataCenterConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.DataCenterSpec;
 import com.datastax.oss.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.NodeSpec;
+import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.stubbing.CloseType;
 import com.datastax.oss.simulacron.common.utils.FrameUtils;
 import io.netty.bootstrap.ServerBootstrap;
@@ -62,6 +63,10 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.local.LocalServerChannel;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
+import org.assertj.core.util.Lists;
+import org.junit.After;
+import org.junit.Test;
+
 import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
@@ -74,9 +79,6 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.assertj.core.util.Lists;
-import org.junit.After;
-import org.junit.Test;
 
 public class ServerTest {
 
@@ -679,6 +681,21 @@ public class ServerTest {
         Error err = (Error) response.message;
         assertThat(err.code).isEqualTo(ProtocolConstants.ErrorCode.PROTOCOL_ERROR);
         assertThat(err.message).isEqualTo("Invalid or unsupported protocol version");
+
+        // Should get a query log indicating invalid protocol version was used.
+        // Since the error message is sent first, we sleep a little bit to allow activity log to be
+        // populated.
+        // This won't be an issue in practice.
+        Thread.sleep(50);
+        assertThat(boundNode.getLogs().getQueryLogs()).hasSize(1);
+        QueryLog log = boundNode.getLogs().getQueryLogs().get(0);
+        Frame frame = log.getFrame();
+        assertThat(frame.protocolVersion).isEqualTo(6);
+        assertThat(frame.warnings).hasSize(1);
+        assertThat(frame.warnings.get(0))
+            .isEqualTo(
+                "This message contains a non-supported protocol version by this node.  STARTUP is inferred, but may not reflect the actual message sent.");
+        assertThat(frame.message).isInstanceOf(Startup.class);
 
         // Try again with protocol version 4, which is supported, this should work on the same
         // connection since the previous message was simply discarded.

@@ -338,6 +338,18 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     return stub;
   }
 
+  void handle(ChannelHandlerContext ctx, UnsupportedProtocolVersionMessage message) {
+    if (activityLogging) {
+      QueryLog queryLog =
+          activityLog.addLog(
+              message.getFrame(),
+              ctx.channel().remoteAddress(),
+              System.currentTimeMillis(),
+              Optional.empty());
+      notifyQueryListeners(queryLog, false);
+    }
+  }
+
   void handle(ChannelHandlerContext ctx, Frame frame) {
     logger.debug("Got request streamId: {} msg: {}", frame.streamId, frame.message);
     // On receiving a message, first check the stub store to see if there is handling logic for it.

@@ -33,9 +33,15 @@ public class RequestHandler extends ChannelInboundHandlerAdapter {
     MDC.put("node", node.getId().toString());
 
     try {
-      @SuppressWarnings("unchecked")
-      Frame frame = (Frame) msg;
-      node.handle(ctx, frame);
+      if (msg instanceof Frame) {
+        Frame frame = (Frame) msg;
+        node.handle(ctx, frame);
+      } else if (msg instanceof UnsupportedProtocolVersionMessage) {
+        UnsupportedProtocolVersionMessage umsg = (UnsupportedProtocolVersionMessage) msg;
+        node.handle(ctx, umsg);
+      } else {
+        throw new IllegalArgumentException("Received Invalid message into handler: " + msg);
+      }
     } finally {
       MDC.remove("node");
     }
