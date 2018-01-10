@@ -10,7 +10,7 @@ Simulacron can be added to your application by using the following maven depende
 
 ```xml
 <dependency>
-  <groupId>com.datastax.simulacron</groupId>
+  <groupId>com.datastax.oss.simulacron</groupId>
   <artifactId>simulacron-native-server</artifactId>
   <version>0.8.2</version>
 </dependency>
@@ -197,13 +197,13 @@ import com.datastax.oss.driver.core.WriteType;
 import static com.datastax.oss.simulacron.driver.DriverTypeAdapters.*;
 
 // Convert from driver CL to simulacron CL
-com.datastax.simulacron.common.codec.ConsistencyLevel cl = adapt(ConsistencyLevel.ONE);
+com.datastax.oss.simulacron.common.codec.ConsistencyLevel cl = adapt(ConsistencyLevel.ONE);
 
 // Convert from simulacron CL to driver CL
 ConsistencyLevel driverCl = extract(cl);
 
 // Convert from driver WriteType to simulacron WriteType
-com.datastax.simulacron.common.codec.WriteType writeType = adapt(WriteType.SIMPLE);
+com.datastax.oss.simulacron.common.codec.WriteType writeType = adapt(WriteType.SIMPLE);
 
 // Convert from simulacron WriteType to simulacron WriteType
 WriteType driverWriteType = extract(writeType);
