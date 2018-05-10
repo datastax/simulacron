@@ -24,7 +24,8 @@ import com.datastax.oss.simulacron.http.server.EndpointManager;
 import com.datastax.oss.simulacron.http.server.HttpContainer;
 import com.datastax.oss.simulacron.http.server.QueryManager;
 import com.datastax.oss.simulacron.http.server.SwaggerUI;
-import com.datastax.oss.simulacron.server.AddressResolver.Inet4Resolver;
+import com.datastax.oss.simulacron.server.Inet4Resolver;
+import com.datastax.oss.simulacron.server.NodePerPortResolver;
 import com.datastax.oss.simulacron.server.Server;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -76,11 +77,20 @@ public class App {
           e);
     }
     byte[] ipBytes = ipAddress.getAddress();
-    Server nativeServer =
-        Server.builder()
-            .withAddressResolver(new Inet4Resolver(ipBytes))
-            .withActivityLoggingEnabled(!cli.disableActivityLogging)
-            .build();
+
+    Server.Builder builder =
+        Server.builder().withActivityLoggingEnabled(!cli.disableActivityLogging);
+
+    if (cli.startingPort > -1) {
+      builder =
+          builder
+              .withMultipleNodesPerIp(true)
+              .withAddressResolver(new NodePerPortResolver(ipBytes, cli.startingPort));
+    } else {
+      builder = builder.withAddressResolver(new Inet4Resolver(ipBytes));
+    }
+
+    Server nativeServer = builder.build();
 
     // TODO: There should probably be a module in http-server for setting up the http server instead
     // of doing it here.

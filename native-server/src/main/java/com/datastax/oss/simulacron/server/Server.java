@@ -663,6 +663,8 @@ public final class Server implements AutoCloseable {
 
     private boolean activityLogging = true;
 
+    private boolean multipleNodesPerIp = false;
+
     private EventLoopGroup eventLoopGroup;
 
     private Class<? extends ServerChannel> channelClass;
@@ -748,11 +750,27 @@ public final class Server implements AutoCloseable {
       return this;
     }
 
+    /**
+     * Whether to support multiple nodes per IP (as per CASSANDRA-7544). Using this with true
+     * overrides {@link #withAddressResolver(AddressResolver)}, using {@link
+     * AddressResolver#nodePerPortResolver}.
+     *
+     * @param enabled Whether or not a node can be assigned to each port.
+     * @return This builder.
+     */
+    public Builder withMultipleNodesPerIp(boolean enabled) {
+      this.multipleNodesPerIp = enabled;
+      if (enabled) {
+        this.addressResolver = AddressResolver.nodePerPortResolver;
+      }
+      return this;
+    }
+
     /** @return a {@link Server} instance based on this builder's configuration. */
     public Server build() {
       if (stubStore == null) {
         stubStore = new StubStore();
-        stubStore.register(new PeerMetadataHandler());
+        stubStore.register(new PeerMetadataHandler(multipleNodesPerIp));
 
         stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.keyspaces"));
         stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system_schema.views"));

@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.simulacron.common.stubbing;
 
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.INVALID;
 import static com.datastax.oss.simulacron.common.Assertions.assertThat;
 
 import com.datastax.oss.protocol.internal.Frame;
@@ -49,6 +50,7 @@ public class PeerMetadataHandlerTest {
   private static NodeSpec dseNode0;
 
   private PeerMetadataHandler handler = new PeerMetadataHandler();
+  private PeerMetadataHandler handlerV2 = new PeerMetadataHandler(true);
 
   static {
     cluster = ClusterSpec.builder().withName("cluster0").build();
@@ -100,6 +102,7 @@ public class PeerMetadataHandlerTest {
   public void shouldMatchLocalAndPeersQueries() {
     // Should match the following queries.
     assertThat(handler.matches(node0, queryFrame("SELECT * FROM system.peers"))).isTrue();
+    assertThat(handler.matches(node0, queryFrame("SELECT * FROM system.peers_v2"))).isTrue();
     assertThat(handler.matches(node0, queryFrame("select cluster_name from system.local")))
         .isTrue();
     assertThat(handler.matches(node0, queryFrame("SELECT * FROM system.local WHERE key='local'")))
@@ -143,20 +146,24 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(14)
+        .hasColumnSpecs(17)
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, ((InetSocketAddress) node0.getAddress()).getAddress())
-        .hasColumn(0, 3, ((InetSocketAddress) node0.getAddress()).getAddress())
-        .hasColumn(0, 4, cluster.getName())
-        .hasColumn(0, 5, "3.2.0")
-        .hasColumn(0, 6, node0.getDataCenter().getName())
-        .hasColumn(0, 7, ((InetSocketAddress) node0.getAddress()).getAddress())
-        .hasColumn(0, 8, "org.apache.cassandra.dht.Murmur3Partitioner")
-        .hasColumn(0, 9, "rack1")
-        .hasColumn(0, 10, "3.0.12")
-        .hasColumn(0, 11, Collections.singleton("0"))
-        .hasColumn(0, 13, PeerMetadataHandler.schemaVersion);
+        .hasColumn(0, 3, ((InetSocketAddress) node0.getAddress()).getPort())
+        .hasColumn(0, 4, ((InetSocketAddress) node0.getAddress()).getAddress())
+        .hasColumn(0, 5, ((InetSocketAddress) node0.getAddress()).getPort())
+        .hasColumn(0, 6, cluster.getName())
+        .hasColumn(0, 7, "3.2.0")
+        .hasColumn(0, 8, node0.getDataCenter().getName())
+        .hasColumn(0, 9, ((InetSocketAddress) node0.getAddress()).getAddress())
+        .hasColumn(0, 10, ((InetSocketAddress) node0.getAddress()).getPort())
+        .hasColumn(0, 11, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 12, "rack1")
+        .hasColumn(0, 13, "3.0.12")
+        .hasColumn(0, 14, Collections.singleton("0"))
+        .hasColumn(0, 15, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 16, PeerMetadataHandler.schemaVersion);
   }
 
   @Test
@@ -174,22 +181,26 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(16) // should include dse_version and graph columns
+        .hasColumnSpecs(19) // should include dse_version and graph columns
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, InetAddress.getLoopbackAddress())
-        .hasColumn(0, 3, InetAddress.getLoopbackAddress())
-        .hasColumn(0, 4, dseCluster.getName())
-        .hasColumn(0, 5, "3.2.0")
-        .hasColumn(0, 6, dseNode0.getDataCenter().getName())
-        .hasColumn(0, 7, InetAddress.getLoopbackAddress())
-        .hasColumn(0, 8, "org.apache.cassandra.dht.Murmur3Partitioner")
-        .hasColumn(0, 9, "rack1")
-        .hasColumn(0, 10, "3.0.12")
-        .hasColumn(0, 11, Collections.singleton("0"))
-        .hasColumn(0, 13, PeerMetadataHandler.schemaVersion)
-        .hasColumn(0, 14, "5.0.8")
-        .hasColumn(0, 15, true);
+        .hasColumn(0, 3, 9042)
+        .hasColumn(0, 4, InetAddress.getLoopbackAddress())
+        .hasColumn(0, 5, 9042)
+        .hasColumn(0, 6, dseCluster.getName())
+        .hasColumn(0, 7, "3.2.0")
+        .hasColumn(0, 8, dseNode0.getDataCenter().getName())
+        .hasColumn(0, 9, InetAddress.getLoopbackAddress())
+        .hasColumn(0, 10, 9042)
+        .hasColumn(0, 11, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 12, "rack1")
+        .hasColumn(0, 13, "3.0.12")
+        .hasColumn(0, 14, Collections.singleton("0"))
+        .hasColumn(0, 15, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 16, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 17, "5.0.8")
+        .hasColumn(0, 18, true);
   }
 
   @Test
@@ -207,20 +218,24 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(14)
+        .hasColumnSpecs(17)
         .hasColumn(0, 0, "local")
         .hasColumn(0, 1, "COMPLETED")
         .hasColumn(0, 2, ((InetSocketAddress) node1.getAddress()).getAddress())
-        .hasColumn(0, 3, ((InetSocketAddress) node1.getAddress()).getAddress())
-        .hasColumn(0, 4, cluster.getName())
-        .hasColumn(0, 5, "3.2.0")
-        .hasColumn(0, 6, node1.getDataCenter().getName())
-        .hasColumn(0, 7, ((InetSocketAddress) node1.getAddress()).getAddress())
-        .hasColumn(0, 8, "org.apache.cassandra.dht.Murmur3Partitioner")
-        .hasColumn(0, 9, "rack1")
-        .hasColumn(0, 10, "3.0.12")
-        .hasColumn(0, 11, Collections.singleton("0"))
-        .hasColumn(0, 13, PeerMetadataHandler.schemaVersion);
+        .hasColumn(0, 3, ((InetSocketAddress) node1.getAddress()).getPort())
+        .hasColumn(0, 4, ((InetSocketAddress) node1.getAddress()).getAddress())
+        .hasColumn(0, 5, ((InetSocketAddress) node1.getAddress()).getPort())
+        .hasColumn(0, 6, cluster.getName())
+        .hasColumn(0, 7, "3.2.0")
+        .hasColumn(0, 8, node1.getDataCenter().getName())
+        .hasColumn(0, 9, ((InetSocketAddress) node1.getAddress()).getAddress())
+        .hasColumn(0, 10, ((InetSocketAddress) node1.getAddress()).getPort())
+        .hasColumn(0, 11, "org.apache.cassandra.dht.Murmur3Partitioner")
+        .hasColumn(0, 12, "rack1")
+        .hasColumn(0, 13, "3.0.12")
+        .hasColumn(0, 14, Collections.singleton("0"))
+        .hasColumn(0, 15, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 16, PeerMetadataHandler.schemaVersion);
   }
 
   @Test
@@ -256,7 +271,41 @@ public class PeerMetadataHandlerTest {
     Message node0Message = ((MessageResponseAction) node0Action).getMessage();
 
     // should be 199 peers (200 node cluster - 1 for this node).
-    assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(9);
+    assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(8);
+  }
+
+  @Test
+  public void shouldHandleQueryAllPeersV2() {
+    // querying for peers should return a row for each other node in the cluster
+    List<Action> node0Actions =
+        handlerV2.getActions(node0, queryFrame("SELECT * FROM system.peers_v2"));
+
+    assertThat(node0Actions).hasSize(1);
+
+    Action node0Action = node0Actions.get(0);
+    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+    // should be 199 peers (200 node cluster - 1 for this node).
+    assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(10);
+  }
+
+  @Test
+  public void shouldNotHandleQueryAllPeersV2WhenV2NotSupported() {
+    // querying for peers using v2 should return an error when v2 is not supported.
+    List<Action> node0Actions =
+        handler.getActions(node0, queryFrame("SELECT * FROM system.peers_v2"));
+
+    assertThat(node0Actions).hasSize(1);
+
+    Action node0Action = node0Actions.get(0);
+    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+    // Should get an invalid error when querying v2 table and v2 is not supported.
+    assertThat(node0Message).isError(INVALID);
   }
 
   @Test
@@ -273,8 +322,8 @@ public class PeerMetadataHandlerTest {
 
     Message node0Message = ((MessageResponseAction) node0Action).getMessage();
 
-    // should be 2 peers and 11 columns (2 extra for dse)
-    assertThat(node0Message).isRows().hasRows(2).hasColumnSpecs(11);
+    // should be 2 peers and 10 columns (2 extra for dse)
+    assertThat(node0Message).isRows().hasRows(2).hasColumnSpecs(10);
   }
 
   @Test
@@ -295,9 +344,9 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(9)
+        .hasColumnSpecs(8)
         .hasColumn(0, 0, InetAddress.getByAddress(new byte[] {127, 0, 11, 17}))
-        .hasColumn(0, 2, "dc1");
+        .hasColumn(0, 1, "dc1");
   }
 
   @Test
@@ -325,9 +374,78 @@ public class PeerMetadataHandlerTest {
     assertThat(node0Message)
         .isRows()
         .hasRows(1)
-        .hasColumnSpecs(9)
+        .hasColumnSpecs(8)
         .hasColumn(0, 0, addr)
-        .hasColumn(0, 2, "dc1");
+        .hasColumn(0, 1, "dc1");
+  }
+
+  @Test
+  public void shouldHandleQuerySpecificPeersV2NamedParameter() throws UnknownHostException {
+    // when peer query is made for a peer in the cluster using named parameters, we should get 1 row
+    // back.
+    InetAddress addr = InetAddress.getByAddress(new byte[] {127, 0, 11, 17});
+    Map<String, ByteBuffer> params = new HashMap<>();
+    params.put("address", ByteBuffer.wrap(addr.getAddress()));
+    ByteBuffer port = ByteBuffer.allocate(4);
+    port.putInt(9042);
+    port.flip();
+    params.put("port", port);
+    QueryOptions queryOptions =
+        new QueryOptions(
+            0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
+    List<Action> node0Actions =
+        handlerV2.getActions(
+            node0,
+            queryFrame(
+                "SELECT * FROM system.peers_v2 WHERE peer = :address AND peer_port = :port",
+                queryOptions));
+
+    assertThat(node0Actions).hasSize(1);
+
+    Action node0Action = node0Actions.get(0);
+    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+    // should be 1 matching peer
+    assertThat(node0Message)
+        .isRows()
+        .hasRows(1)
+        .hasColumnSpecs(10)
+        .hasColumn(0, 0, addr)
+        .hasColumn(0, 9, 9042);
+  }
+
+  @Test
+  public void shouldNotHandleQuerySpecificPeersV2NamedParameter() throws UnknownHostException {
+    // when peers_v2 query is made, an invalid error should be raised is the handler does not
+    // support v2.
+    InetAddress addr = InetAddress.getByAddress(new byte[] {127, 0, 11, 17});
+    Map<String, ByteBuffer> params = new HashMap<>();
+    params.put("address", ByteBuffer.wrap(addr.getAddress()));
+    ByteBuffer port = ByteBuffer.allocate(4);
+    port.putInt(9042);
+    port.flip();
+    params.put("port", port);
+    QueryOptions queryOptions =
+        new QueryOptions(
+            0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
+    List<Action> node0Actions =
+        handler.getActions(
+            node0,
+            queryFrame(
+                "SELECT * FROM system.peers_v2 WHERE peer = :address AND peer_port = :port",
+                queryOptions));
+
+    assertThat(node0Actions).hasSize(1);
+
+    Action node0Action = node0Actions.get(0);
+    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+    // should return an error.
+    assertThat(node0Message).isError(INVALID);
   }
 
   @Test
@@ -345,6 +463,6 @@ public class PeerMetadataHandlerTest {
     Message node0Message = ((MessageResponseAction) node0Action).getMessage();
 
     // should be no rows since no peer matched.
-    assertThat(node0Message).isRows().hasRows(0).hasColumnSpecs(9);
+    assertThat(node0Message).isRows().hasRows(0).hasColumnSpecs(8);
   }
 }
