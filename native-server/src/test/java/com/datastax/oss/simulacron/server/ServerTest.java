@@ -63,10 +63,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.local.LocalServerChannel;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
-import org.assertj.core.util.Lists;
-import org.junit.After;
-import org.junit.Test;
-
 import java.net.ConnectException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
@@ -79,6 +75,9 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.assertj.core.util.Lists;
+import org.junit.After;
+import org.junit.Test;
 
 public class ServerTest {
 
