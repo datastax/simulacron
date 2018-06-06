@@ -24,7 +24,7 @@
   </parent>
 
   <artifactId>simulacron-native-protocol-json</artifactId>
-  <packaging>jar</packaging>
+  <packaging>bundle</packaging>
 
   <name>simulacron native protocol json serializers</name>
 
@@ -40,5 +40,19 @@
       <version>${native-protocol.version}</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <configuration>
+          <instructions>
+            <Bundle-SymbolicName>com.datastax.oss.simulacron.protocol.json</Bundle-SymbolicName>
+          </instructions>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

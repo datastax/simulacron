@@ -24,7 +24,7 @@
   </parent>
 
   <artifactId>simulacron-http-server</artifactId>
-  <packaging>jar</packaging>
+  <packaging>bundle</packaging>
 
   <name>simulacron http server</name>
 
@@ -98,6 +98,15 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <configuration>
+          <instructions>
+            <Bundle-SymbolicName>com.datastax.oss.simulacron.http.server</Bundle-SymbolicName>
+          </instructions>
+        </configuration>
       </plugin>
     </plugins>
   </build>

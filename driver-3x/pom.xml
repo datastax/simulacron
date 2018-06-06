@@ -24,7 +24,7 @@
   </parent>
 
   <artifactId>simulacron-driver-3x</artifactId>
-  <packaging>jar</packaging>
+  <packaging>bundle</packaging>
 
   <name>simulacron java driver 3.x compatibility module</name>
 
@@ -40,5 +40,19 @@
       <version>${java-driver.version}</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <configuration>
+          <instructions>
+            <Bundle-SymbolicName>com.datastax.oss.simulacron.driver3x</Bundle-SymbolicName>
+          </instructions>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

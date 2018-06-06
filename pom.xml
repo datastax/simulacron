@@ -127,6 +127,11 @@
           <artifactId>license-maven-plugin</artifactId>
           <version>3.0</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.felix</groupId>
+          <artifactId>maven-bundle-plugin</artifactId>
+          <version>3.5.0</version>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -253,6 +258,16 @@ limitations under the License.]]>
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <extensions>true</extensions>
+        <configuration>
+          <instructions>
+            <_include>-osgi.bnd</_include>
+          </instructions>
+        </configuration>
       </plugin>
     </plugins>
   </build>

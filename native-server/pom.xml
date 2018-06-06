@@ -24,7 +24,7 @@
   </parent>
 
   <artifactId>simulacron-native-server</artifactId>
-  <packaging>jar</packaging>
+  <packaging>bundle</packaging>
 
   <name>simulacron native protocol server</name>
 
@@ -46,5 +46,19 @@
       <optional>true</optional>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <configuration>
+          <instructions>
+            <Bundle-SymbolicName>com.datastax.oss.simulacron.server</Bundle-SymbolicName>
+          </instructions>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>
