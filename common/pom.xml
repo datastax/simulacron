@@ -24,7 +24,7 @@
   </parent>
 
   <artifactId>simulacron-common</artifactId>
-  <packaging>jar</packaging>
+  <packaging>bundle</packaging>
 
   <name>simulacron common</name>
 
@@ -45,5 +45,19 @@
       <version>${project.parent.version}</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <configuration>
+          <instructions>
+            <Bundle-SymbolicName>com.datastax.oss.simulacron.common</Bundle-SymbolicName>
+          </instructions>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>
