@@ -29,6 +29,13 @@ class CommandLineArguments {
   String ipAddress = "127.0.0.1";
 
   @Parameter(
+    names = {"--starting-port", "-s"},
+    description =
+        "Starting Port to assign Nodes to.  Note that if this is used multiple nodes can be assigned on one IP (which mimics C* 4.0+ peering)"
+  )
+  int startingPort = -1;
+
+  @Parameter(
     names = {"--httpport", "-p"},
     description = "HTTP port to bind on"
   )

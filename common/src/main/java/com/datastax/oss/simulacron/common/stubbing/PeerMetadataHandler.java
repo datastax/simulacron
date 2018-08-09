@@ -18,10 +18,13 @@ package com.datastax.oss.simulacron.common.stubbing;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.ASCII;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.BOOLEAN;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INET;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.INT;
 import static com.datastax.oss.protocol.internal.ProtocolConstants.DataType.UUID;
+import static com.datastax.oss.protocol.internal.ProtocolConstants.ErrorCode.INVALID;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Query;
+import com.datastax.oss.protocol.internal.response.Error;
 import com.datastax.oss.protocol.internal.response.result.ColumnSpec;
 import com.datastax.oss.protocol.internal.response.result.DefaultRows;
 import com.datastax.oss.protocol.internal.response.result.RawType;
@@ -52,8 +55,8 @@ import java.util.stream.Stream;
 
 public class PeerMetadataHandler extends StubMapping implements InternalStubMapping {
 
-  private static final List<String> queries = new ArrayList<>();
-  private static final List<Pattern> queryPatterns = new ArrayList<>();
+  private final List<String> queries = new ArrayList<>();
+  private final List<Pattern> queryPatterns = new ArrayList<>();
 
   static final UUID schemaVersion = java.util.UUID.randomUUID();
 
@@ -67,7 +70,8 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     queryClusterNameMetadata = new RowsMetadata(queryClusterNameSpecs, null, new int[] {}, null);
   }
 
-  private static final Pattern queryPeers = Pattern.compile("SELECT (.*) FROM system\\.peers");
+  private static final Pattern queryPeers =
+      Pattern.compile("SELECT (.*) FROM system\\.(peers\\S*)");
   private static final Pattern queryLocal =
       Pattern.compile("SELECT (.*) FROM system\\.local( WHERE key='local')*");
   private static final Pattern queryPeersWithAddr =
@@ -76,19 +80,27 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   // query the java driver makes when refreshing node (i.e. after it comes back up)
   private static final String queryPeerWithNamedParam =
       "SELECT * FROM system.peers WHERE peer = :address";
+  private static final String queryPeerV2WithNamedParam =
+      "SELECT * FROM system.peers_v2 WHERE peer = :address and peer_port = :port";
 
-  static {
-    queries.add(queryClusterName);
-    queries.add(queryPeerWithNamedParam);
+  private final boolean supportsV2;
+
+  public PeerMetadataHandler() {
+    this(false);
   }
 
-  static {
+  public PeerMetadataHandler(boolean supportsV2) {
+    this.supportsV2 = supportsV2;
+    queries.add(queryClusterName);
+    queries.add(queryPeerWithNamedParam);
     queryPatterns.add(queryPeers);
     queryPatterns.add(queryLocal);
     queryPatterns.add(queryPeersWithAddr);
-  }
 
-  public PeerMetadataHandler() {}
+    if (supportsV2) {
+      queries.add(queryPeerV2WithNamedParam);
+    }
+  }
 
   @Override
   public boolean matches(Frame frame) {
@@ -125,11 +137,23 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
                 } else {
                   return false;
                 }
-              });
+              },
+              false);
         } else if (query.query.equalsIgnoreCase(queryPeerWithNamedParam)) {
           ByteBuffer addressBuffer = query.options.namedValues.get("address");
           InetAddress address = mapper.inet.decode(addressBuffer);
-          return handlePeersQuery(node, mapper, n -> n.inet().equals(address));
+          return handlePeersQuery(node, mapper, n -> n.inet().equals(address), false);
+        } else if (query.query.equalsIgnoreCase(queryPeerV2WithNamedParam)) {
+          if (!supportsV2) {
+            return peersV2NotSupported();
+          }
+          ByteBuffer addressBuffer = query.options.namedValues.get("address");
+          InetAddress address = mapper.inet.decode(addressBuffer);
+          ByteBuffer portBuffer = query.options.namedValues.get("port");
+          int port = mapper.cint.decode(portBuffer);
+          InetSocketAddress socketAddr = new InetSocketAddress(address, port);
+          return handlePeersQuery(
+              node, mapper, n -> n.inetSocketAddress().equals(socketAddr), true);
         }
         Matcher matcher = queryLocal.matcher(query.query);
         if (matcher.matches()) {
@@ -137,11 +161,24 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
         }
         matcher = queryPeers.matcher(query.query);
         if (matcher.matches()) {
-          return handlePeersQuery(node, mapper, n -> n != node);
+          if (matcher.group(2).endsWith("v2")) {
+            if (supportsV2) {
+              return handlePeersQuery(node, mapper, n -> n != node, true);
+            } else {
+              return peersV2NotSupported();
+            }
+          }
+          return handlePeersQuery(node, mapper, n -> n != node, false);
         }
       }
     }
     return Collections.emptyList();
+  }
+
+  private List<Action> peersV2NotSupported() {
+    // Throw error when query made to peers_v2 table and v2 is not supported.
+    return Collections.singletonList(
+        new MessageResponseAction(new Error(INVALID, "Table system.peers_v2 does not exist")));
   }
 
   private boolean queryPatternMatches(String query) {
@@ -159,7 +196,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   }
 
   private List<Action> handleSystemLocalQuery(AbstractNode node, CqlMapper mapper) {
-    InetAddress address = resolveAddress(node);
+    InetSocketAddress address = resolveAddress(node);
     Codec<Set<String>> tokenCodec =
         mapper.codecFor(new RawType.RawSet(CodecUtils.primitive(ASCII)));
 
@@ -167,12 +204,15 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
         CodecUtils.row(
             CodecUtils.encodePeerInfo(node, mapper.ascii::encode, "key", "local"),
             CodecUtils.encodePeerInfo(node, mapper.ascii::encode, "bootstrapped", "COMPLETED"),
-            mapper.inet.encode(node.resolvePeerInfo("rpc_address", address)),
-            mapper.inet.encode(node.resolvePeerInfo("broadcast_address", address)),
+            mapper.inet.encode(node.resolvePeerInfo("rpc_address", address.getAddress())),
+            mapper.cint.encode(node.resolvePeerInfo("rpc_port", address.getPort())),
+            mapper.inet.encode(node.resolvePeerInfo("broadcast_address", address.getAddress())),
+            mapper.cint.encode(node.resolvePeerInfo("broadcast_port", address.getPort())),
             mapper.ascii.encode(node.getCluster().getName()),
             CodecUtils.encodePeerInfo(node, mapper.ascii::encode, "cql_version", "3.2.0"),
             mapper.ascii.encode(node.getDataCenter().getName()),
-            mapper.inet.encode(address),
+            mapper.inet.encode(node.resolvePeerInfo("listen_address", address.getAddress())),
+            mapper.cint.encode(node.resolvePeerInfo("listen_port", address.getPort())),
             CodecUtils.encodePeerInfo(
                 node,
                 mapper.ascii::encode,
@@ -204,7 +244,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
 
   @SuppressWarnings("unchecked")
   private List<Action> handlePeersQuery(
-      AbstractNode node, CqlMapper mapper, Predicate<AbstractNode> nodeFilter) {
+      AbstractNode node, CqlMapper mapper, Predicate<AbstractNode> nodeFilter, boolean isV2) {
     // For each node matching the filter, provide its peer information.
     Codec<Set<String>> tokenCodec =
         mapper.codecFor(new RawType.RawSet(CodecUtils.primitive(ASCII)));
@@ -213,69 +253,91 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     Stream<AbstractNode> stream = cluster.getNodes().stream();
 
     Queue<List<ByteBuffer>> peerRows =
-        new ArrayDeque<>(
-            stream
-                .filter(nodeFilter)
-                .map(
-                    n -> {
-                      InetAddress address = resolveAddress(n);
+        stream
+            .filter(nodeFilter)
+            .map(
+                n -> {
+                  InetSocketAddress address = resolveAddress(n);
 
-                      List<ByteBuffer> row =
-                          CodecUtils.row(
-                              mapper.inet.encode(n.resolvePeerInfo("peer", address)),
-                              mapper.inet.encode(n.resolvePeerInfo("rpc_address", address)),
-                              mapper.varchar.encode(
-                                  n.resolvePeerInfo("data_center", n.getDataCenter().getName())),
-                              CodecUtils.encodePeerInfo(n, mapper.varchar::encode, "rack", "rack1"),
-                              mapper.varchar.encode(
-                                  n.resolvePeerInfo(
-                                      "release_version", n.resolveCassandraVersion())),
-                              tokenCodec.encode(resolveTokens(n)),
-                              mapper.inet.encode(n.resolvePeerInfo("listen_address", address)),
-                              mapper.uuid.encode(n.resolvePeerInfo("host_id", schemaVersion)),
-                              mapper.uuid.encode(
-                                  n.resolvePeerInfo("schema_version", schemaVersion)));
-                      if (node.resolveDSEVersion() != null) {
-                        row.add(mapper.ascii.encode(n.resolveDSEVersion()));
-                        row.add(CodecUtils.encodePeerInfo(n, mapper.bool::encode, "graph", false));
-                      }
-                      return row;
-                    })
-                .collect(Collectors.toList()));
+                  List<ByteBuffer> row =
+                      CodecUtils.row(
+                          mapper.inet.encode(n.resolvePeerInfo("peer", address.getAddress())),
+                          mapper.varchar.encode(
+                              n.resolvePeerInfo("data_center", n.getDataCenter().getName())),
+                          CodecUtils.encodePeerInfo(n, mapper.varchar::encode, "rack", "rack1"),
+                          mapper.varchar.encode(
+                              n.resolvePeerInfo("release_version", n.resolveCassandraVersion())),
+                          tokenCodec.encode(resolveTokens(n)),
+                          mapper.uuid.encode(n.resolvePeerInfo("host_id", schemaVersion)),
+                          mapper.uuid.encode(n.resolvePeerInfo("schema_version", schemaVersion)));
 
-    Rows rows = new DefaultRows(buildSystemPeersRowsMetadata(node), peerRows);
+                  if (isV2) {
+                    row.addAll(
+                        CodecUtils.row(
+                            mapper.cint.encode(n.resolvePeerInfo("peer_port", address.getPort())),
+                            mapper.inet.encode(
+                                n.resolvePeerInfo("native_address", address.getAddress())),
+                            mapper.cint.encode(
+                                n.resolvePeerInfo("native_port", address.getPort()))));
+                  } else {
+                    row.addAll(
+                        CodecUtils.row(
+                            mapper.inet.encode(
+                                n.resolvePeerInfo("rpc_address", address.getAddress()))));
+                  }
+                  if (node.resolveDSEVersion() != null) {
+                    row.add(mapper.ascii.encode(n.resolveDSEVersion()));
+                    row.add(CodecUtils.encodePeerInfo(n, mapper.bool::encode, "graph", false));
+                  }
+                  return row;
+                })
+            .collect(Collectors.toCollection(ArrayDeque::new));
+
+    Rows rows = new DefaultRows(buildSystemPeersRowsMetadata(node, isV2), peerRows);
     MessageResponseAction action = new MessageResponseAction(rows);
     return Collections.singletonList(action);
   }
 
-  private InetAddress resolveAddress(AbstractNode node) {
-    InetAddress address;
+  private InetSocketAddress resolveAddress(AbstractNode node) {
+    InetSocketAddress address;
     if (node.getAddress() instanceof InetSocketAddress) {
-      address = ((InetSocketAddress) node.getAddress()).getAddress();
+      address = ((InetSocketAddress) node.getAddress());
     } else {
-      address = InetAddress.getLoopbackAddress();
+      address = new InetSocketAddress(InetAddress.getLoopbackAddress(), 9042);
     }
     return address;
   }
 
-  private RowsMetadata buildSystemPeersRowsMetadata(AbstractNode node) {
+  private RowsMetadata buildSystemPeersRowsMetadata(AbstractNode node, boolean isV2) {
     CodecUtils.ColumnSpecBuilder systemPeers = CodecUtils.columnSpecBuilder("system", "peers");
     List<ColumnSpec> systemPeersSpecs =
         CodecUtils.columnSpecs(
             systemPeers.apply("peer", CodecUtils.primitive(INET)),
-            systemPeers.apply("rpc_address", CodecUtils.primitive(INET)),
             systemPeers.apply("data_center", CodecUtils.primitive(ASCII)),
             systemPeers.apply("rack", CodecUtils.primitive(ASCII)),
             systemPeers.apply("release_version", CodecUtils.primitive(ASCII)),
             systemPeers.apply("tokens", new RawType.RawSet(CodecUtils.primitive(ASCII))),
-            systemPeers.apply("listen_address", CodecUtils.primitive(INET)),
             systemPeers.apply("host_id", CodecUtils.primitive(UUID)),
             systemPeers.apply("schema_version", CodecUtils.primitive(UUID)));
+
+    if (isV2) {
+      systemPeersSpecs.addAll(
+          CodecUtils.columnSpecs(
+              systemPeers.apply("peer_port", CodecUtils.primitive(INT)),
+              systemPeers.apply("native_address", CodecUtils.primitive(INET)),
+              systemPeers.apply("native_port", CodecUtils.primitive(INT))));
+    } else {
+      systemPeersSpecs.addAll(
+          CodecUtils.columnSpecs(systemPeers.apply("rpc_address", CodecUtils.primitive(INET))));
+    }
+
     if (node.resolveDSEVersion() != null) {
       systemPeersSpecs.add(systemPeers.apply("dse_version", CodecUtils.primitive(ASCII)));
       systemPeersSpecs.add(systemPeers.apply("graph", CodecUtils.primitive(BOOLEAN)));
     }
-    return new RowsMetadata(systemPeersSpecs, null, new int[] {0}, null);
+
+    int[] primaryKey = isV2 ? new int[] {0, 1} : new int[] {0};
+    return new RowsMetadata(systemPeersSpecs, null, primaryKey, null);
   }
 
   private RowsMetadata buildSystemLocalRowsMetadata(AbstractNode node) {
@@ -285,11 +347,14 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
             systemLocal.apply("key", CodecUtils.primitive(ASCII)),
             systemLocal.apply("bootstrapped", CodecUtils.primitive(ASCII)),
             systemLocal.apply("rpc_address", CodecUtils.primitive(INET)),
+            systemLocal.apply("rpc_port", CodecUtils.primitive(INT)),
             systemLocal.apply("broadcast_address", CodecUtils.primitive(INET)),
+            systemLocal.apply("broadcast_port", CodecUtils.primitive(INT)),
             systemLocal.apply("cluster_name", CodecUtils.primitive(ASCII)),
             systemLocal.apply("cql_version", CodecUtils.primitive(ASCII)),
             systemLocal.apply("data_center", CodecUtils.primitive(ASCII)),
             systemLocal.apply("listen_address", CodecUtils.primitive(INET)),
+            systemLocal.apply("listen_port", CodecUtils.primitive(INT)),
             systemLocal.apply("partitioner", CodecUtils.primitive(ASCII)),
             systemLocal.apply("rack", CodecUtils.primitive(ASCII)),
             systemLocal.apply("release_version", CodecUtils.primitive(ASCII)),
