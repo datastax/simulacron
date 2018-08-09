@@ -71,6 +71,9 @@ If you'd like to build simulacron, follow these instructions:
 ```
 Usage:
   Options:
+    --disable-activity-log, -d
+      Disables activity logging by default
+      Default: false
     --httpintf, -t
       Interface address to bind HTTP server on
       Default: localhost
@@ -83,6 +86,10 @@ Usage:
     --loglevel, -l
       Logging level to use
       Default: INFO
+    --starting-port, -s
+      Starting Port to assign Nodes to.  Note that if this is used multiple
+      nodes can be assigned on one IP (which mimics C* 4.0+ peering)
+      Default: -1
     --verbose, -v
       Whether or not to enable verbose http logging (also enables DEBUG
       logging)

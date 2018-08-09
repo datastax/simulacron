@@ -12,7 +12,7 @@ Simulacron can be added to your application by using the following maven depende
 <dependency>
   <groupId>com.datastax.oss.simulacron</groupId>
   <artifactId>simulacron-native-server</artifactId>
-  <version>0.8.3</version>
+  <version>0.8.4</version>
 </dependency>
 ```
 
@@ -24,7 +24,7 @@ using the java driver you should consider depending on the `driver-3x` module wh
 <dependency>
   <groupId>com.datastax.oss.simulacron</groupId>
   <artifactId>simulacron-driver-3x</artifactId>
-  <version>0.8.3</version>
+  <version>0.8.4</version>
 </dependency>
 ```
 
@@ -49,6 +49,10 @@ provide your own `EventLoopGroup` as input to the builder.
 By default nodes provisioned by Server will use socket addresses starting with 127.0.1.1:9042, 127.0.1.2:9042, and so
 on.   To alter this behavior you may pass in a custom `AddressResolver` by using
 `Server.Builder.withAddressResolver(AddressResolver)`.
+
+This behavior may also be altered by using `withMultipleNodesPerIp(true)`.  This mimics the behavior introduced in
+[CASSANDRA-7544][CASSANDRA-7544] which allows multiple Cassandra instances to run on the same IP, but with a different
+port.
 
 `Server` is an [`AutoCloseable`][AutoCloseable] resource, thus can be used in a `try-with-resources` block or may be
 closed explicitly using `close()`.
@@ -532,3 +536,4 @@ CompletionStage<BoundCluster> future = server.registerAsync(ClusterSpec.builder(
 ```
 
 [AutoCloseable]: https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html
+[CASSANDRA-7544]: https://issues.apache.org/jira/browse/CASSANDRA-7544
