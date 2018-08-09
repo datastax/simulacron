@@ -46,4 +46,27 @@ public interface AddressResolver extends Supplier<SocketAddress> {
    * @param address Address to return.
    */
   default void release(SocketAddress address) {}
+
+  /**
+   * @see com.datastax.oss.simulacron.server.Inet4Resolver
+   * @deprecated replaced by {@link com.datastax.oss.simulacron.server.Inet4Resolver}
+   */
+  @Deprecated
+  class Inet4Resolver extends com.datastax.oss.simulacron.server.Inet4Resolver {
+    public Inet4Resolver(byte[] startingAddress) {
+      super(startingAddress, defaultStartingPort);
+    }
+
+    public Inet4Resolver() {
+      super();
+    }
+
+    public Inet4Resolver(int port) {
+      super(port);
+    }
+
+    public Inet4Resolver(byte startingAddress[], int port) {
+      super(startingAddress, port);
+    }
+  }
 }
