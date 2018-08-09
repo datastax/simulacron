@@ -117,8 +117,8 @@ public class FrameSerializerTest {
                 + "    \"opcode\" : 1,\n"
                 + "    \"is_response\" : false,\n"
                 + "    \"options\" : {\n"
-                + "      \"COMPRESSION\" : \"LZ4\",\n"
-                + "      \"CQL_VERSION\" : \"3.0.0\"\n"
+                + "      \"CQL_VERSION\" : \"3.0.0\",\n"
+                + "      \"COMPRESSION\" : \"LZ4\"\n"
                 + "    }\n"
                 + "  }\n"
                 + "}");
