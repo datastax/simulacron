@@ -12,7 +12,7 @@ Simulacron can be added to your application by using the following maven depende
 <dependency>
   <groupId>com.datastax.oss.simulacron</groupId>
   <artifactId>simulacron-native-server</artifactId>
-  <version>0.8.4</version>
+  <version>0.8.5</version>
 </dependency>
 ```
 
@@ -24,7 +24,7 @@ using the java driver you should consider depending on the `driver-3x` module wh
 <dependency>
   <groupId>com.datastax.oss.simulacron</groupId>
   <artifactId>simulacron-driver-3x</artifactId>
-  <version>0.8.4</version>
+  <version>0.8.5</version>
 </dependency>
 ```
 
