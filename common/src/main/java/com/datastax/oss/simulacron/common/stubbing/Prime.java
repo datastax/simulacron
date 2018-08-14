@@ -92,8 +92,8 @@ public class Prime extends StubMapping {
         return new Prepared(
             b.array(),
             null,
-            new RowsMetadata(new LinkedList<ColumnSpec>(), null, null, null),
-            new RowsMetadata(new LinkedList<ColumnSpec>(), null, null, null));
+            fetchRowMetadataForParams(query),
+            new RowsMetadata(new LinkedList<>(), null, null, null));
       }
     }
     return null;
@@ -115,9 +115,9 @@ public class Prime extends StubMapping {
               !primedRequest.then.isIgnoreOnPrepare() ? primedRequest.then.getDelayInMs() : 0;
           return this.toPreparedAction(delayInMs);
         } else if (primedRequest.then instanceof ErrorResult) {
-          // If ignore on prepare, delegate.
+          // If ignore on prepare, return a PreparedResponse.
           if (primedRequest.then.isIgnoreOnPrepare()) {
-            return Collections.emptyList();
+            return this.toPreparedAction(0L);
           }
         }
       }
