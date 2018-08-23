@@ -27,25 +27,24 @@ import com.datastax.oss.simulacron.common.cluster.AbstractNode;
 import com.datastax.oss.simulacron.common.codec.CodecUtils;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 
 public class EmptyReturnMetadataHandler extends StubMapping implements InternalStubMapping {
 
-  private List<String> queries = new ArrayList<>();
+  private String queryStr;
 
   public EmptyReturnMetadataHandler(String matchingQuery) {
-    queries.add(matchingQuery);
+    queryStr = matchingQuery;
   }
 
   @Override
   public boolean matches(Frame frame) {
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
-      String queryStr = query.query;
-      return queries.contains(queryStr);
+      String frameQueryStr = query.query;
+      return queryStr.equalsIgnoreCase(frameQueryStr);
     }
     return false;
   }

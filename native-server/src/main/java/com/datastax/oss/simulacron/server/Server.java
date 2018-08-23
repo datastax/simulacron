@@ -793,6 +793,12 @@ public final class Server implements AutoCloseable {
         stubStore.register(new EmptyReturnMetadataHandler("SELECT * FROM system.schema_functions"));
         stubStore.register(
             new EmptyReturnMetadataHandler("SELECT * FROM system.schema_aggregates"));
+        stubStore.register(
+            new EmptyReturnMetadataHandler("SELECT * FROM system_virtual_schema.keyspaces"));
+        stubStore.register(
+            new EmptyReturnMetadataHandler("SELECT * FROM system_virtual_schema.columns"));
+        stubStore.register(
+            new EmptyReturnMetadataHandler("SELECT * FROM system_virtual_schema.tables"));
       }
       Timer timer = this.timer;
       if (timer == null) {
