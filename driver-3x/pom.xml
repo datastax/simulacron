@@ -20,7 +20,7 @@
   <parent>
     <groupId>com.datastax.oss.simulacron</groupId>
     <artifactId>simulacron-parent</artifactId>
-    <version>0.8.6-SNAPSHOT</version>
+    <version>0.8.6</version>
   </parent>
 
   <artifactId>simulacron-driver-3x</artifactId>
