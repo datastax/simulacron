@@ -38,6 +38,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.flush.FlushConsolidationHandler;
 import io.netty.util.AttributeKey;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
@@ -856,6 +857,7 @@ public final class Server implements AutoCloseable {
         logger.debug("Got new connection {}", channel);
 
         pipeline
+            .addLast(new FlushConsolidationHandler())
             .addLast("decoder", new FrameDecoder(node.getFrameCodec()))
             .addLast("encoder", new FrameEncoder(node.getFrameCodec()))
             .addLast("requestHandler", new RequestHandler(node));
