@@ -101,27 +101,24 @@ public class CqlMapper {
   }
 
   @SuppressWarnings("unchecked")
-  private Codec<?> loadCache(RawType key) {
+  private Codec<?> createCodec(RawType key) {
     if (key instanceof RawSet) {
       RawSet s = (RawSet) key;
-      Codec<?> elementCodec = cqlTypeCache.computeIfAbsent(s.elementType, this::loadCache);
+      Codec<?> elementCodec = codecFor(s.elementType);
       return new SetCodec(elementCodec);
     } else if (key instanceof RawList) {
       RawList l = (RawList) key;
-      Codec<?> elementCodec = cqlTypeCache.computeIfAbsent(l.elementType, this::loadCache);
+      Codec<?> elementCodec = codecFor(l.elementType);
       return new ListCodec(elementCodec);
     } else if (key instanceof RawMap) {
       RawMap m = (RawMap) key;
-      Codec<?> keyCodec = cqlTypeCache.computeIfAbsent(m.keyType, this::loadCache);
-      Codec<?> valueCodec = cqlTypeCache.computeIfAbsent(m.valueType, this::loadCache);
+      Codec<?> keyCodec = codecFor(m.keyType);
+      Codec<?> valueCodec = codecFor(m.valueType);
       return new MapCodec(keyCodec, valueCodec);
     } else if (key instanceof RawTuple) {
       RawTuple t = (RawTuple) key;
       List<Codec<Object>> codecs =
-          t.fieldTypes
-              .stream()
-              .map(f -> (Codec<Object>) cqlTypeCache.computeIfAbsent(f, this::loadCache))
-              .collect(Collectors.toList());
+          t.fieldTypes.stream().map(this::codecFor).collect(Collectors.toList());
       return new TupleCodec(t, codecs);
     } else {
       // TODO Support UDT
@@ -132,7 +129,16 @@ public class CqlMapper {
 
   @SuppressWarnings("unchecked")
   public <T> Codec<T> codecFor(RawType cqlType) {
-    return (Codec<T>) cqlTypeCache.computeIfAbsent(cqlType, this::loadCache);
+    if (cqlTypeCache.containsKey(cqlType)) {
+      return (Codec<T>) cqlTypeCache.get(cqlType);
+    }
+    Codec<T> codec = (Codec<T>) createCodec(cqlType);
+    if (codec == null) {
+      // can't store null in a ConcurrentHashMap
+      return null;
+    }
+    Codec<T> previous = (Codec<T>) cqlTypeCache.putIfAbsent(cqlType, codec);
+    return previous == null ? codec : previous;
   }
 
   abstract class AbstractCodec<T> implements Codec<T> {
