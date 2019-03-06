@@ -43,7 +43,7 @@ public abstract class AbstractDataCenter<C extends AbstractCluster, N extends Ab
       String dseVersion,
       Map<String, Object> peerInfo,
       C parent) {
-    super(name, id, cassandraVersion, dseVersion, peerInfo);
+    super(name, id, null, cassandraVersion, dseVersion, peerInfo);
     this.parent = parent;
     if (this.parent != null) {
       parent.addDataCenter(this);

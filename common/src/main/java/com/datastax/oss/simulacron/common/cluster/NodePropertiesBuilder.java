@@ -17,6 +17,7 @@ package com.datastax.oss.simulacron.common.cluster;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * A base builder to use when defining a {@link NodeProperties} implementation that provides builder
@@ -35,6 +36,7 @@ public abstract class NodePropertiesBuilder<
   String dseVersion;
   String name;
   Long id;
+  UUID hostId;
   Map<String, Object> peerInfo = new HashMap<>();
 
   NodePropertiesBuilder(Class<?> selfType) {
@@ -62,6 +64,7 @@ public abstract class NodePropertiesBuilder<
         .withDSEVersion(toCopy.getDSEVersion())
         .withName(toCopy.getName())
         .withId(toCopy.getId())
+        .withHostId(toCopy.getHostId())
         .withPeerInfo(toCopy.getPeerInfo());
   }
 
@@ -82,6 +85,11 @@ public abstract class NodePropertiesBuilder<
 
   public S withId(Long id) {
     this.id = id;
+    return myself;
+  }
+
+  public S withHostId(UUID hostId) {
+    this.hostId = hostId;
     return myself;
   }
 

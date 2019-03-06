@@ -26,6 +26,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 public class AbstractNode<C extends AbstractCluster, D extends AbstractDataCenter<C, ?>>
     extends AbstractNodeProperties implements NodeStructure<C, D> {
@@ -41,11 +42,12 @@ public class AbstractNode<C extends AbstractCluster, D extends AbstractDataCente
       SocketAddress address,
       String name,
       Long id,
+      UUID hostId,
       String cassandraVersion,
       String dseVersion,
       Map<String, Object> peerInfo,
       D parent) {
-    super(name, id, cassandraVersion, dseVersion, peerInfo);
+    super(name, id, hostId, cassandraVersion, dseVersion, peerInfo);
     this.address = address;
     this.parent = parent;
     if (this.parent != null) {

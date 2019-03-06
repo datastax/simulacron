@@ -78,6 +78,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
@@ -163,6 +164,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
         address,
         delegate.getName(),
         delegate.getId() != null ? delegate.getId() : 0,
+        delegate.getHostId() != null ? delegate.getHostId() : UUID.randomUUID(),
         delegate.getCassandraVersion(),
         delegate.getDSEVersion(),
         peerInfo,

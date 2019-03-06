@@ -18,6 +18,7 @@ package com.datastax.oss.simulacron.common.cluster;
 import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Represents a {@link NodeSpec} which may belong to a cluster (via a data center relationship) or
@@ -30,18 +31,19 @@ public class NodeSpec extends AbstractNode<ClusterSpec, DataCenterSpec> {
 
   NodeSpec() {
     // Default constructor for jackson deserialization.
-    this(null, null, null, null, null, Collections.emptyMap(), null);
+    this(null, null, null, null, null, null, Collections.emptyMap(), null);
   }
 
   public NodeSpec(
       SocketAddress address,
       String name,
       Long id,
+      UUID hostId,
       String cassandraVersion,
       String dseVersion,
       Map<String, Object> peerInfo,
       DataCenterSpec parent) {
-    super(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
+    super(address, name, id, hostId, cassandraVersion, dseVersion, peerInfo, parent);
   }
 
   /**
@@ -51,16 +53,17 @@ public class NodeSpec extends AbstractNode<ClusterSpec, DataCenterSpec> {
    * @return Builder for creating {@link NodeSpec}
    */
   public static Builder builder() {
-    return new Builder(null, null);
+    return new Builder(null, null, null);
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, DataCenterSpec> {
 
     private SocketAddress address = null;
 
-    Builder(DataCenterSpec parent, Long id) {
+    Builder(DataCenterSpec parent, Long id, UUID hostId) {
       super(Builder.class, parent);
       this.id = id;
+      this.hostId = hostId;
     }
 
     /**
@@ -76,7 +79,8 @@ public class NodeSpec extends AbstractNode<ClusterSpec, DataCenterSpec> {
 
     /** @return Constructs a {@link NodeSpec} from this builder. Can be called multiple times. */
     public NodeSpec build() {
-      return new NodeSpec(address, name, id, cassandraVersion, dseVersion, peerInfo, parent);
+      return new NodeSpec(
+          address, name, id, hostId, cassandraVersion, dseVersion, peerInfo, parent);
     }
   }
 }

@@ -21,8 +21,11 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.Test;
 
 public class NodeTest {
@@ -48,6 +51,7 @@ public class NodeTest {
   @Test
   public void testShouldInheritBuilderProperties() {
     long id = 12L;
+    UUID hostId = UUID.randomUUID();
     InetSocketAddress address = new InetSocketAddress(InetAddress.getLoopbackAddress(), 9042);
     String version = "1.2.19";
     String name = "node0";
@@ -56,6 +60,7 @@ public class NodeTest {
     NodeSpec node =
         NodeSpec.builder()
             .withId(id)
+            .withHostId(hostId)
             .withAddress(address)
             .withCassandraVersion(version)
             .withName(name)
@@ -67,6 +72,7 @@ public class NodeTest {
     expectedPeerInfo.put("goodbye", "world");
 
     assertThat(node.getId()).isEqualTo(id);
+    assertThat(node.getHostId()).isEqualTo(hostId);
     assertThat(node.getAddress()).isEqualTo(address);
     assertThat(node.getCassandraVersion()).isEqualTo(version);
     assertThat(node.getName()).isEqualTo(name);
@@ -111,5 +117,23 @@ public class NodeTest {
 
     // Address should not be copied.
     assertThat(node2.getAddress()).isNull();
+  }
+
+  @Test
+  public void testShouldAssignUniqueHostIds() {
+    ClusterSpec cluster = ClusterSpec.builder().build();
+    DataCenterSpec dataCenter0 = cluster.addDataCenter().build();
+    NodeSpec node00 = dataCenter0.addNode().build();
+    NodeSpec node01 = dataCenter0.addNode().build();
+    DataCenterSpec dataCenter1 = cluster.addDataCenter().build();
+    NodeSpec node10 = dataCenter1.addNode().build();
+    NodeSpec node11 = dataCenter1.addNode().build();
+
+    Set<UUID> hostIds = new HashSet<>();
+    hostIds.add(node00.getHostId());
+    hostIds.add(node01.getHostId());
+    hostIds.add(node10.getHostId());
+    hostIds.add(node11.getHostId());
+    assertThat(hostIds).hasSize(4);
   }
 }

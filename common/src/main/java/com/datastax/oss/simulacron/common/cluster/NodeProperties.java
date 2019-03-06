@@ -22,6 +22,7 @@ import static java.util.Optional.ofNullable;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 
 /**
@@ -64,6 +65,13 @@ public interface NodeProperties extends Identifiable {
   /** @return A human readable name for this. */
   @JsonInclude(NON_NULL)
   String getName();
+
+  /**
+   * @return The host id of this if set, otherwise null. The host id uniquely identifies a node, and
+   *     is present in the system.peers and local tables.
+   */
+  @JsonInclude(NON_NULL)
+  UUID getHostId();
 
   /**
    * @return The cassandra version of this if set, otherwise null. The cassandra version is used to

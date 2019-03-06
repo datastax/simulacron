@@ -221,7 +221,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
             CodecUtils.encodePeerInfo(node, mapper.ascii::encode, "rack", "rack1"),
             mapper.ascii.encode(node.resolveCassandraVersion()),
             tokenCodec.encode(resolveTokens(node)),
-            mapper.uuid.encode(node.resolvePeerInfo("host_id", schemaVersion)),
+            mapper.uuid.encode(node.getHostId()),
             mapper.uuid.encode(schemaVersion));
 
     if (node.resolveDSEVersion() != null) {
@@ -268,7 +268,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
                           mapper.varchar.encode(
                               n.resolvePeerInfo("release_version", n.resolveCassandraVersion())),
                           tokenCodec.encode(resolveTokens(n)),
-                          mapper.uuid.encode(n.resolvePeerInfo("host_id", schemaVersion)),
+                          mapper.uuid.encode(n.getHostId()),
                           mapper.uuid.encode(n.resolvePeerInfo("schema_version", schemaVersion)));
 
                   if (isV2) {
