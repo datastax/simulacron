@@ -22,7 +22,7 @@ import java.util.function.Supplier;
 
 public interface AddressResolver extends Supplier<SocketAddress> {
 
-  byte[] defaultStartingIp = new byte[] {127, 0, 1, 1};
+  byte[] defaultStartingIp = new byte[] {127, 0, 0, 1};
   int defaultStartingPort = 9042;
 
   // TODO: make this configurable when needed.  For now we'll just use incrementing IPs from
