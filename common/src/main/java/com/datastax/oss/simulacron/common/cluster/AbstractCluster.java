@@ -40,7 +40,7 @@ public abstract class AbstractCluster<D extends AbstractDataCenter<?, N>, N exte
       String cassandraVersion,
       String dseVersion,
       Map<String, Object> peerInfo) {
-    super(name, id, cassandraVersion, dseVersion, peerInfo);
+    super(name, id, null, cassandraVersion, dseVersion, peerInfo);
   }
 
   @Override

@@ -18,6 +18,7 @@ package com.datastax.oss.simulacron.common.cluster;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Implementation of {@link NodeProperties} that provides a constructor a implementations for
@@ -33,6 +34,9 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   private final String name;
   private final Long id;
 
+  @JsonProperty("host_id")
+  private final UUID hostId;
+
   @JsonProperty("cassandra_version")
   private final String cassandraVersion;
 
@@ -45,11 +49,13 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   AbstractNodeProperties(
       String name,
       Long id,
+      UUID hostId,
       String cassandraVersion,
       String dseVersion,
       Map<String, Object> peerInfo) {
     this.name = name;
     this.id = id;
+    this.hostId = hostId;
     this.cassandraVersion = cassandraVersion;
     this.dseVersion = dseVersion;
     this.peerInfo = peerInfo;
@@ -63,6 +69,11 @@ public abstract class AbstractNodeProperties implements NodeProperties {
   @Override
   public Long getId() {
     return id;
+  }
+
+  @Override
+  public UUID getHostId() {
+    return hostId;
   }
 
   @Override

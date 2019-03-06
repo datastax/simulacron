@@ -162,7 +162,7 @@ public class PeerMetadataHandlerTest {
         .hasColumn(0, 12, "rack1")
         .hasColumn(0, 13, "3.0.12")
         .hasColumn(0, 14, Collections.singleton("0"))
-        .hasColumn(0, 15, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 15, node0.getHostId())
         .hasColumn(0, 16, PeerMetadataHandler.schemaVersion);
   }
 
@@ -197,7 +197,7 @@ public class PeerMetadataHandlerTest {
         .hasColumn(0, 12, "rack1")
         .hasColumn(0, 13, "3.0.12")
         .hasColumn(0, 14, Collections.singleton("0"))
-        .hasColumn(0, 15, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 15, dseNode0.getHostId())
         .hasColumn(0, 16, PeerMetadataHandler.schemaVersion)
         .hasColumn(0, 17, "5.0.8")
         .hasColumn(0, 18, true);
@@ -234,7 +234,7 @@ public class PeerMetadataHandlerTest {
         .hasColumn(0, 12, "rack1")
         .hasColumn(0, 13, "3.0.12")
         .hasColumn(0, 14, Collections.singleton("0"))
-        .hasColumn(0, 15, PeerMetadataHandler.schemaVersion)
+        .hasColumn(0, 15, node1.getHostId())
         .hasColumn(0, 16, PeerMetadataHandler.schemaVersion);
   }
 

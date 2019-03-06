@@ -18,6 +18,7 @@ package com.datastax.oss.simulacron.common.cluster;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** Represents a data center which is a member of a cluster that has nodes belonging to it. */
@@ -48,7 +49,7 @@ public class DataCenterSpec extends AbstractDataCenter<ClusterSpec, NodeSpec> {
    * @return a Builder to create a {@link NodeSpec} in this data center.
    */
   public NodeSpec.Builder addNode() {
-    return new NodeSpec.Builder(this, nodeCounter.getAndIncrement());
+    return new NodeSpec.Builder(this, nodeCounter.getAndIncrement(), UUID.randomUUID());
   }
 
   public static class Builder extends NodePropertiesBuilder<Builder, ClusterSpec> {

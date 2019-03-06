@@ -46,10 +46,14 @@ public class ObjectMapperHolderTest {
     String json = mapper.writeValueAsString(cluster);
 
     String expectedJson =
-        "{\"name\":\"cluster1\",\"dse_version\":\"5.1.0\",\"data_centers\":["
-            + "{\"name\":\"dc1\",\"id\":0,\"nodes\":[{\"name\":\"node1\",\"id\":0,\"active_connections\":0}],\"active_connections\":0},"
-            + "{\"name\":\"dc2\",\"id\":1,\"nodes\":[{\"name\":\"node1\",\"id\":0,\"active_connections\":0},{\"name\":\"node2\",\"id\":1,\"active_connections\":0}],\"active_connections\":0}"
-            + "],\"active_connections\":0}";
+        String.format(
+            "{\"name\":\"cluster1\",\"dse_version\":\"5.1.0\",\"data_centers\":["
+                + "{\"name\":\"dc1\",\"id\":0,\"nodes\":[{\"name\":\"node1\",\"id\":0,\"host_id\":\"%s\",\"active_connections\":0}],\"active_connections\":0},"
+                + "{\"name\":\"dc2\",\"id\":1,\"nodes\":[{\"name\":\"node1\",\"id\":0,\"host_id\":\"%s\",\"active_connections\":0},{\"name\":\"node2\",\"id\":1,\"host_id\":\"%s\",\"active_connections\":0}],\"active_connections\":0}"
+                + "],\"active_connections\":0}",
+            cluster.node(0, 0).getHostId(),
+            cluster.node(1, 0).getHostId(),
+            cluster.node(1, 1).getHostId());
     assertThat(json).isEqualTo(expectedJson);
 
     ClusterSpec cluster2 = mapper.readValue(json, ClusterSpec.class);
@@ -74,10 +78,12 @@ public class ObjectMapperHolderTest {
     String json = mapper.writeValueAsString(cluster);
 
     String expectedJson =
-        "{\"data_centers\":[{\"name\":\"0\",\"id\":0,\"nodes\":["
-            + "{\"name\":\"0\",\"id\":0,\"address\":\"127.0.0.1:9042\",\"active_connections\":0},"
-            + "{\"name\":\"1\",\"id\":1,\"address\":\"127.0.0.2:9042\",\"active_connections\":0}"
-            + "],\"active_connections\":0}],\"active_connections\":0}";
+        String.format(
+            "{\"data_centers\":[{\"name\":\"0\",\"id\":0,\"nodes\":["
+                + "{\"name\":\"0\",\"id\":0,\"address\":\"127.0.0.1:9042\",\"host_id\":\"%s\",\"active_connections\":0},"
+                + "{\"name\":\"1\",\"id\":1,\"address\":\"127.0.0.2:9042\",\"host_id\":\"%s\",\"active_connections\":0}"
+                + "],\"active_connections\":0}],\"active_connections\":0}",
+            cluster.node(0, 0).getHostId(), cluster.node(0, 1).getHostId());
     assertThat(json).isEqualTo(expectedJson);
 
     ClusterSpec cluster2 = mapper.readValue(json, ClusterSpec.class);
