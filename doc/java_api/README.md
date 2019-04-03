@@ -63,7 +63,7 @@ With a `Server` instance in hand, you can provision Cluster and Nodes using `Ser
 
 `register` returns `BoundCluster` and `BoundNode` instances which each implement
 [`java.io.AutoCloseable`][AutoCloseable] and thus can be used in a `try-with-resources` block such that when the `try`
-block` exits, the `BoundCluster` or `BoundNode` is automatically unregistered with the `Server`.
+block exits, the `BoundCluster` or `BoundNode` is automatically unregistered with the `Server`.
 
 To register a single `BoundNode`:
 
