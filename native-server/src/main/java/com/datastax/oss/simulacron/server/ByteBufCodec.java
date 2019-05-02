@@ -188,6 +188,16 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
   }
 
   @Override
+  public void writeBytes(byte[] bytes, ByteBuf dest) {
+    if (bytes == null) {
+      writeInt(-1, dest);
+    } else {
+      writeInt(bytes.length, dest);
+      dest.writeBytes(bytes);
+    }
+  }
+
+  @Override
   public void writeShortBytes(byte[] bytes, ByteBuf dest) {
     if (bytes == null) {
       writeUnsignedShort(-1, dest);

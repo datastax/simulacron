@@ -49,7 +49,7 @@
     <junit.version>4.12</junit.version>
     <slf4j.version>1.7.22</slf4j.version>
     <logback.version>1.1.9</logback.version>
-    <native-protocol.version>1.4.3</native-protocol.version>
+    <native-protocol.version>1.4.4</native-protocol.version>
     <vertx.version>3.4.1</vertx.version>
     <jackson-databind.version>2.9.5</jackson-databind.version>
     <java-driver.version>3.2.0</java-driver.version>
