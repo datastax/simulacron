@@ -90,20 +90,26 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
 
   @Override
   public ByteBuffer readBytes(ByteBuf source) {
-    int len = readInt(source);
-    if (len < 0) {
-      return null;
+    int length = readInt(source);
+    if (length < 0) return null;
+    ByteBuf slice = source.readSlice(length);
+    return ByteBuffer.wrap(readRawBytes(slice));
+  }
+
+  // Reads *all* readable bytes from a buffer and return them.
+  // If the buffer is backed by an array, this will return the underlying array directly, without
+  // copy.
+  private static byte[] readRawBytes(ByteBuf buffer) {
+    if (buffer.hasArray() && buffer.readableBytes() == buffer.array().length) {
+      // Move the readerIndex just so we consistently consume the input
+      buffer.readerIndex(buffer.writerIndex());
+      return buffer.array();
     }
 
-    ByteBuf slice = source.readSlice(len);
-    // if direct byte buffer, return underlying nioBuffer.
-    if (slice.isDirect()) {
-      return slice.nioBuffer();
-    }
-    // otherwise copy to a byte array and wrap it.
-    final byte[] out = new byte[slice.readableBytes()];
-    source.getBytes(source.readerIndex(), out, 0, len);
-    return ByteBuffer.wrap(out);
+    // Otherwise, just read the bytes in a new array
+    byte[] bytes = new byte[buffer.readableBytes()];
+    buffer.readBytes(bytes);
+    return bytes;
   }
 
   @Override
