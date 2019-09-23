@@ -60,7 +60,9 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
 
   static final UUID schemaVersion = java.util.UUID.randomUUID();
 
-  private static final String queryClusterName = "select cluster_name from system.local";
+  private static final Pattern queryClusterName =
+      Pattern.compile(
+          "select cluster_name from system.local( where key='local')?", Pattern.CASE_INSENSITIVE);
   private static final RowsMetadata queryClusterNameMetadata;
 
   static {
@@ -71,11 +73,12 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   }
 
   private static final Pattern queryPeers =
-      Pattern.compile("SELECT (.*) FROM system\\.(peers\\S*)");
+      Pattern.compile("SELECT (.*) FROM system\\.(peers\\S*)", Pattern.CASE_INSENSITIVE);
   private static final Pattern queryLocal =
-      Pattern.compile("SELECT (.*) FROM system\\.local( WHERE key='local')*");
+      Pattern.compile(
+          "SELECT (.*) FROM system\\.local( WHERE key='local')?", Pattern.CASE_INSENSITIVE);
   private static final Pattern queryPeersWithAddr =
-      Pattern.compile("SELECT \\* FROM system\\.peers WHERE peer='(.*)'");
+      Pattern.compile("SELECT \\* FROM system\\.peers WHERE peer='(.*)'", Pattern.CASE_INSENSITIVE);
 
   // query the java driver makes when refreshing node (i.e. after it comes back up)
   private static final String queryPeerWithNamedParam =
@@ -91,7 +94,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
 
   public PeerMetadataHandler(boolean supportsV2) {
     this.supportsV2 = supportsV2;
-    queries.add(queryClusterName);
+    queryPatterns.add(queryClusterName);
     queries.add(queryPeerWithNamedParam);
     queryPatterns.add(queryPeers);
     queryPatterns.add(queryLocal);
@@ -119,7 +122,8 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
       CqlMapper mapper = CqlMapper.forVersion(frame.protocolVersion);
       Query query = (Query) frame.message;
 
-      if (query.query.equalsIgnoreCase(queryClusterName)) {
+      Matcher clusterNameMatcher = queryClusterName.matcher(query.query);
+      if (clusterNameMatcher.matches()) {
         return handleClusterNameQuery(node, mapper);
       } else {
         // if querying for particular peer, return information for only that peer.
