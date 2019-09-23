@@ -62,7 +62,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
 
   private static final Pattern queryClusterName =
       Pattern.compile(
-          "select cluster_name from system.local( where key='local')?", Pattern.CASE_INSENSITIVE);
+          "SELECT cluster_name FROM system.local( WHERE key='local')?", Pattern.CASE_INSENSITIVE);
   private static final RowsMetadata queryClusterNameMetadata;
 
   static {
