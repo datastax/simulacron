@@ -259,6 +259,27 @@ public class PeerMetadataHandlerTest {
   }
 
   @Test
+  public void shouldHandleQueryClusterName2() {
+    // querying the local table for cluster_name should return ClusterSpec.getName()
+    List<Action> node0Actions =
+        handler.getActions(
+            node0, queryFrame("select cluster_name from system.local where key='local'"));
+
+    assertThat(node0Actions).hasSize(1);
+
+    Action node0Action = node0Actions.get(0);
+    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+    assertThat(node0Message)
+        .isRows()
+        .hasRows(1)
+        .hasColumnSpecs(1)
+        .hasColumn(0, 0, cluster.getName());
+  }
+
+  @Test
   public void shouldHandleQueryAllPeers() {
     // querying for peers should return a row for each other node in the cluster
     List<Action> node0Actions = handler.getActions(node0, queryFrame("SELECT * FROM system.peers"));
