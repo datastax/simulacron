@@ -103,17 +103,64 @@ public class PeerMetadataHandlerTest {
   public void shouldMatchLocalAndPeersQueries() {
     // Should match the following queries.
     assertThat(handler.matches(node0, queryFrame("SELECT * FROM system.peers"))).isTrue();
+    assertThat(handler.matches(node0, queryFrame(" select  *  from  system.peers  ; "))).isTrue();
     assertThat(handler.matches(node0, queryFrame("SELECT * FROM system.peers_v2"))).isTrue();
-    assertThat(handler.matches(node0, queryFrame("select cluster_name from system.local")))
+    assertThat(handler.matches(node0, queryFrame(" select  *  from  system.peers_v2  ; ")))
+        .isTrue();
+    assertThat(handler.matches(node0, queryFrame("SELECT cluster_name FROM system.local")))
+        .isTrue();
+    assertThat(handler.matches(node0, queryFrame(" select  cluster_name  from  system.local ; ")))
         .isTrue();
     assertThat(handler.matches(node0, queryFrame("SELECT * FROM system.local WHERE key='local'")))
+        .isTrue();
+    assertThat(
+            handler.matches(
+                node0, queryFrame(" select  *  from  system.local  where  key = 'local' ; ")))
         .isTrue();
     // Should match individual peer query no matter the address.
     assertThat(
             handler.matches(node0, queryFrame("SELECT * FROM system.peers WHERE peer='127.0.3.2'")))
         .isTrue();
     assertThat(
+            handler.matches(
+                node0, queryFrame(" select  *  from  system.peers  where  peer = '127.0.3.2' ; ")))
+        .isTrue();
+    assertThat(
             handler.matches(node0, queryFrame("SELECT * FROM system.peers WHERE peer='17.0.3.7'")))
+        .isTrue();
+    assertThat(
+            handler.matches(
+                node0, queryFrame(" select  *  from  system.peers  where  peer = '17.0.3.7' ; ")))
+        .isTrue();
+    assertThat(handler.matches(node0, queryFrame("SELECT * FROM system.peers WHERE peer=:address")))
+        .isTrue();
+    assertThat(
+            handler.matches(
+                node0, queryFrame(" select  *  from  system.peers  where  peer = :address ; ")))
+        .isTrue();
+    assertThat(
+            handler.matches(
+                node0,
+                queryFrame(
+                    "SELECT * FROM system.peers_v2 WHERE peer=:address AND peer_port=:port")))
+        .isFalse();
+    assertThat(
+            handler.matches(
+                node0,
+                queryFrame(
+                    " select  *  from  system.peers_v2  where  peer = :address  and  peer_port = :port ; ")))
+        .isFalse();
+    assertThat(
+            handlerV2.matches(
+                node0,
+                queryFrame(
+                    "SELECT * FROM system.peers_v2 WHERE peer=:address AND peer_port=:port")))
+        .isTrue();
+    assertThat(
+            handlerV2.matches(
+                node0,
+                queryFrame(
+                    " select  *  from  system.peers_v2  where  peer = :address  and  peer_port = :port ; ")))
         .isTrue();
   }
 
@@ -170,73 +217,87 @@ public class PeerMetadataHandlerTest {
   @Test
   public void shouldHandleQueryLocalDSE() {
     // querying the local table should return node info and include dse specific columns
-    List<Action> node0Actions =
-        handler.getActions(dseNode0, queryFrame("SELECT * FROM system.local WHERE key='local'"));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.local WHERE key='local'",
+            "select * from system.local where key='local'",
+            " select * from system.local where key = 'local' ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handler.getActions(dseNode0, queryFrame(query));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
-    assertThat(node0Message)
-        .isRows()
-        .hasRows(1)
-        .hasColumnSpecs(19) // should include dse_version and graph columns
-        .hasColumn(0, 0, "local")
-        .hasColumn(0, 1, "COMPLETED")
-        .hasColumn(0, 2, InetAddress.getLoopbackAddress())
-        .hasColumn(0, 3, 9042)
-        .hasColumn(0, 4, InetAddress.getLoopbackAddress())
-        .hasColumn(0, 5, 9042)
-        .hasColumn(0, 6, dseCluster.getName())
-        .hasColumn(0, 7, "3.2.0")
-        .hasColumn(0, 8, dseNode0.getDataCenter().getName())
-        .hasColumn(0, 9, InetAddress.getLoopbackAddress())
-        .hasColumn(0, 10, 9042)
-        .hasColumn(0, 11, "org.apache.cassandra.dht.Murmur3Partitioner")
-        .hasColumn(0, 12, "rack1")
-        .hasColumn(0, 13, "3.0.12")
-        .hasColumn(0, 14, Collections.singleton("0"))
-        .hasColumn(0, 15, dseNode0.getHostId())
-        .hasColumn(0, 16, PeerMetadataHandler.schemaVersion)
-        .hasColumn(0, 17, "5.0.8")
-        .hasColumn(0, 18, true);
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      assertThat(node0Message)
+          .isRows()
+          .hasRows(1)
+          .hasColumnSpecs(19) // should include dse_version and graph columns
+          .hasColumn(0, 0, "local")
+          .hasColumn(0, 1, "COMPLETED")
+          .hasColumn(0, 2, InetAddress.getLoopbackAddress())
+          .hasColumn(0, 3, 9042)
+          .hasColumn(0, 4, InetAddress.getLoopbackAddress())
+          .hasColumn(0, 5, 9042)
+          .hasColumn(0, 6, dseCluster.getName())
+          .hasColumn(0, 7, "3.2.0")
+          .hasColumn(0, 8, dseNode0.getDataCenter().getName())
+          .hasColumn(0, 9, InetAddress.getLoopbackAddress())
+          .hasColumn(0, 10, 9042)
+          .hasColumn(0, 11, "org.apache.cassandra.dht.Murmur3Partitioner")
+          .hasColumn(0, 12, "rack1")
+          .hasColumn(0, 13, "3.0.12")
+          .hasColumn(0, 14, Collections.singleton("0"))
+          .hasColumn(0, 15, dseNode0.getHostId())
+          .hasColumn(0, 16, PeerMetadataHandler.schemaVersion)
+          .hasColumn(0, 17, "5.0.8")
+          .hasColumn(0, 18, true);
+    }
   }
 
   @Test
   public void shouldHandleQueryLocalNode1() {
     // querying the local table should return node info for node1
-    List<Action> node1Actions =
-        handler.getActions(node1, queryFrame("SELECT * FROM system.local WHERE key='local'"));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.local WHERE key='local'",
+            "select * from system.local where key='local'",
+            " select * from system.local where key = 'local' ; ");
 
-    assertThat(node1Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node1Actions = handler.getActions(node1, queryFrame(query));
 
-    Action node1Action = node1Actions.get(0);
-    assertThat(node1Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node1Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node1Action).getMessage();
-    assertThat(node0Message)
-        .isRows()
-        .hasRows(1)
-        .hasColumnSpecs(17)
-        .hasColumn(0, 0, "local")
-        .hasColumn(0, 1, "COMPLETED")
-        .hasColumn(0, 2, ((InetSocketAddress) node1.getAddress()).getAddress())
-        .hasColumn(0, 3, ((InetSocketAddress) node1.getAddress()).getPort())
-        .hasColumn(0, 4, ((InetSocketAddress) node1.getAddress()).getAddress())
-        .hasColumn(0, 5, ((InetSocketAddress) node1.getAddress()).getPort())
-        .hasColumn(0, 6, cluster.getName())
-        .hasColumn(0, 7, "3.2.0")
-        .hasColumn(0, 8, node1.getDataCenter().getName())
-        .hasColumn(0, 9, ((InetSocketAddress) node1.getAddress()).getAddress())
-        .hasColumn(0, 10, ((InetSocketAddress) node1.getAddress()).getPort())
-        .hasColumn(0, 11, "org.apache.cassandra.dht.Murmur3Partitioner")
-        .hasColumn(0, 12, "rack1")
-        .hasColumn(0, 13, "3.0.12")
-        .hasColumn(0, 14, Collections.singleton("0"))
-        .hasColumn(0, 15, node1.getHostId())
-        .hasColumn(0, 16, PeerMetadataHandler.schemaVersion);
+      Action node1Action = node1Actions.get(0);
+      assertThat(node1Action).isInstanceOf(MessageResponseAction.class);
+
+      Message node0Message = ((MessageResponseAction) node1Action).getMessage();
+      assertThat(node0Message)
+          .isRows()
+          .hasRows(1)
+          .hasColumnSpecs(17)
+          .hasColumn(0, 0, "local")
+          .hasColumn(0, 1, "COMPLETED")
+          .hasColumn(0, 2, ((InetSocketAddress) node1.getAddress()).getAddress())
+          .hasColumn(0, 3, ((InetSocketAddress) node1.getAddress()).getPort())
+          .hasColumn(0, 4, ((InetSocketAddress) node1.getAddress()).getAddress())
+          .hasColumn(0, 5, ((InetSocketAddress) node1.getAddress()).getPort())
+          .hasColumn(0, 6, cluster.getName())
+          .hasColumn(0, 7, "3.2.0")
+          .hasColumn(0, 8, node1.getDataCenter().getName())
+          .hasColumn(0, 9, ((InetSocketAddress) node1.getAddress()).getAddress())
+          .hasColumn(0, 10, ((InetSocketAddress) node1.getAddress()).getPort())
+          .hasColumn(0, 11, "org.apache.cassandra.dht.Murmur3Partitioner")
+          .hasColumn(0, 12, "rack1")
+          .hasColumn(0, 13, "3.0.12")
+          .hasColumn(0, 14, Collections.singleton("0"))
+          .hasColumn(0, 15, node1.getHostId())
+          .hasColumn(0, 16, PeerMetadataHandler.schemaVersion);
+    }
   }
 
   @Test
@@ -269,92 +330,127 @@ public class PeerMetadataHandlerTest {
   @Test
   public void shouldHandleQueryAllPeers() {
     // querying for peers should return a row for each other node in the cluster
-    List<Action> node0Actions = handler.getActions(node0, queryFrame("SELECT * FROM system.peers"));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.peers",
+            "select * from system.peers",
+            " select  *  from  system.peers ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handler.getActions(node0, queryFrame(query));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
-    // should be 199 peers (200 node cluster - 1 for this node).
-    assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(8);
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+      // should be 199 peers (200 node cluster - 1 for this node).
+      assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(8);
+    }
   }
 
   @Test
   public void shouldHandleQueryAllPeersV2() {
     // querying for peers should return a row for each other node in the cluster
-    List<Action> node0Actions =
-        handlerV2.getActions(node0, queryFrame("SELECT * FROM system.peers_v2"));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.peers_v2",
+            "select * from system.peers_v2",
+            " select  *  from  system.peers_v2 ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handlerV2.getActions(node0, queryFrame(query));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
-    // should be 199 peers (200 node cluster - 1 for this node).
-    assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(10);
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+      // should be 199 peers (200 node cluster - 1 for this node).
+      assertThat(node0Message).isRows().hasRows(199).hasColumnSpecs(10);
+    }
   }
 
   @Test
   public void shouldNotHandleQueryAllPeersV2WhenV2NotSupported() {
     // querying for peers using v2 should return an error when v2 is not supported.
-    List<Action> node0Actions =
-        handler.getActions(node0, queryFrame("SELECT * FROM system.peers_v2"));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.peers_v2",
+            "select * from system.peers_v2",
+            " select  *  from  system.peers_v2 ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handler.getActions(node0, queryFrame(query));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
-    // Should get an invalid error when querying v2 table and v2 is not supported.
-    assertThat(node0Message).isError(INVALID);
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+      // Should get an invalid error when querying v2 table and v2 is not supported.
+      assertThat(node0Message).isError(INVALID);
+    }
   }
 
   @Test
   public void shouldHandleQueryAllPeersDSE() {
     // querying for peers should return a row for each other node in the cluster and return DSE
     // columns
-    List<Action> node0Actions =
-        handler.getActions(dseNode0, queryFrame("SELECT * FROM system.peers"));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.peers",
+            "select * from system.peers",
+            " select  *  from  system.peers ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handler.getActions(dseNode0, queryFrame(query));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
-    // should be 2 peers and 10 columns (2 extra for dse)
-    assertThat(node0Message).isRows().hasRows(2).hasColumnSpecs(10);
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+      // should be 2 peers and 10 columns (2 extra for dse)
+      assertThat(node0Message).isRows().hasRows(2).hasColumnSpecs(10);
+    }
   }
 
   @Test
   public void shouldHandleQuerySpecificPeer() throws UnknownHostException {
     // when peer query is made for a peer in the cluster, we should get 1 row back.
-    List<Action> node0Actions =
-        handler.getActions(
-            node0, queryFrame("SELECT * FROM system.peers WHERE peer='127.0.11.17'"));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.peers WHERE peer='127.0.11.17'",
+            "select * from system.peers where peer = '127.0.11.17'",
+            " select  *  from  system.peers  where  peer  =  '127.0.11.17' ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handler.getActions(node0, queryFrame(query));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
-    // should be 1 matching peer
-    assertThat(node0Message)
-        .isRows()
-        .hasRows(1)
-        .hasColumnSpecs(8)
-        .hasColumn(0, 0, InetAddress.getByAddress(new byte[] {127, 0, 11, 17}))
-        .hasColumn(0, 1, "dc1");
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+      // should be 1 matching peer
+      assertThat(node0Message)
+          .isRows()
+          .hasRows(1)
+          .hasColumnSpecs(8)
+          .hasColumn(0, 0, InetAddress.getByAddress(new byte[] {127, 0, 11, 17}))
+          .hasColumn(0, 1, "dc1");
+    }
   }
 
   @Test
@@ -367,24 +463,30 @@ public class PeerMetadataHandlerTest {
     QueryOptions queryOptions =
         new QueryOptions(
             0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
-    List<Action> node0Actions =
-        handler.getActions(
-            node0, queryFrame("SELECT * FROM system.peers WHERE peer = :address", queryOptions));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.peers WHERE peer=:address",
+            "select * from system.peers where peer = :address",
+            " select  *  from  system.peers  where  peer = :address ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handler.getActions(node0, queryFrame(query, queryOptions));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
-    // should be 1 matching peer
-    assertThat(node0Message)
-        .isRows()
-        .hasRows(1)
-        .hasColumnSpecs(8)
-        .hasColumn(0, 0, addr)
-        .hasColumn(0, 1, "dc1");
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+      // should be 1 matching peer
+      assertThat(node0Message)
+          .isRows()
+          .hasRows(1)
+          .hasColumnSpecs(8)
+          .hasColumn(0, 0, addr)
+          .hasColumn(0, 1, "dc1");
+    }
   }
 
   @Test
@@ -401,27 +503,30 @@ public class PeerMetadataHandlerTest {
     QueryOptions queryOptions =
         new QueryOptions(
             0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
-    List<Action> node0Actions =
-        handlerV2.getActions(
-            node0,
-            queryFrame(
-                "SELECT * FROM system.peers_v2 WHERE peer = :address AND peer_port = :port",
-                queryOptions));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.peers_v2 WHERE peer=:address AND peer_port=:port",
+            "select * from system.peers_v2 where peer = :address and peer_port = :port",
+            " select  *  from  system.peers_v2  where  peer = :address  and  peer_port = :port ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handlerV2.getActions(node0, queryFrame(query, queryOptions));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
-    // should be 1 matching peer
-    assertThat(node0Message)
-        .isRows()
-        .hasRows(1)
-        .hasColumnSpecs(10)
-        .hasColumn(0, 0, addr)
-        .hasColumn(0, 9, 9042);
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+      // should be 1 matching peer
+      assertThat(node0Message)
+          .isRows()
+          .hasRows(1)
+          .hasColumnSpecs(10)
+          .hasColumn(0, 0, addr)
+          .hasColumn(0, 9, 9042);
+    }
   }
 
   @Test
@@ -438,22 +543,25 @@ public class PeerMetadataHandlerTest {
     QueryOptions queryOptions =
         new QueryOptions(
             0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
-    List<Action> node0Actions =
-        handler.getActions(
-            node0,
-            queryFrame(
-                "SELECT * FROM system.peers_v2 WHERE peer = :address AND peer_port = :port",
-                queryOptions));
+    List<String> queries =
+        Arrays.asList(
+            "SELECT * FROM system.peers_v2 WHERE peer=:address AND peer_port=:port",
+            "select * from system.peers_v2 where peer = :address and peer_port = :port",
+            " select  *  from  system.peers_v2  where  peer = :address  and  peer_port = :port ; ");
 
-    assertThat(node0Actions).hasSize(1);
+    for (String query : queries) {
+      List<Action> node0Actions = handler.getActions(node0, queryFrame(query, queryOptions));
 
-    Action node0Action = node0Actions.get(0);
-    assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
+      assertThat(node0Actions).hasSize(1);
 
-    Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+      Action node0Action = node0Actions.get(0);
+      assertThat(node0Action).isInstanceOf(MessageResponseAction.class);
 
-    // should return an error.
-    assertThat(node0Message).isError(INVALID);
+      Message node0Message = ((MessageResponseAction) node0Action).getMessage();
+
+      // should return an error.
+      assertThat(node0Message).isError(INVALID);
+    }
   }
 
   @Test

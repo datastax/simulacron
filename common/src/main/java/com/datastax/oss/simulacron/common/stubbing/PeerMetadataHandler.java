@@ -61,7 +61,7 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
 
   private static final Pattern queryClusterName =
       Pattern.compile(
-          "SELECT\\s+cluster_name\\s+FROM\\s+system\\.local(\\s+WHERE\\s+key\\s*=\\s*'local')?",
+          "SELECT\\s+cluster_name\\s+FROM\\s+system\\.local(\\s+WHERE\\s+key\\s*=\\s*'local')?\\s*;?\\s*",
           Pattern.CASE_INSENSITIVE);
   private static final RowsMetadata queryClusterNameMetadata;
 
@@ -73,25 +73,25 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   }
 
   private static final Pattern queryPeers =
-      Pattern.compile("SELECT\\s+(.*)\\s+FROM\\s+system\\.(peers\\S*)", Pattern.CASE_INSENSITIVE);
+      Pattern.compile(
+          "\\s*SELECT\\s+(.*)\\s+FROM\\s+system\\.(peers\\S*)\\s*;?\\s*", Pattern.CASE_INSENSITIVE);
   private static final Pattern queryLocal =
       Pattern.compile(
-          "SELECT\\s+(.*)\\s+FROM\\s+system\\.local(\\s+WHERE\\s+key\\s*=\\s*'local')?",
+          "\\s*SELECT\\s+(.*)\\s+FROM\\s+system\\.local(\\s+WHERE\\s+key\\s*=\\s*'local')?\\s*;?\\s*",
           Pattern.CASE_INSENSITIVE);
   private static final Pattern queryPeersWithAddr =
       Pattern.compile(
-          "SELECT\\s+\\*\\s+FROM\\s+system\\.peers\\s+WHERE\\s+peer\\s*=\\s*'(.*)'",
+          "\\s*SELECT\\s+\\*\\s+FROM\\s+system\\.peers\\s+WHERE\\s+peer\\s*=\\s*'(.*)'\\s*;?\\s*",
           Pattern.CASE_INSENSITIVE);
 
   // query the java driver makes when refreshing node (i.e. after it comes back up)
   private static final Pattern queryPeerWithNamedParam =
       Pattern.compile(
-          "SELECT\\s+\\*\\s+FROM\\s+system\\.peers\\s+" + "WHERE\\s+peer\\s*=\\s*:address",
+          "\\s*SELECT\\s+\\*\\s+FROM\\s+system\\.peers\\s+WHERE\\s+peer\\s*=\\s*:address\\s*;?\\s*",
           Pattern.CASE_INSENSITIVE);
   private static final Pattern queryPeerV2WithNamedParam =
       Pattern.compile(
-          "SELECT\\s+\\*\\s+FROM\\s+system\\.peers_v2\\s+"
-              + "WHERE\\s+peer\\s*=\\s*:address\\s+AND\\s+peer_port\\s*=\\s*:port",
+          "\\s*SELECT\\s+\\*\\s+FROM\\s+system\\.peers_v2\\s+WHERE\\s+peer\\s*=\\s*:address\\s+AND\\s+peer_port\\s*=\\s*:port\\s*;?\\s*",
           Pattern.CASE_INSENSITIVE);
 
   private final boolean supportsV2;
