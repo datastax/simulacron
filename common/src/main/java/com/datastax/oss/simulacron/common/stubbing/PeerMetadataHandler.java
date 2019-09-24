@@ -55,14 +55,14 @@ import java.util.stream.Stream;
 
 public class PeerMetadataHandler extends StubMapping implements InternalStubMapping {
 
-  private final List<String> queries = new ArrayList<>();
   private final List<Pattern> queryPatterns = new ArrayList<>();
 
   static final UUID schemaVersion = java.util.UUID.randomUUID();
 
   private static final Pattern queryClusterName =
       Pattern.compile(
-          "SELECT cluster_name FROM system.local( WHERE key='local')?", Pattern.CASE_INSENSITIVE);
+          "SELECT\\s+cluster_name\\s+FROM\\s+system\\.local(\\s+WHERE\\s+key\\s*=\\s*'local')?",
+          Pattern.CASE_INSENSITIVE);
   private static final RowsMetadata queryClusterNameMetadata;
 
   static {
@@ -73,18 +73,26 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   }
 
   private static final Pattern queryPeers =
-      Pattern.compile("SELECT (.*) FROM system\\.(peers\\S*)", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("SELECT\\s+(.*)\\s+FROM\\s+system\\.(peers\\S*)", Pattern.CASE_INSENSITIVE);
   private static final Pattern queryLocal =
       Pattern.compile(
-          "SELECT (.*) FROM system\\.local( WHERE key='local')?", Pattern.CASE_INSENSITIVE);
+          "SELECT\\s+(.*)\\s+FROM\\s+system\\.local(\\s+WHERE\\s+key\\s*=\\s*'local')?",
+          Pattern.CASE_INSENSITIVE);
   private static final Pattern queryPeersWithAddr =
-      Pattern.compile("SELECT \\* FROM system\\.peers WHERE peer='(.*)'", Pattern.CASE_INSENSITIVE);
+      Pattern.compile(
+          "SELECT\\s+\\*\\s+FROM\\s+system\\.peers\\s+WHERE\\s+peer\\s*=\\s*'(.*)'",
+          Pattern.CASE_INSENSITIVE);
 
   // query the java driver makes when refreshing node (i.e. after it comes back up)
-  private static final String queryPeerWithNamedParam =
-      "SELECT * FROM system.peers WHERE peer = :address";
-  private static final String queryPeerV2WithNamedParam =
-      "SELECT * FROM system.peers_v2 WHERE peer = :address and peer_port = :port";
+  private static final Pattern queryPeerWithNamedParam =
+      Pattern.compile(
+          "SELECT\\s+\\*\\s+FROM\\s+system\\.peers\\s+" + "WHERE\\s+peer\\s*=\\s*:address",
+          Pattern.CASE_INSENSITIVE);
+  private static final Pattern queryPeerV2WithNamedParam =
+      Pattern.compile(
+          "SELECT\\s+\\*\\s+FROM\\s+system\\.peers_v2\\s+"
+              + "WHERE\\s+peer\\s*=\\s*:address\\s+AND\\s+peer_port\\s*=\\s*:port",
+          Pattern.CASE_INSENSITIVE);
 
   private final boolean supportsV2;
 
@@ -95,13 +103,13 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
   public PeerMetadataHandler(boolean supportsV2) {
     this.supportsV2 = supportsV2;
     queryPatterns.add(queryClusterName);
-    queries.add(queryPeerWithNamedParam);
+    queryPatterns.add(queryPeerWithNamedParam);
     queryPatterns.add(queryPeers);
     queryPatterns.add(queryLocal);
     queryPatterns.add(queryPeersWithAddr);
 
     if (supportsV2) {
-      queries.add(queryPeerV2WithNamedParam);
+      queryPatterns.add(queryPeerV2WithNamedParam);
     }
   }
 
@@ -110,8 +118,11 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
       String queryStr = query.query;
-      return queries.stream().anyMatch(q -> q.equalsIgnoreCase(queryStr))
-          || queryPatternMatches(queryStr);
+      for (Pattern pattern : queryPatterns) {
+        if (pattern.matcher(queryStr).matches()) {
+          return true;
+        }
+      }
     }
     return false;
   }
@@ -143,11 +154,11 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
                 }
               },
               false);
-        } else if (query.query.equalsIgnoreCase(queryPeerWithNamedParam)) {
+        } else if (queryPeerWithNamedParam.matcher(query.query).matches()) {
           ByteBuffer addressBuffer = query.options.namedValues.get("address");
           InetAddress address = mapper.inet.decode(addressBuffer);
           return handlePeersQuery(node, mapper, n -> n.inet().equals(address), false);
-        } else if (query.query.equalsIgnoreCase(queryPeerV2WithNamedParam)) {
+        } else if (queryPeerV2WithNamedParam.matcher(query.query).matches()) {
           if (!supportsV2) {
             return peersV2NotSupported();
           }
@@ -183,15 +194,6 @@ public class PeerMetadataHandler extends StubMapping implements InternalStubMapp
     // Throw error when query made to peers_v2 table and v2 is not supported.
     return Collections.singletonList(
         new MessageResponseAction(new Error(INVALID, "Table system.peers_v2 does not exist")));
-  }
-
-  private boolean queryPatternMatches(String query) {
-    for (Pattern pattern : queryPatterns) {
-      if (pattern.matcher(query).matches()) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private Set<String> resolveTokens(AbstractNode node) {
