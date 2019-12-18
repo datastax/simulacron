@@ -130,6 +130,18 @@ public class BoundCluster extends AbstractCluster<BoundDataCenter, BoundNode>
     return failedFuture;
   }
 
+  @Override
+  public ClusterConnectionReport pauseRead() {
+    this.getNodes().forEach(BoundNode::pauseRead);
+    return getConnections();
+  }
+
+  @Override
+  public ClusterConnectionReport resumeRead() {
+    this.getNodes().forEach(BoundNode::resumeRead);
+    return getConnections();
+  }
+
   /**
    * Returns a QueryLogReport that contains all the logs for this cluster
    *

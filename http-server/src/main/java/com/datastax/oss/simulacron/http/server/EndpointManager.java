@@ -22,6 +22,7 @@ import com.datastax.oss.simulacron.common.cluster.ConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.ObjectMapperHolder;
 import com.datastax.oss.simulacron.common.stubbing.CloseType;
 import com.datastax.oss.simulacron.server.BoundCluster;
+import com.datastax.oss.simulacron.server.BoundTopic;
 import com.datastax.oss.simulacron.server.RejectScope;
 import com.datastax.oss.simulacron.server.Server;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -32,6 +33,7 @@ import io.vertx.ext.web.RoutingContext;
 import java.net.InetSocketAddress;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,33 +64,7 @@ public class EndpointManager implements HttpListener {
    * @param context RoutingContext provided by vertx
    */
   private void getConnections(RoutingContext context) {
-    context
-        .request()
-        .bodyHandler(
-            totalBuffer -> {
-              try {
-                Scope scope = HttpUtils.getScope(context, server);
-                if (scope == null) {
-                  return;
-                }
-                ClusterConnectionReport report =
-                    HttpUtils.find(server, scope).getConnections().getRootReport();
-                StringBuilder response = new StringBuilder();
-
-                String connectionsStr =
-                    om.writerWithDefaultPrettyPrinter().writeValueAsString(report);
-                response.append(connectionsStr);
-                context
-                    .request()
-                    .response()
-                    .putHeader("content-type", "application/json")
-                    .setStatusCode(200)
-                    .end(response.toString());
-              } catch (Exception e) {
-                logger.error("Error occurred while processing getConnections request", e);
-                handleError(new ErrorMessage(e.getMessage(), 400), context);
-              }
-            });
+    setResponseFromReport(context, t -> t.getConnections().getRootReport());
   }
 
   /**
@@ -343,6 +319,48 @@ public class EndpointManager implements HttpListener {
             });
   }
 
+  private void pauseConnections(RoutingContext context) {
+    setResponseFromReport(context, t -> t.pauseRead().getRootReport());
+  }
+
+  private void resumeConnections(RoutingContext context) {
+    setResponseFromReport(context, t -> t.resumeRead().getRootReport());
+  }
+
+  /** Sets the response based using a sync handler */
+  private void setResponseFromReport(
+      RoutingContext context, Function<BoundTopic<?, ?>, ConnectionReport> topicHandler) {
+
+    context
+        .request()
+        .bodyHandler(
+            totalBuffer -> {
+              try {
+                Scope scope = HttpUtils.getScope(context, server);
+                if (scope == null) {
+                  return;
+                }
+
+                // Use topicHandler to obtain the report
+                ConnectionReport report = topicHandler.apply(HttpUtils.find(server, scope));
+                StringBuilder response = new StringBuilder();
+
+                String connectionsStr =
+                    om.writerWithDefaultPrettyPrinter().writeValueAsString(report);
+                response.append(connectionsStr);
+                context
+                    .request()
+                    .response()
+                    .putHeader("content-type", "application/json")
+                    .setStatusCode(200)
+                    .end(response.toString());
+              } catch (Exception e) {
+                logger.error("Error occurred while processing getConnections request", e);
+                handleError(new ErrorMessage(e.getMessage(), 400), context);
+              }
+            });
+  }
+
   /**
    * This method handles the registration of the various routes responsible for setting and
    * retrieving cluster information via http.
@@ -374,7 +392,6 @@ public class EndpointManager implements HttpListener {
         .handler(this::closeConnectionByIp);
 
     // Stop listening for connections
-
     router
         .route(HttpMethod.DELETE, "/listener/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
         .handler(this::rejectConnections);
@@ -391,5 +408,27 @@ public class EndpointManager implements HttpListener {
         .route(HttpMethod.PUT, "/listener/:clusterIdOrName/:datacenterIdOrName")
         .handler(this::acceptConnections);
     router.route(HttpMethod.PUT, "/listener/:clusterIdOrName").handler(this::acceptConnections);
+
+    // Pause reads for connections
+    router
+        .route(HttpMethod.PUT, "/pause-reads/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
+        .handler(this::pauseConnections);
+    router
+        .route(HttpMethod.PUT, "/pause-reads/:clusterIdOrName/:datacenterIdOrName")
+        .handler(this::pauseConnections);
+    router
+        .route(HttpMethod.PUT, "/pause-reads/:clusterIdOrName")
+        .handler(this::pauseConnections);
+
+    // Resume reads for connections
+    router
+        .route(HttpMethod.DELETE, "/pause-reads/:clusterIdOrName/:datacenterIdOrName/:nodeIdOrName")
+        .handler(this::resumeConnections);
+    router
+        .route(HttpMethod.DELETE, "/pause-reads/:clusterIdOrName/:datacenterIdOrName")
+        .handler(this::resumeConnections);
+    router
+        .route(HttpMethod.DELETE, "/pause-reads/:clusterIdOrName")
+        .handler(this::resumeConnections);
   }
 }

@@ -625,6 +625,18 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     return closeChannelGroup(this.clientChannelGroup, closeType).thenApply(v -> report);
   }
 
+  @Override
+  public NodeConnectionReport pauseRead() {
+    this.clientChannelGroup.forEach(c -> c.config().setAutoRead(false));
+    return getConnections();
+  }
+
+  @Override
+  public NodeConnectionReport resumeRead() {
+    this.clientChannelGroup.forEach(c -> c.config().setAutoRead(true));
+    return getConnections();
+  }
+
   private static CompletableFuture<Void> closeChannelGroup(
       ChannelGroup channelGroup, CloseType closeType) {
     switch (closeType) {
