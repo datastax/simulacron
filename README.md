@@ -104,7 +104,7 @@ See the [Java API User's Guide](doc/java_api) for using this API.
 
 ## License
 
-Copyright 2017, DataStax
+© DataStax, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

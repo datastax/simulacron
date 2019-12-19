@@ -38,6 +38,8 @@ tags:
     description: Close an individual connection by ip address and port
   - name: listener
     description: Enable and disable node's capability to accept new connections
+  - name: pause-reads
+    description: Pause and resume reading on node connections.
 paths:
   /cluster:
     post:
@@ -1741,6 +1743,187 @@ paths:
           description: connections will be rejected
         '500':
           description: Internal server error
+
+  '/pause-reads/{clusterId}':
+    put:
+      tags:
+        - pause-reads
+      summary: pause the connections to the cluster
+      operationId: pauseConnectionsByCluster
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
+      responses:
+        '200':
+          description: paused connections
+          schema:
+            $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - pause-reads
+      summary: resume the connections to the cluster
+      operationId: resumeConnectionsByCluster
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
+      responses:
+        '200':
+          description: paused connections
+          schema:
+            $ref: '#/definitions/ClusterConnectionReport'
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+
+  '/pause-reads/{clusterId}/{dataCenterId}':
+    put:
+      tags:
+        - pause-reads
+      summary: pause the connections to the datacenter
+      operationId: pauseConnectionsByDc
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+          example: "0"
+      responses:
+        '200':
+          description: paused connections
+          schema:
+            $ref: '#/definitions/DataCenterConnectionReport'
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - pause-reads
+      summary: resume the connections to the cluster
+      operationId: resumeConnectionsByCluster
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+          example: "0"
+      responses:
+        '200':
+          description: paused connections
+          schema:
+            $ref: '#/definitions/DataCenterConnectionReport'
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+
+  '/pause-reads/{clusterId}/{dataCenterId}/{nodeId}':
+    put:
+      tags:
+        - pause-reads
+      summary: pause the connections to the datacenter
+      operationId: pauseConnectionsByDc
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+          example: "0"
+        - name: nodeId
+          in: path
+          description: Id or name of the node
+          required: true
+          type: string
+          example: "0"
+      responses:
+        '200':
+          description: paused connections
+          schema:
+            $ref: '#/definitions/DataCenterConnectionReport'
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+    delete:
+      tags:
+        - pause-reads
+      summary: resume the connections to the cluster
+      operationId: resumeConnectionsByCluster
+      produces:
+        - application/json
+      parameters:
+        - name: clusterId
+          in: path
+          description: Id or name of the cluster
+          required: true
+          type: string
+          example: "0"
+        - name: dataCenterId
+          in: path
+          description: Id or name of the datacenter
+          required: true
+          type: string
+          example: "0"
+        - name: nodeId
+          in: path
+          description: Id or name of the node
+          required: true
+          type: string
+          example: "0"
+      responses:
+        '200':
+          description: paused connections
+          schema:
+            $ref: '#/definitions/NodeConnectionReport'
+        '404':
+          description: Cluster not found
+        '500':
+          description: Internal server error
+
 definitions:
   DataType:
     type: string

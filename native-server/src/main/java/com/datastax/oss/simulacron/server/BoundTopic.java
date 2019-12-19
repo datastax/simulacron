@@ -108,6 +108,20 @@ public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport
    */
   CompletionStage<C> closeConnectionAsync(SocketAddress connection, CloseType type);
 
+  /**
+   * Pauses reading on all connections.
+   *
+   * @return report for the connections
+   */
+  C pauseRead();
+
+  /**
+   * Resume reading on all connections.
+   *
+   * @return report for the connections
+   */
+  C resumeRead();
+
   /** @return All nodes belonging to this topic. */
   @JsonIgnore
   Collection<BoundNode> getNodes();

@@ -144,6 +144,18 @@ public class BoundDataCenter extends AbstractDataCenter<BoundCluster, BoundNode>
     return failedFuture;
   }
 
+  @Override
+  public DataCenterConnectionReport pauseRead() {
+    this.getNodes().forEach(BoundNode::pauseRead);
+    return getConnections();
+  }
+
+  @Override
+  public DataCenterConnectionReport resumeRead() {
+    this.getNodes().forEach(BoundNode::resumeRead);
+    return getConnections();
+  }
+
   /**
    * Returns a QueryLogReport that contains filtered logs for this datacenter
    *
