@@ -17,12 +17,19 @@ package com.datastax.oss.simulacron.server;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.FrameCodec;
+import com.datastax.oss.protocol.internal.ProtocolConstants;
+import com.datastax.oss.protocol.internal.response.Error;
+import com.datastax.oss.simulacron.common.utils.FrameUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FrameEncoder extends MessageToMessageEncoder<Frame> {
+
+  private static Logger logger = LoggerFactory.getLogger(FrameEncoder.class);
 
   private final FrameCodec<ByteBuf> frameCodec;
 
@@ -31,7 +38,15 @@ public class FrameEncoder extends MessageToMessageEncoder<Frame> {
   }
 
   @Override
-  protected void encode(ChannelHandlerContext ctx, Frame msg, List<Object> out) throws Exception {
-    out.add(frameCodec.encode(msg));
+  protected void encode(ChannelHandlerContext ctx, Frame msg, List<Object> out) {
+    try {
+      out.add(frameCodec.encode(msg));
+    } catch (Throwable t) {
+      logger.error("Exception while encoding a frame. Returning a server error instead.", t);
+      out.add(
+          frameCodec.encode(
+              FrameUtils.convertResponseMessage(
+                  msg, new Error(ProtocolConstants.ErrorCode.SERVER_ERROR, t.toString()))));
+    }
   }
 }

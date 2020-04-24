@@ -17,9 +17,7 @@ package com.datastax.oss.simulacron.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.datastax.oss.protocol.internal.Frame;
-import com.datastax.oss.protocol.internal.Message;
-import com.datastax.oss.protocol.internal.ProtocolConstants;
+import com.datastax.oss.protocol.internal.*;
 import com.datastax.oss.protocol.internal.request.Execute;
 import com.datastax.oss.protocol.internal.request.Options;
 import com.datastax.oss.protocol.internal.request.Prepare;
@@ -47,10 +45,11 @@ import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.channel.local.LocalAddress;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+
+import java.math.BigInteger;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -188,6 +187,69 @@ public class BoundNodeTest {
     } finally {
       loggedNode.clearLogs();
     }
+  }
+
+  @Test
+  public void shouldPrepareAndCreateInternalPrimeWithProtocolV5() {
+    Set<Integer> supportedVersions = new TreeSet<>();
+    supportedVersions.add(5);
+    FrameCodec codec = new FrameCodecWrapper(supportedVersions, new ProtocolV5ServerCodecs());
+
+    String query = "select * from unprimed";
+    Prepare prepare = new Prepare(query);
+    loggedChannel.writeInbound(new Frame(
+            5,
+            true,
+            0,
+            false,
+            null,
+            -1,
+            -1,
+            Collections.emptyMap(),
+            Collections.emptyList(),
+            prepare));
+    Frame frame = loggedChannel.readOutbound();
+
+    // Should get a prepared response back.
+    assertThat(frame.message).isInstanceOf(Prepared.class);
+
+    Prepared prepared = (Prepared) frame.message;
+
+    assertThat(codec.encode(frame)).isNotNull();
+
+    // Execute should succeed since bound node creates an internal prime.
+    Execute execute = new Execute(prepared.preparedQueryId, options);
+    loggedChannel.writeInbound(new Frame(
+            5,
+            true,
+            0,
+            false,
+            null,
+            -1,
+            -1,
+            Collections.emptyMap(),
+            Collections.emptyList(),
+            execute));
+    frame = loggedChannel.readOutbound();
+
+    // Should get a no rows response back.
+    assertThat(frame.message).isInstanceOf(Rows.class);
+
+    // Should be recorded in activity log
+    try {
+      assertThat(
+              loggedNode
+                      .getLogs()
+                      .getQueryLogs()
+                      .stream()
+                      .filter(ql -> ql.getQuery().equals(query))
+                      .findFirst())
+              .isPresent();
+    } finally {
+      loggedNode.clearLogs();
+    }
+
+    assertThat(codec.encode(frame)).isNotNull();
   }
 
   @Test

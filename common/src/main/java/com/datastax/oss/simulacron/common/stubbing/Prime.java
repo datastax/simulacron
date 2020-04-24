@@ -80,18 +80,28 @@ public class Prime extends StubMapping {
   public Prepared toPrepared() {
     if (this.primedRequest.when instanceof Query) {
       Query query = (Query) this.primedRequest.when;
+
       ByteBuffer b = ByteBuffer.allocate(4);
       b.putInt(query.getQueryId());
+
+      ByteBuffer bResult = ByteBuffer.allocate(4);
+      bResult.putInt(
+          ~query.getQueryId()); // use bitwise complement of query id for result metadata id
+
       if (this.primedRequest.then instanceof SuccessResult) {
         SuccessResult result = (SuccessResult) this.primedRequest.then;
         return new Prepared(
-            b.array(), null, fetchRowMetadataForParams(query), fetchRowMetadataForResults(result));
+            b.array(),
+            bResult.array(),
+            fetchRowMetadataForParams(query),
+            fetchRowMetadataForResults(result));
       } else if (this.primedRequest.then instanceof VoidResult) {
-        return new Prepared(b.array(), null, fetchRowMetadataForParams(query), rowMetadataForVoid);
+        return new Prepared(
+            b.array(), bResult.array(), fetchRowMetadataForParams(query), rowMetadataForVoid);
       } else if (this.primedRequest.then instanceof ErrorResult) {
         return new Prepared(
             b.array(),
-            null,
+            bResult.array(),
             fetchRowMetadataForParams(query),
             new RowsMetadata(new LinkedList<>(), null, null, null));
       }

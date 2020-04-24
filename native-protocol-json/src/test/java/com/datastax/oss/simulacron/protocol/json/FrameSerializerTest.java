@@ -72,20 +72,34 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 5,\n"
-                + "  \"beta\" : true,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : \"ce565629-e8e4-4f93-bdd4-9414b7d9d342\",\n"
-                + "  \"custom_payload\" : {\n"
-                + "    \"custom\" : \"Bwg=\"\n"
-                + "  },\n"
-                + "  \"warnings\" : [ \"Something went wrong\", \"Fix me!\" ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"OPTIONS\",\n"
-                + "    \"opcode\" : 5,\n"
-                + "    \"is_response\" : false\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 5,"
+                + System.lineSeparator()
+                + "  \"beta\" : true,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : \"ce565629-e8e4-4f93-bdd4-9414b7d9d342\","
+                + System.lineSeparator()
+                + "  \"custom_payload\" : {"
+                + System.lineSeparator()
+                + "    \"custom\" : \"Bwg=\""
+                + System.lineSeparator()
+                + "  },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ \"Something went wrong\", \"Fix me!\" ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"OPTIONS\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 5,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false"
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -105,22 +119,38 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"STARTUP\",\n"
-                + "    \"opcode\" : 1,\n"
-                + "    \"is_response\" : false,\n"
-                + "    \"options\" : {\n"
-                + "      \"CQL_VERSION\" : \"3.0.0\",\n"
-                + "      \"COMPRESSION\" : \"LZ4\"\n"
-                + "    }\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"STARTUP\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 1,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false,"
+                + System.lineSeparator()
+                + "    \"options\" : {"
+                + System.lineSeparator()
+                + "      \"CQL_VERSION\" : \"3.0.0\","
+                + System.lineSeparator()
+                + "      \"COMPRESSION\" : \"LZ4\""
+                + System.lineSeparator()
+                + "    }"
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -140,19 +170,32 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"AUTHENTICATE\",\n"
-                + "    \"opcode\" : 3,\n"
-                + "    \"is_response\" : true,\n"
-                + "    \"authenticator\" : \"AllowAllAuthenticator\"\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"AUTHENTICATE\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 3,"
+                + System.lineSeparator()
+                + "    \"is_response\" : true,"
+                + System.lineSeparator()
+                + "    \"authenticator\" : \"AllowAllAuthenticator\""
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -175,22 +218,38 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"SUPPORTED\",\n"
-                + "    \"opcode\" : 6,\n"
-                + "    \"is_response\" : true,\n"
-                + "    \"options\" : {\n"
-                + "      \"a\" : [ \"1\", \"2\", \"3\" ],\n"
-                + "      \"b\" : [ \"hello\" ]\n"
-                + "    }\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"SUPPORTED\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 6,"
+                + System.lineSeparator()
+                + "    \"is_response\" : true,"
+                + System.lineSeparator()
+                + "    \"options\" : {"
+                + System.lineSeparator()
+                + "      \"a\" : [ \"1\", \"2\", \"3\" ],"
+                + System.lineSeparator()
+                + "      \"b\" : [ \"hello\" ]"
+                + System.lineSeparator()
+                + "    }"
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -216,30 +275,54 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"QUERY\",\n"
-                + "    \"opcode\" : 7,\n"
-                + "    \"is_response\" : false,\n"
-                + "    \"query\" : \"select * from base\",\n"
-                + "    \"options\" : {\n"
-                + "      \"consistency\" : \"TWO\",\n"
-                + "      \"positional_values\" : [ \"AQID\", \"CgsM\" ],\n"
-                + "      \"named_values\" : { },\n"
-                + "      \"skip_metadata\" : false,\n"
-                + "      \"page_size\" : 1000,\n"
-                + "      \"paging_state\" : null,\n"
-                + "      \"serial_consistency\" : \"SERIAL\",\n"
-                + "      \"default_timestamp\" : 1513196542339,\n"
-                + "      \"keyspace\" : \"myks\"\n"
-                + "    }\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"QUERY\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 7,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false,"
+                + System.lineSeparator()
+                + "    \"query\" : \"select * from base\","
+                + System.lineSeparator()
+                + "    \"options\" : {"
+                + System.lineSeparator()
+                + "      \"consistency\" : \"TWO\","
+                + System.lineSeparator()
+                + "      \"positional_values\" : [ \"AQID\", \"CgsM\" ],"
+                + System.lineSeparator()
+                + "      \"named_values\" : { },"
+                + System.lineSeparator()
+                + "      \"skip_metadata\" : false,"
+                + System.lineSeparator()
+                + "      \"page_size\" : 1000,"
+                + System.lineSeparator()
+                + "      \"paging_state\" : null,"
+                + System.lineSeparator()
+                + "      \"serial_consistency\" : \"SERIAL\","
+                + System.lineSeparator()
+                + "      \"default_timestamp\" : 1513196542339,"
+                + System.lineSeparator()
+                + "      \"keyspace\" : \"myks\""
+                + System.lineSeparator()
+                + "    }"
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -277,33 +360,60 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"QUERY\",\n"
-                + "    \"opcode\" : 7,\n"
-                + "    \"is_response\" : false,\n"
-                + "    \"query\" : \"select * from base\",\n"
-                + "    \"options\" : {\n"
-                + "      \"consistency\" : \"TWO\",\n"
-                + "      \"positional_values\" : [ ],\n"
-                + "      \"named_values\" : {\n"
-                + "        \"a\" : \"AQID\",\n"
-                + "        \"b\" : \"CgsM\"\n"
-                + "      },\n"
-                + "      \"skip_metadata\" : true,\n"
-                + "      \"page_size\" : 1000,\n"
-                + "      \"paging_state\" : \"Dw1yfVI=\",\n"
-                + "      \"serial_consistency\" : \"SERIAL\",\n"
-                + "      \"default_timestamp\" : 1513196542339,\n"
-                + "      \"keyspace\" : \"myks\"\n"
-                + "    }\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"QUERY\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 7,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false,"
+                + System.lineSeparator()
+                + "    \"query\" : \"select * from base\","
+                + System.lineSeparator()
+                + "    \"options\" : {"
+                + System.lineSeparator()
+                + "      \"consistency\" : \"TWO\","
+                + System.lineSeparator()
+                + "      \"positional_values\" : [ ],"
+                + System.lineSeparator()
+                + "      \"named_values\" : {"
+                + System.lineSeparator()
+                + "        \"a\" : \"AQID\","
+                + System.lineSeparator()
+                + "        \"b\" : \"CgsM\""
+                + System.lineSeparator()
+                + "      },"
+                + System.lineSeparator()
+                + "      \"skip_metadata\" : true,"
+                + System.lineSeparator()
+                + "      \"page_size\" : 1000,"
+                + System.lineSeparator()
+                + "      \"paging_state\" : \"Dw1yfVI=\","
+                + System.lineSeparator()
+                + "      \"serial_consistency\" : \"SERIAL\","
+                + System.lineSeparator()
+                + "      \"default_timestamp\" : 1513196542339,"
+                + System.lineSeparator()
+                + "      \"keyspace\" : \"myks\""
+                + System.lineSeparator()
+                + "    }"
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -323,20 +433,34 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"PREPARE\",\n"
-                + "    \"opcode\" : 9,\n"
-                + "    \"is_response\" : false,\n"
-                + "    \"query\" : \"select * from base where belong=?\",\n"
-                + "    \"keyspace\" : \"your\"\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"PREPARE\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 9,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false,"
+                + System.lineSeparator()
+                + "    \"query\" : \"select * from base where belong=?\","
+                + System.lineSeparator()
+                + "    \"keyspace\" : \"your\""
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -372,31 +496,56 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"EXECUTE\",\n"
-                + "    \"opcode\" : 10,\n"
-                + "    \"is_response\" : false,\n"
-                + "    \"id\" : \"AQIDBA==\",\n"
-                + "    \"result_metadata_id\" : \"BAIDBA==\",\n"
-                + "    \"options\" : {\n"
-                + "      \"consistency\" : \"TWO\",\n"
-                + "      \"positional_values\" : [ ],\n"
-                + "      \"named_values\" : { },\n"
-                + "      \"skip_metadata\" : true,\n"
-                + "      \"page_size\" : 1000,\n"
-                + "      \"paging_state\" : \"CBEaGw==\",\n"
-                + "      \"serial_consistency\" : \"SERIAL\",\n"
-                + "      \"default_timestamp\" : 1513196542339,\n"
-                + "      \"keyspace\" : \"myks\"\n"
-                + "    }\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"EXECUTE\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 10,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false,"
+                + System.lineSeparator()
+                + "    \"id\" : \"AQIDBA==\","
+                + System.lineSeparator()
+                + "    \"result_metadata_id\" : \"BAIDBA==\","
+                + System.lineSeparator()
+                + "    \"options\" : {"
+                + System.lineSeparator()
+                + "      \"consistency\" : \"TWO\","
+                + System.lineSeparator()
+                + "      \"positional_values\" : [ ],"
+                + System.lineSeparator()
+                + "      \"named_values\" : { },"
+                + System.lineSeparator()
+                + "      \"skip_metadata\" : true,"
+                + System.lineSeparator()
+                + "      \"page_size\" : 1000,"
+                + System.lineSeparator()
+                + "      \"paging_state\" : \"CBEaGw==\","
+                + System.lineSeparator()
+                + "      \"serial_consistency\" : \"SERIAL\","
+                + System.lineSeparator()
+                + "      \"default_timestamp\" : 1513196542339,"
+                + System.lineSeparator()
+                + "      \"keyspace\" : \"myks\""
+                + System.lineSeparator()
+                + "    }"
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -416,19 +565,32 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"REGISTER\",\n"
-                + "    \"opcode\" : 11,\n"
-                + "    \"is_response\" : false,\n"
-                + "    \"event_types\" : [ \"SCHEMA_CHANGE\", \"TOPOLOGY_CHANGE\", \"STATUS_CHANGE\" ]\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"REGISTER\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 11,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false,"
+                + System.lineSeparator()
+                + "    \"event_types\" : [ \"SCHEMA_CHANGE\", \"TOPOLOGY_CHANGE\", \"STATUS_CHANGE\" ]"
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -458,25 +620,44 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"BATCH\",\n"
-                + "    \"opcode\" : 13,\n"
-                + "    \"is_response\" : false,\n"
-                + "    \"type\" : \"UNLOGGED\",\n"
-                + "    \"queries_or_ids\" : [ \"select * from tbl\", \"CAcGKg==\", \"select * from world\" ],\n"
-                + "    \"values\" : [ [ ], [ \"AA==\" ], [ ] ],\n"
-                + "    \"consistency\" : \"TWO\",\n"
-                + "    \"serial_consistency\" : \"LOCAL_ONE\",\n"
-                + "    \"default_timestamp\" : 1513196542339,\n"
-                + "    \"keyspace\" : \"myks\"\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"BATCH\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 13,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false,"
+                + System.lineSeparator()
+                + "    \"type\" : \"UNLOGGED\","
+                + System.lineSeparator()
+                + "    \"queries_or_ids\" : [ \"select * from tbl\", \"CAcGKg==\", \"select * from world\" ],"
+                + System.lineSeparator()
+                + "    \"values\" : [ [ ], [ \"AA==\" ], [ ] ],"
+                + System.lineSeparator()
+                + "    \"consistency\" : \"TWO\","
+                + System.lineSeparator()
+                + "    \"serial_consistency\" : \"LOCAL_ONE\","
+                + System.lineSeparator()
+                + "    \"default_timestamp\" : 1513196542339,"
+                + System.lineSeparator()
+                + "    \"keyspace\" : \"myks\""
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 
@@ -496,19 +677,32 @@ public class FrameSerializerTest {
     String json = writer.writeValueAsString(frame);
     assertThat(json)
         .isEqualTo(
-            "{\n"
-                + "  \"protocol_version\" : 4,\n"
-                + "  \"beta\" : false,\n"
-                + "  \"stream_id\" : 10,\n"
-                + "  \"tracing_id\" : null,\n"
-                + "  \"custom_payload\" : { },\n"
-                + "  \"warnings\" : [ ],\n"
-                + "  \"message\" : {\n"
-                + "    \"type\" : \"AUTHRESPONSE\",\n"
-                + "    \"opcode\" : 15,\n"
-                + "    \"is_response\" : false,\n"
-                + "    \"token\" : \"AA==\"\n"
-                + "  }\n"
+            "{"
+                + System.lineSeparator()
+                + "  \"protocol_version\" : 4,"
+                + System.lineSeparator()
+                + "  \"beta\" : false,"
+                + System.lineSeparator()
+                + "  \"stream_id\" : 10,"
+                + System.lineSeparator()
+                + "  \"tracing_id\" : null,"
+                + System.lineSeparator()
+                + "  \"custom_payload\" : { },"
+                + System.lineSeparator()
+                + "  \"warnings\" : [ ],"
+                + System.lineSeparator()
+                + "  \"message\" : {"
+                + System.lineSeparator()
+                + "    \"type\" : \"AUTHRESPONSE\","
+                + System.lineSeparator()
+                + "    \"opcode\" : 15,"
+                + System.lineSeparator()
+                + "    \"is_response\" : false,"
+                + System.lineSeparator()
+                + "    \"token\" : \"AA==\""
+                + System.lineSeparator()
+                + "  }"
+                + System.lineSeparator()
                 + "}");
   }
 }
