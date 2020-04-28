@@ -416,9 +416,7 @@ public class EndpointManager implements HttpListener {
     router
         .route(HttpMethod.PUT, "/pause-reads/:clusterIdOrName/:datacenterIdOrName")
         .handler(this::pauseConnections);
-    router
-        .route(HttpMethod.PUT, "/pause-reads/:clusterIdOrName")
-        .handler(this::pauseConnections);
+    router.route(HttpMethod.PUT, "/pause-reads/:clusterIdOrName").handler(this::pauseConnections);
 
     // Resume reads for connections
     router

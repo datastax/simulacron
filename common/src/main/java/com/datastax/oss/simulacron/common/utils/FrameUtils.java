@@ -43,4 +43,18 @@ public class FrameUtils {
     return new Frame(
         4, false, 0, false, null, Collections.emptyMap(), Collections.emptyList(), message);
   }
+
+  public static Frame convertResponseMessage(Frame responseFrame, Message newMessage) {
+    return new Frame(
+        responseFrame.protocolVersion,
+        responseFrame.beta,
+        responseFrame.streamId,
+        responseFrame.tracing,
+        responseFrame.tracingId,
+        -1,
+        -1,
+        Frame.NO_PAYLOAD,
+        Collections.emptyList(),
+        newMessage);
+  }
 }
