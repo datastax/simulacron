@@ -30,7 +30,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -38,19 +38,20 @@ import java.util.Queue;
 
 public class SuccessResult extends Result {
   @JsonProperty("rows")
-  public final List<Map<String, Object>> rows;
+  public final List<LinkedHashMap<String, Object>> rows;
 
   @JsonProperty("column_types")
-  public final Map<String, String> columnTypes;
+  public final LinkedHashMap<String, String> columnTypes;
 
-  public SuccessResult(List<Map<String, Object>> rows, Map<String, String> columnTypes) {
+  public SuccessResult(
+      List<LinkedHashMap<String, Object>> rows, LinkedHashMap<String, String> columnTypes) {
     this(rows, columnTypes, 0, null);
   }
 
   @JsonCreator
   public SuccessResult(
-      @JsonProperty("rows") List<Map<String, Object>> rows,
-      @JsonProperty("column_types") Map<String, String> columnTypes,
+      @JsonProperty("rows") List<LinkedHashMap<String, Object>> rows,
+      @JsonProperty("column_types") LinkedHashMap<String, String> columnTypes,
       @JsonProperty("delay_in_ms") long delayInMs,
       @JsonProperty("ignore_on_prepare") Boolean ignoreOnPrepare) {
     super(delayInMs, ignoreOnPrepare);
@@ -59,7 +60,7 @@ public class SuccessResult extends Result {
           "Both \"rows\" and \"columnTypes\" are required or none of them");
     } else if (rows == null) {
       this.rows = new ArrayList<>();
-      this.columnTypes = new HashMap<>();
+      this.columnTypes = new LinkedHashMap<>();
     } else {
       this.rows = rows;
       this.columnTypes = columnTypes;

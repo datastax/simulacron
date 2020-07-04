@@ -162,12 +162,12 @@ public class HttpTestUtil {
       LinkedHashMap<String, Object> params,
       LinkedHashMap<String, String> paramTypes) {
     Query when = new Query(query, Collections.emptyList(), params, paramTypes);
-    List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-    HashMap row1 = new HashMap<String, String>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
+    LinkedHashMap<String, Object> row1 = new LinkedHashMap<>();
     row1.put("column1", "column1");
     row1.put("column2", "2");
     rows.add(row1);
-    Map<String, String> column_types = new HashMap<String, String>();
+    LinkedHashMap<String, String> column_types = new LinkedHashMap<>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
     Result then = new SuccessResult(rows, column_types);
@@ -182,7 +182,7 @@ public class HttpTestUtil {
       boolean ignoreOnPrepare) {
     Query when = new Query(query, Collections.emptyList(), params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-    HashMap row1 = new HashMap<String, String>();
+    LinkedHashMap<String, Object> row1 = new LinkedHashMap<>();
     row1.put("column1", "column1");
     row1.put("column2", "2");
     rows.add(row1);
@@ -213,12 +213,12 @@ public class HttpTestUtil {
 
     Batch when = new Batch(statements, Collections.emptyList());
 
-    List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-    HashMap row1 = new HashMap<String, String>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<LinkedHashMap<String, Object>>();
+    LinkedHashMap<String, Object> row1 = new LinkedHashMap<>();
     row1.put("applied", "true");
     rows.add(row1);
 
-    Map<String, String> column_types_result = new HashMap<String, String>();
+    LinkedHashMap<String, String> column_types_result = new LinkedHashMap<>();
     column_types_result.put("applied", "boolean");
     Result then = new SuccessResult(rows, column_types_result);
     return new RequestPrime(when, then);
