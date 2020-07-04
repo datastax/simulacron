@@ -75,6 +75,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -720,8 +721,8 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     long posParamCount = query.chars().filter(num -> num == '?').count();
 
     // Do basic param population for positional types
-    HashMap<String, String> paramTypes = new HashMap<>();
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     if (posParamCount > 0) {
       for (int i = 0; i < posParamCount; i++) {
         params.put(Integer.toString(i), "*");

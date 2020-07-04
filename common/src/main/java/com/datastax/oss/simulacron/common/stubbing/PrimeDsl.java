@@ -48,7 +48,7 @@ import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -109,8 +109,8 @@ public class PrimeDsl {
   public static Query query(
       String query,
       List<ConsistencyLevel> consistencies,
-      Map<String, Object> params,
-      Map<String, String> paramTypes) {
+      LinkedHashMap<String, Object> params,
+      LinkedHashMap<String, String> paramTypes) {
     return new Query(query, consistencies, params, paramTypes);
   }
 
@@ -136,13 +136,13 @@ public class PrimeDsl {
     return query(query, Collections.singletonList(consistency));
   }
 
-  private static final Map<String, String> noRowsColumnTypes = new HashMap<>();
+  private static final LinkedHashMap<String, String> noRowsColumnTypes = new LinkedHashMap<>();
 
   static {
     noRowsColumnTypes.put("fake", "varchar");
   }
 
-  private static final List<Map<String, Object>> emptyRows = new ArrayList<>();
+  private static final List<LinkedHashMap<String, Object>> emptyRows = new ArrayList<>();
 
   /**
    * Provides a Rows result with no rows.
@@ -162,7 +162,7 @@ public class PrimeDsl {
    * @return A rows response instance.
    */
   public static SuccessResult rows(
-      List<Map<String, Object>> rows, Map<String, String> columnTypes) {
+      List<LinkedHashMap<String, Object>> rows, LinkedHashMap<String, String> columnTypes) {
     return new SuccessResult(rows, columnTypes);
   }
 
@@ -516,11 +516,11 @@ public class PrimeDsl {
   }
 
   public static class RowBuilder {
-    List<Map<String, Object>> rows = new ArrayList<>();
-    Map<String, String> columnTypes;
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
+    LinkedHashMap<String, String> columnTypes;
 
     public RowBuilder row(Object... data) {
-      Map<String, Object> rowData = new HashMap<>();
+      LinkedHashMap<String, Object> rowData = new LinkedHashMap<>();
       if (data.length % 2 != 0) {
         throw new RuntimeException(
             "Expected row data to contain an even number of values, but was given " + data.length);
@@ -539,7 +539,7 @@ public class PrimeDsl {
             "Expected row data to contain an even number of values, but was given "
                 + columns.length);
       }
-      columnTypes = new HashMap<>();
+      columnTypes = new LinkedHashMap<>();
       for (int i = 0; i < columns.length - 1; i += 2) {
         columnTypes.put(columns[i], columns[i + 1]);
       }
@@ -550,7 +550,7 @@ public class PrimeDsl {
     public SuccessResult build() {
       // If no columnTypes are found, provide empty list which assumes varchar.
       if (columnTypes == null) {
-        columnTypes = Collections.emptyMap();
+        columnTypes = new LinkedHashMap<>();
       }
       return new SuccessResult(rows, columnTypes);
     }

@@ -16,6 +16,7 @@
 package com.datastax.oss.simulacron.common.cluster;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThat;
 
 import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.simulacron.common.request.Options;
@@ -29,9 +30,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.junit.Test;
 
 public class ObjectMapperHolderTest {
@@ -96,12 +96,12 @@ public class ObjectMapperHolderTest {
   @Test
   public void testPrimeQuery() throws Exception {
     Query when = new Query("SELECT * table_name");
-    List<Map<String, Object>> rows = new ArrayList<>();
-    HashMap<String, Object> row1 = new HashMap<>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
+    LinkedHashMap<String, Object> row1 = new LinkedHashMap<>();
     row1.put("column1", "column1");
     row1.put("column2", "2");
     rows.add(row1);
-    Map<String, String> column_types = new HashMap<>();
+    LinkedHashMap<String, String> column_types = new LinkedHashMap<>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
     Result then = new SuccessResult(rows, column_types);
@@ -123,7 +123,7 @@ public class ObjectMapperHolderTest {
   public void testPrimeQueryWithRowNull() throws Exception {
     Query when = new Query("SELECT * table_name");
 
-    Map<String, String> column_types = new HashMap<>();
+    LinkedHashMap<String, String> column_types = new LinkedHashMap<>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
 
@@ -143,7 +143,7 @@ public class ObjectMapperHolderTest {
     RequestPrime readRequestPrime = mapper.readValue(json, RequestPrime.class);
     assertThat(readRequestPrime.when).isEqualTo(when);
     assertThat(readRequestPrime.then)
-        .isEqualTo(new SuccessResult(new ArrayList<>(), new HashMap<>()));
+        .isEqualTo(new SuccessResult(new ArrayList<>(), new LinkedHashMap<>()));
   }
 
   @Test

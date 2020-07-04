@@ -16,6 +16,7 @@
 package com.datastax.oss.simulacron.http.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import com.datastax.driver.core.ResultSet;
@@ -37,10 +38,9 @@ import io.vertx.core.http.HttpMethod;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -609,14 +609,16 @@ public class HttpContainerIntegrationTest {
   }
 
   private RequestPrime createSimpleParameterizedQuery(
-      String query, HashMap<String, Object> params, HashMap<String, String> paramTypes) {
+      String query,
+      LinkedHashMap<String, Object> params,
+      LinkedHashMap<String, String> paramTypes) {
     Query when = new Query(query, Collections.emptyList(), params, paramTypes);
-    List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-    HashMap row1 = new HashMap<String, String>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
+    LinkedHashMap<String, Object> row1 = new LinkedHashMap<>();
     row1.put("column1", "column1");
     row1.put("column2", "2");
     rows.add(row1);
-    Map<String, String> column_types = new HashMap<String, String>();
+    LinkedHashMap<String, String> column_types = new LinkedHashMap<>();
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
     Result then = new SuccessResult(rows, column_types);
