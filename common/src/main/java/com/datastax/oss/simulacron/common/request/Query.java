@@ -31,6 +31,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,16 +54,16 @@ public final class Query extends Request {
   public Query(
       @JsonProperty("query") String query,
       @JsonProperty("consistency_level") String[] consistency,
-      @JsonProperty("params") Map<String, Object> params,
-      @JsonProperty("param_types") Map<String, String> paramTypes) {
+      @JsonProperty("params") LinkedHashMap<String, Object> params,
+      @JsonProperty("param_types") LinkedHashMap<String, String> paramTypes) {
     this(query, createEnumFromConsistency(consistency), params, paramTypes);
   }
 
   public Query(
       String query,
       List<ConsistencyLevel> consistencies,
-      Map<String, Object> params,
-      Map<String, String> paramTypes) {
+      LinkedHashMap<String, Object> params,
+      LinkedHashMap<String, String> paramTypes) {
     this.query = query;
     this.consistencyEnum = consistencies;
     this.params = params;

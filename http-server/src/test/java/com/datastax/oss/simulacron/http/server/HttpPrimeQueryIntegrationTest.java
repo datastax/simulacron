@@ -32,6 +32,7 @@ import com.datastax.oss.simulacron.common.stubbing.PrimeDsl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -65,10 +66,10 @@ public class HttpPrimeQueryIntegrationTest {
 
   @Test
   public void testQueryPrimeNamedParamSimple() throws Exception {
-    HashMap<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("id", "bigint");
     paramTypes.put("id2", "bigint");
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     params.put("id", new Long(1));
     params.put("id2", new Long(2));
     RequestPrime prime =
@@ -115,9 +116,9 @@ public class HttpPrimeQueryIntegrationTest {
 
   @Test
   public void testQueryPositionalParamSimple() throws Exception {
-    HashMap<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("c1", "ascii");
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     params.put("c1", "c1");
     RequestPrime prime =
         HttpTestUtil.createSimpleParameterizedQuery(
@@ -150,9 +151,9 @@ public class HttpPrimeQueryIntegrationTest {
 
   @Test
   public void testBoundStatementPositional() throws Exception {
-    HashMap<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("c1", "ascii");
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     params.put("c1", "c1");
     RequestPrime prime =
         HttpTestUtil.createSimpleParameterizedQuery(
@@ -188,10 +189,10 @@ public class HttpPrimeQueryIntegrationTest {
 
   @Test
   public void testBoundStatementNamed() throws Exception {
-    HashMap<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("id", "bigint");
     paramTypes.put("id2", "bigint");
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     params.put("id", new Long(1));
     params.put("id2", new Long(2));
     RequestPrime prime =
@@ -235,9 +236,9 @@ public class HttpPrimeQueryIntegrationTest {
 
   @Test
   public void testErrorOnBoundStatement() throws Exception {
-    HashMap<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("c1", "ascii");
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     params.put("c1", "c1");
     RequestPrime prime =
         HttpTestUtil.createPrimedErrorOnQuery(
@@ -253,9 +254,9 @@ public class HttpPrimeQueryIntegrationTest {
 
   @Test
   public void testErrorOnPreparedStatement() throws Exception {
-    HashMap<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("c1", "ascii");
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     params.put("c1", "c1");
     RequestPrime prime =
         HttpTestUtil.createPrimedErrorOnQuery(

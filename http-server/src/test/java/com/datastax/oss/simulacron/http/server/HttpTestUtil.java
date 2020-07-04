@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -157,7 +158,9 @@ public class HttpTestUtil {
   }
 
   public static RequestPrime createSimpleParameterizedQuery(
-      String query, HashMap<String, Object> params, HashMap<String, String> paramTypes) {
+      String query,
+      LinkedHashMap<String, Object> params,
+      LinkedHashMap<String, String> paramTypes) {
     Query when = new Query(query, Collections.emptyList(), params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
     HashMap row1 = new HashMap<String, String>();
@@ -174,8 +177,8 @@ public class HttpTestUtil {
 
   public static RequestPrime createPrimedErrorOnQuery(
       String query,
-      HashMap<String, Object> params,
-      HashMap<String, String> paramTypes,
+      LinkedHashMap<String, Object> params,
+      LinkedHashMap<String, String> paramTypes,
       boolean ignoreOnPrepare) {
     Query when = new Query(query, Collections.emptyList(), params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();

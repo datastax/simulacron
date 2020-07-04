@@ -16,6 +16,7 @@
 package com.datastax.oss.simulacron.common.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThat;
 
 import com.datastax.oss.protocol.internal.request.Execute;
 import com.datastax.oss.protocol.internal.request.query.QueryOptions;
@@ -25,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
@@ -36,7 +38,7 @@ public class QueryTest {
     // Ensures that if a query prime is set up where there are no param values configured that it
     // matches every query matching the query text.
     String queryStr = "update x set y = ?, z = ?, a = ? where b = ?";
-    Map<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("y", "int");
     paramTypes.put("z", "int");
     paramTypes.put("a", "varchar");
@@ -72,7 +74,7 @@ public class QueryTest {
     assertThat(query0.matches(FrameUtils.wrapRequest(execute))).isTrue();
 
     // should also work when values are an empty map.
-    Query query1 = new Query(queryStr, new String[] {}, Collections.emptyMap(), paramTypes);
+    Query query1 = new Query(queryStr, new String[] {}, new LinkedHashMap<>(), paramTypes);
     assertThat(query1.matches(FrameUtils.wrapRequest(execute))).isTrue();
   }
 }

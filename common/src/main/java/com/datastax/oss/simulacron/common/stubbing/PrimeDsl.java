@@ -49,6 +49,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -109,8 +110,8 @@ public class PrimeDsl {
   public static Query query(
       String query,
       List<ConsistencyLevel> consistencies,
-      Map<String, Object> params,
-      Map<String, String> paramTypes) {
+      LinkedHashMap<String, Object> params,
+      LinkedHashMap<String, String> paramTypes) {
     return new Query(query, consistencies, params, paramTypes);
   }
 

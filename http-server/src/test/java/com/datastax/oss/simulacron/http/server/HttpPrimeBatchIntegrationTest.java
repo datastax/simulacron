@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Rule;
@@ -73,9 +74,9 @@ public class HttpPrimeBatchIntegrationTest {
     String query = "INSERT INTO a.c(c1) VALUES (?)";
     String simple_query = "INSERT INTO a.b(c, d) VALUES( (?, ?)";
 
-    HashMap<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("c1", "ascii");
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     params.put("c1", "c1");
     RequestPrime prime = HttpTestUtil.createSimpleParameterizedQuery(query, params, paramTypes);
     server.prime(prime);
@@ -123,10 +124,10 @@ public class HttpPrimeBatchIntegrationTest {
     String query = "INSERT INTO a.c(c1, c2) VALUES (:c1, :c2)";
     String simple_query = "INSERT INTO a.b(c, d) VALUES( (?, ?)";
 
-    HashMap<String, String> paramTypes = new HashMap<>();
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("c1", "ascii");
     paramTypes.put("c2", "ascii");
-    HashMap<String, Object> params = new HashMap<>();
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
     params.put("c1", "c1");
     params.put("c2", "c2");
     RequestPrime prime = HttpTestUtil.createSimpleParameterizedQuery(query, params, paramTypes);

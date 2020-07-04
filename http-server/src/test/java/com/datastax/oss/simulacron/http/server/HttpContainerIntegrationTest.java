@@ -16,6 +16,7 @@
 package com.datastax.oss.simulacron.http.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import com.datastax.driver.core.ResultSet;
@@ -39,6 +40,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -609,7 +611,9 @@ public class HttpContainerIntegrationTest {
   }
 
   private RequestPrime createSimpleParameterizedQuery(
-      String query, HashMap<String, Object> params, HashMap<String, String> paramTypes) {
+      String query,
+      LinkedHashMap<String, Object> params,
+      LinkedHashMap<String, String> paramTypes) {
     Query when = new Query(query, Collections.emptyList(), params, paramTypes);
     List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
     HashMap row1 = new HashMap<String, String>();
