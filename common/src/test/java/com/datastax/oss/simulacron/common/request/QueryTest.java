@@ -16,19 +16,22 @@
 package com.datastax.oss.simulacron.common.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThat;
 
-import com.datastax.oss.protocol.internal.request.Execute;
-import com.datastax.oss.protocol.internal.request.query.QueryOptions;
-import com.datastax.oss.simulacron.common.utils.FrameUtils;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.query.QueryOptions;
+import com.datastax.oss.simulacron.common.utils.FrameUtils;
+
 import org.junit.Test;
 
 public class QueryTest {
@@ -76,5 +79,62 @@ public class QueryTest {
     // should also work when values are an empty map.
     Query query1 = new Query(queryStr, new String[] {}, new LinkedHashMap<>(), paramTypes);
     assertThat(query1.matches(FrameUtils.wrapRequest(execute))).isTrue();
+  }
+
+  @Test
+  public void testPositionalParams() {
+    String queryStr = "select foo, bar from test_ks.test_tab where foo = ? and bar = ?";
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
+    paramTypes.put("foo", "varchar");
+    paramTypes.put("bar", "int");
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
+    params.put("foo", "any");
+    params.put("bar", 100);
+
+    Query selectQuery = new Query(queryStr, new String[] {}, params, paramTypes);
+
+    List<ByteBuffer> positionalParamValues = Arrays.asList(ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)), 
+        ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
+
+    QueryOptions queryOptions =
+        new QueryOptions(0, positionalParamValues, Collections.emptyMap(), true, 0, null, 10, -1, null);
+    com.datastax.oss.protocol.internal.request.Query simpleQueryWithValidPositionalParams =
+        new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
+
+    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithValidPositionalParams))).isTrue();
+
+    List<ByteBuffer> reverseOrderedPositionalParamValues = Arrays.asList(ByteBuffer.wrap(new byte[] {0, 0, 0, 100}), 
+        ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)));
+
+    QueryOptions invalidQueryOptions =
+        new QueryOptions(0, reverseOrderedPositionalParamValues, Collections.emptyMap(), true, 0, null, 10, -1, null);
+    com.datastax.oss.protocol.internal.request.Query simpleQueryWithInvalidPositionalParams =
+        new com.datastax.oss.protocol.internal.request.Query(queryStr, invalidQueryOptions);
+
+    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithInvalidPositionalParams))).isFalse();
+  }
+
+  @Test
+  public void testNamedParams() {
+    String queryStr = "select foo, bar from test_ks.test_tab where foo = ? and bar = ?";
+    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
+    paramTypes.put("foo", "varchar");
+    paramTypes.put("bar", "int");
+    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
+    params.put("foo", "any");
+    params.put("bar", 100);
+
+    Query selectQuery = new Query(queryStr, new String[] {}, params, paramTypes);
+
+    Map<String, ByteBuffer> namedParamValues = new HashMap<>();
+    namedParamValues.put("bar", ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
+    namedParamValues.put("foo", ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)));
+
+    QueryOptions queryOptions =
+        new QueryOptions(0, Collections.emptyList(), namedParamValues, true, 0, null, 10, -1, null);
+    com.datastax.oss.protocol.internal.request.Query simpleQueryWithNamedParams =
+        new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
+
+    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithNamedParams))).isTrue();
   }
 }
