@@ -17,6 +17,9 @@ package com.datastax.oss.simulacron.common.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.oss.protocol.internal.request.Execute;
+import com.datastax.oss.protocol.internal.request.query.QueryOptions;
+import com.datastax.oss.simulacron.common.utils.FrameUtils;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -27,11 +30,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.datastax.oss.protocol.internal.request.Execute;
-import com.datastax.oss.protocol.internal.request.query.QueryOptions;
-import com.datastax.oss.simulacron.common.utils.FrameUtils;
-
 import org.junit.Test;
 
 public class QueryTest {
@@ -93,25 +91,41 @@ public class QueryTest {
 
     Query selectQuery = new Query(queryStr, new String[] {}, params, paramTypes);
 
-    List<ByteBuffer> positionalParamValues = Arrays.asList(ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)), 
-        ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
+    List<ByteBuffer> positionalParamValues =
+        Arrays.asList(
+            ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)),
+            ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
 
     QueryOptions queryOptions =
-        new QueryOptions(0, positionalParamValues, Collections.emptyMap(), true, 0, null, 10, -1, null);
+        new QueryOptions(
+            0, positionalParamValues, Collections.emptyMap(), true, 0, null, 10, -1, null);
     com.datastax.oss.protocol.internal.request.Query simpleQueryWithValidPositionalParams =
         new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
 
-    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithValidPositionalParams))).isTrue();
+    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithValidPositionalParams)))
+        .isTrue();
 
-    List<ByteBuffer> reverseOrderedPositionalParamValues = Arrays.asList(ByteBuffer.wrap(new byte[] {0, 0, 0, 100}), 
-        ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)));
+    List<ByteBuffer> reverseOrderedPositionalParamValues =
+        Arrays.asList(
+            ByteBuffer.wrap(new byte[] {0, 0, 0, 100}),
+            ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)));
 
     QueryOptions invalidQueryOptions =
-        new QueryOptions(0, reverseOrderedPositionalParamValues, Collections.emptyMap(), true, 0, null, 10, -1, null);
+        new QueryOptions(
+            0,
+            reverseOrderedPositionalParamValues,
+            Collections.emptyMap(),
+            true,
+            0,
+            null,
+            10,
+            -1,
+            null);
     com.datastax.oss.protocol.internal.request.Query simpleQueryWithInvalidPositionalParams =
         new com.datastax.oss.protocol.internal.request.Query(queryStr, invalidQueryOptions);
 
-    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithInvalidPositionalParams))).isFalse();
+    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithInvalidPositionalParams)))
+        .isFalse();
   }
 
   @Test
