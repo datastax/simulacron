@@ -130,7 +130,7 @@ public class QueryTest {
 
   @Test
   public void testNamedParams() {
-    String queryStr = "select foo, bar from test_ks.test_tab where foo = ? and bar = ?";
+    String queryStr = "select foo, bar from test_ks.test_tab where foo = :foo and bar = :bar";
     LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("foo", "varchar");
     paramTypes.put("bar", "int");
@@ -141,8 +141,8 @@ public class QueryTest {
     Query selectQuery = new Query(queryStr, new String[] {}, params, paramTypes);
 
     Map<String, ByteBuffer> namedParamValues = new HashMap<>();
-    namedParamValues.put("bar", ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
     namedParamValues.put("foo", ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)));
+    namedParamValues.put("bar", ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
 
     QueryOptions queryOptions =
         new QueryOptions(0, Collections.emptyList(), namedParamValues, true, 0, null, 10, -1, null);
