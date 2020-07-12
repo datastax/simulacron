@@ -42,6 +42,7 @@ import com.datastax.oss.protocol.internal.response.Event;
 import com.datastax.oss.protocol.internal.response.Ready;
 import com.datastax.oss.protocol.internal.response.Result;
 import com.datastax.oss.protocol.internal.response.Supported;
+import com.datastax.oss.protocol.internal.response.result.Rows;
 import com.datastax.oss.simulacron.common.cluster.ClusterConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.DataCenterConnectionReport;
@@ -50,6 +51,7 @@ import com.datastax.oss.simulacron.common.cluster.NodeConnectionReport;
 import com.datastax.oss.simulacron.common.cluster.NodeSpec;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.stubbing.CloseType;
+import com.datastax.oss.simulacron.common.stubbing.EmptyReturnMetadataHandler;
 import com.datastax.oss.simulacron.common.utils.FrameUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -1146,6 +1148,36 @@ public class ServerTest {
       BoundNode node2 = iterator.next();
       assertThat(((String) node1.getPeerInfo().get("tokens")).split(",").length).isEqualTo(3);
       assertThat(((String) node2.getPeerInfo().get("tokens")).split(",").length).isEqualTo(3);
+    }
+  }
+
+  @Test
+  public void testRegisteringCustomStubMappingAlongsideDefaults() throws Exception {
+    String defaultQuery = "SELECT * FROM system_schema.keyspaces";
+    String customQuery = "SELECT * FROM test";
+    EmptyReturnMetadataHandler customStubMapping = new EmptyReturnMetadataHandler(customQuery);
+
+    Server server =
+        Server.builder()
+            .withStubMapping(customStubMapping)
+            .withEventLoopGroup(eventLoop, LocalServerChannel.class)
+            .withAddressResolver(localAddressResolver)
+            .build();
+
+    NodeSpec node = NodeSpec.builder().build();
+    try (BoundNode boundNode = server.register(node)) {
+
+      try (MockClient client = new MockClient(eventLoop)) {
+        client.connect(boundNode.getAddress());
+
+        client.write(new Query(customQuery));
+        Frame customMappingResponse = client.next();
+        assertThat(customMappingResponse.message).isInstanceOf(Rows.class);
+
+        client.write(new Query(defaultQuery));
+        Frame defaultMappingResponse = client.next();
+        assertThat(defaultMappingResponse.message).isInstanceOf(Rows.class);
+      }
     }
   }
 }

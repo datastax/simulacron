@@ -24,6 +24,7 @@ import com.datastax.oss.simulacron.common.cluster.DataCenterSpec;
 import com.datastax.oss.simulacron.common.cluster.NodeSpec;
 import com.datastax.oss.simulacron.common.stubbing.EmptyReturnMetadataHandler;
 import com.datastax.oss.simulacron.common.stubbing.PeerMetadataHandler;
+import com.datastax.oss.simulacron.common.stubbing.StubMapping;
 import com.datastax.oss.simulacron.server.token.RandomTokenAssigner;
 import com.datastax.oss.simulacron.server.token.SplitTokenAssigner;
 import com.datastax.oss.simulacron.server.token.TokenAssigner;
@@ -670,6 +671,8 @@ public final class Server implements AutoCloseable {
 
     private Class<? extends ServerChannel> channelClass;
 
+    private List<StubMapping> stubMappings = new ArrayList<>();
+
     Builder() {}
 
     /**
@@ -767,6 +770,16 @@ public final class Server implements AutoCloseable {
       return this;
     }
 
+    /**
+     * Sets additional {@link StubMapping} to be used by this server on top of the built-in stubs
+     *
+     * @return This builder.
+     */
+    public Builder withStubMapping(StubMapping stubMapping) {
+      this.stubMappings.add(stubMapping);
+      return this;
+    }
+
     /** @return a {@link Server} instance based on this builder's configuration. */
     public Server build() {
       if (stubStore == null) {
@@ -800,6 +813,7 @@ public final class Server implements AutoCloseable {
             new EmptyReturnMetadataHandler("SELECT * FROM system_virtual_schema.columns"));
         stubStore.register(
             new EmptyReturnMetadataHandler("SELECT * FROM system_virtual_schema.tables"));
+        stubMappings.forEach(stubStore::register);
       }
       Timer timer = this.timer;
       if (timer == null) {
