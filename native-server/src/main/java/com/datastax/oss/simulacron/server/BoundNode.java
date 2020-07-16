@@ -412,6 +412,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
       } else if (frame.message instanceof Query) {
         Query query = (Query) frame.message;
         String queryStr = query.query;
+        logger.warn("No stub mapping found for message type QUERY: \"{}\"", queryStr);
         if (queryStr.startsWith("USE") || queryStr.startsWith("use")) {
           Matcher matcher = useKeyspacePattern.matcher(queryStr);
           // should always match.
@@ -431,6 +432,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
       } else if (frame.message instanceof Execute) {
         // Unprepared execute received, return an unprepared.
         Execute execute = (Execute) frame.message;
+        logger.warn("No stub mapping found for message type EXECUTE: \"{}\"", execute.toString());
         String hex = new BigInteger(1, execute.queryId).toString(16);
         response = new Unprepared("No prepared statement with id: " + hex, execute.queryId);
       } else if (frame.message instanceof Prepare) {
@@ -438,6 +440,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
         Prepare prepare = (Prepare) frame.message;
         // TODO: Maybe attempt to identify bind parameters
         String query = prepare.cqlQuery;
+        logger.info("No stub mapping found for message type PREPARE: \"{}\". Registering priming...", query);
         Prime prime = whenWithInferredParams(query).then(noRows()).build();
         this.getCluster().getStubStore().registerInternal(prime);
         response = prime.toPrepared();
