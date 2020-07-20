@@ -412,7 +412,6 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
       } else if (frame.message instanceof Query) {
         Query query = (Query) frame.message;
         String queryStr = query.query;
-        logger.warn("No stub mapping found for message type QUERY: \"{}\"", queryStr);
         if (queryStr.startsWith("USE") || queryStr.startsWith("use")) {
           Matcher matcher = useKeyspacePattern.matcher(queryStr);
           // should always match.
@@ -424,6 +423,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
             response = new SetKeyspace(keyspace);
           }
         } else {
+          logger.warn("No stub mapping found for message type QUERY: \"{}\"", queryStr);
           response = INSTANCE;
         }
 
