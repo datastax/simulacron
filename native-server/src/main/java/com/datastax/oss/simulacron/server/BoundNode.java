@@ -361,6 +361,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
     Optional<StubMapping> stubOption = find(frame);
     List<Action> actions = null;
     if (stubOption.isPresent()) {
+      logger.debug("Stub mapping found for {}", frame.message);
       StubMapping stub = stubOption.get();
       actions = stub.getActions(this, frame);
     }
