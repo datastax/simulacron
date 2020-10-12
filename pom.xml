@@ -46,7 +46,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <assertj.version>3.6.2</assertj.version>
     <netty.version>4.1.12.Final</netty.version>
-    <junit.version>4.12</junit.version>
+    <junit.version>4.13.1</junit.version>
     <slf4j.version>1.7.22</slf4j.version>
     <logback.version>1.1.9</logback.version>
     <native-protocol.version>1.4.4</native-protocol.version>
