@@ -441,7 +441,9 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
         Prepare prepare = (Prepare) frame.message;
         // TODO: Maybe attempt to identify bind parameters
         String query = prepare.cqlQuery;
-        logger.info("No stub mapping found for message type PREPARE: \"{}\". Registering priming...", query);
+        logger.info(
+            "No stub mapping found for message type PREPARE: \"{}\". Registering priming...",
+            query);
         Prime prime = whenWithInferredParams(query).then(noRows()).build();
         this.getCluster().getStubStore().registerInternal(prime);
         response = prime.toPrepared();
