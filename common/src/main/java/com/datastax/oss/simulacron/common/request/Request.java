@@ -63,7 +63,7 @@ public abstract class Request {
    */
   public static boolean checkParamsEqual(
       ByteBuffer buffer, Object primedParam, String stringType, CqlMapper mapper) {
-    if (primedParam.equals("*")) return true;
+    if ("*".equals(primedParam)) return true;
     RawType type = CodecUtils.getTypeFromName(stringType);
     Object nativeParamToCheck = mapper.codecFor(type).decode(buffer);
     Object primedParamToCheck = mapper.codecFor(type).toNativeType(primedParam);
