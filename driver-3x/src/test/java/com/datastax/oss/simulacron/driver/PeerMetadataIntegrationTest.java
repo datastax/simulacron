@@ -54,10 +54,7 @@ public class PeerMetadataIntegrationTest {
 
       // Verify hosts connected to are only those in the local DC.
       Collection<SocketAddress> connectedHosts =
-          session
-              .getState()
-              .getConnectedHosts()
-              .stream()
+          session.getState().getConnectedHosts().stream()
               .map(Host::getSocketAddress)
               .collect(Collectors.toList());
 

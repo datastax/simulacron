@@ -651,8 +651,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
         return completable(channelGroup.disconnect());
       default:
         return CompletableFuture.allOf(
-            channelGroup
-                .stream()
+            channelGroup.stream()
                 .map(
                     c -> {
                       CompletableFuture<Void> f;
@@ -680,8 +679,7 @@ public class BoundNode extends AbstractNode<BoundCluster, BoundDataCenter>
   public CompletionStage<NodeConnectionReport> closeConnectionAsync(
       SocketAddress connection, CloseType type) {
     Optional<Channel> channel =
-        this.clientChannelGroup
-            .stream()
+        this.clientChannelGroup.stream()
             .filter(c -> c.remoteAddress().equals(connection))
             .findFirst();
 

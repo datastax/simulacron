@@ -55,8 +55,7 @@ public abstract class AbstractCluster<D extends AbstractDataCenter<?, N>, N exte
 
   @Override
   public Collection<N> getNodes() {
-    return getDataCenters()
-        .stream()
+    return getDataCenters().stream()
         .flatMap(dc -> dc.getNodes().stream())
         .collect(Collectors.toList());
   }

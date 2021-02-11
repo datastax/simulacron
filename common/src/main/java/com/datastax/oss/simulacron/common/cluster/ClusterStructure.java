@@ -40,8 +40,7 @@ public interface ClusterStructure<D extends DataCenterStructure<?, N>, N extends
    */
   @JsonIgnore
   default Collection<N> getNodes() {
-    return getDataCenters()
-        .stream()
+    return getDataCenters().stream()
         .flatMap(dc -> dc.getNodes().stream())
         .collect(Collectors.toList());
   }

@@ -103,8 +103,7 @@ public class BoundCluster extends AbstractCluster<BoundDataCenter, BoundNode>
   public CompletionStage<ClusterConnectionReport> closeConnectionsAsync(CloseType closeType) {
     ClusterConnectionReport report = getConnections();
     return CompletableFuture.allOf(
-            this.getNodes()
-                .stream()
+            this.getNodes().stream()
                 .map(n -> n.closeConnectionsAsync(closeType).toCompletableFuture())
                 .collect(Collectors.toList())
                 .toArray(new CompletableFuture[] {}))

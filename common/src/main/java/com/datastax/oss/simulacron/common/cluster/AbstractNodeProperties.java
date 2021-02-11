@@ -26,9 +26,8 @@ import java.util.UUID;
  */
 // Mark active_connections ignorable as they are not used on serialization.
 @JsonIgnoreProperties(
-  value = {"active_connections"},
-  allowGetters = true
-)
+    value = {"active_connections"},
+    allowGetters = true)
 public abstract class AbstractNodeProperties implements NodeProperties {
 
   private final String name;
