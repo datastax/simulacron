@@ -123,22 +123,18 @@ public class QueryLog {
     }
   }
 
-  /** @deprecated Use frame instead. */
   public String getType() {
     return type;
   }
 
-  /** @deprecated Use frame instead. */
   public String getQuery() {
     return query;
   }
 
-  /** @deprecated Use frame instead. */
   public ConsistencyLevel getConsistency() {
     return consistency;
   }
 
-  /** @deprecated Use frame instead. */
   public ConsistencyLevel getSerialConsistency() {
     return serialConsistency;
   }
@@ -151,8 +147,6 @@ public class QueryLog {
     return receivedTimestamp;
   }
 
-  /** @deprecated Use frame instead. */
-  @Deprecated
   public long getClientTimestamp() {
     return clientTimestamp;
   }
