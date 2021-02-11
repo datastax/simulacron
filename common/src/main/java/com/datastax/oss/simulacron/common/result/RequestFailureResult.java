@@ -59,9 +59,7 @@ public abstract class RequestFailureResult extends ErrorResult {
 
   static Map<InetAddress, Integer> toIntMap(
       Map<InetAddress, RequestFailureReason> failureReasonByEndpoint) {
-    return failureReasonByEndpoint
-        .entrySet()
-        .stream()
+    return failureReasonByEndpoint.entrySet().stream()
         .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getCode()));
   }
 }

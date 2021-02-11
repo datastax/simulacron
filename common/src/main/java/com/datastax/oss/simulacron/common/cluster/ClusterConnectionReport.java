@@ -104,8 +104,7 @@ public class ClusterConnectionReport extends ConnectionReport
 
   @Override
   public List<SocketAddress> getConnections() {
-    return getNodes()
-        .stream()
+    return getNodes().stream()
         .flatMap(n -> n.getConnections().stream())
         .collect(Collectors.toList());
   }

@@ -17,8 +17,6 @@ package com.datastax.oss.simulacron.server;
 
 import static com.datastax.oss.simulacron.server.CompletableFutures.getUninterruptibly;
 
-import com.datastax.oss.protocol.internal.Compressor;
-import com.datastax.oss.protocol.internal.FrameCodec;
 import com.datastax.oss.simulacron.common.cluster.ClusterSpec;
 import com.datastax.oss.simulacron.common.cluster.DataCenterSpec;
 import com.datastax.oss.simulacron.common.cluster.NodeSpec;
@@ -29,7 +27,6 @@ import com.datastax.oss.simulacron.server.token.RandomTokenAssigner;
 import com.datastax.oss.simulacron.server.token.SplitTokenAssigner;
 import com.datastax.oss.simulacron.server.token.TokenAssigner;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -76,9 +73,6 @@ public final class Server implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
 
   static final AttributeKey<BoundNode> HANDLER = AttributeKey.valueOf("NODE");
-
-  private static final FrameCodec<ByteBuf> frameCodec =
-      FrameCodec.defaultServer(new ByteBufCodec(), Compressor.none());
 
   /** The bootstrap responsible for binding new listening server channels. */
   final ServerBootstrap serverBootstrap;
@@ -421,9 +415,7 @@ public final class Server implements AutoCloseable {
       return failByClose();
     }
     List<CompletableFuture<BoundCluster>> futures =
-        clusters
-            .keySet()
-            .stream()
+        clusters.keySet().stream()
             .map(this::unregisterAsync)
             .map(CompletionStage::toCompletableFuture)
             .collect(Collectors.toList());

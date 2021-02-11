@@ -270,7 +270,16 @@ public class FrameSerializerTest {
             new Query(
                 "select * from base",
                 new QueryOptions(
-                    2, posValues, Collections.emptyMap(), false, 1000, null, 8, time, "myks")));
+                    2,
+                    posValues,
+                    Collections.emptyMap(),
+                    false,
+                    1000,
+                    null,
+                    8,
+                    time,
+                    "myks",
+                    Integer.MIN_VALUE)));
 
     String json = writer.writeValueAsString(frame);
     assertThat(json)
@@ -355,7 +364,8 @@ public class FrameSerializerTest {
                     pagingState,
                     8,
                     time,
-                    "myks")));
+                    "myks",
+                    Integer.MIN_VALUE)));
 
     String json = writer.writeValueAsString(frame);
     assertThat(json)
@@ -491,7 +501,8 @@ public class FrameSerializerTest {
                     pagingState,
                     8,
                     time,
-                    "myks")));
+                    "myks",
+                    Integer.MIN_VALUE)));
 
     String json = writer.writeValueAsString(frame);
     assertThat(json)
@@ -615,7 +626,7 @@ public class FrameSerializerTest {
             null,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
-            new Batch((byte) 1, queriesOrIds, values, 2, 10, time, "myks"));
+            new Batch((byte) 1, queriesOrIds, values, 2, 10, time, "myks", Integer.MIN_VALUE));
 
     String json = writer.writeValueAsString(frame);
     assertThat(json)

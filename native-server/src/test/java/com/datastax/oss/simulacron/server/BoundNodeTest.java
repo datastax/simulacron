@@ -145,7 +145,16 @@ public class BoundNodeTest {
 
   private QueryOptions options =
       new QueryOptions(
-          1, Collections.emptyList(), Collections.emptyMap(), true, 0, null, 8, 0L, null);
+          1,
+          Collections.emptyList(),
+          Collections.emptyMap(),
+          true,
+          0,
+          null,
+          8,
+          0L,
+          null,
+          Integer.MIN_VALUE);
 
   @Test
   public void shouldRespondWithUnpreparedToExecute() {
@@ -182,10 +191,7 @@ public class BoundNodeTest {
     // Should be recorded in activity log
     try {
       assertThat(
-              loggedNode
-                  .getLogs()
-                  .getQueryLogs()
-                  .stream()
+              loggedNode.getLogs().getQueryLogs().stream()
                   .filter(ql -> ql.getQuery().equals(query))
                   .findFirst())
           .isPresent();
@@ -245,10 +251,7 @@ public class BoundNodeTest {
     // Should be recorded in activity log
     try {
       assertThat(
-              loggedNode
-                  .getLogs()
-                  .getQueryLogs()
-                  .stream()
+              loggedNode.getLogs().getQueryLogs().stream()
                   .filter(ql -> ql.getQuery().equals(query))
                   .findFirst())
           .isPresent();
@@ -348,7 +351,8 @@ public class BoundNodeTest {
             null,
             ProtocolConstants.ConsistencyLevel.SERIAL,
             Long.MIN_VALUE,
-            null);
+            null,
+            Integer.MIN_VALUE);
     Query query2 = new Query("select * from table1", options);
     Frame request2 = FrameUtils.wrapRequest(query2);
     loggedChannel.writeInbound(request1);

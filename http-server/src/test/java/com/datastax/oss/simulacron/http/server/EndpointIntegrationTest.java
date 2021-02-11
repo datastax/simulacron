@@ -131,9 +131,7 @@ public class EndpointIntegrationTest {
       ClusterConnectionReport clusterReport =
           om.readValue(response.body, ClusterConnectionReport.class);
       NodeConnectionReport connectionNode =
-          clusterReport
-              .getDataCenters()
-              .stream()
+          clusterReport.getDataCenters().stream()
               .filter(dce -> dce.getId().equals(dc.getId()))
               .flatMap(d -> d.getNodes().stream())
               .filter(n -> n.getId().equals(node.getId()))
@@ -273,9 +271,7 @@ public class EndpointIntegrationTest {
   private Collection<NodeConnectionReport> getNodeConnectionReports(
       ClusterConnectionReport report, Long contactPointDcId) {
     DataCenterConnectionReport dc =
-        report
-            .getDataCenters()
-            .stream()
+        report.getDataCenters().stream()
             .filter(p -> p.getId().equals(contactPointDcId))
             .findAny()
             .get();
@@ -285,9 +281,7 @@ public class EndpointIntegrationTest {
   private void verifyClusterConnectionReport(
       ClusterConnectionReport report, Scope scope, Long contactPointDcId, Long contactPointNodeId) {
     DataCenterConnectionReport dc =
-        report
-            .getDataCenters()
-            .stream()
+        report.getDataCenters().stream()
             .filter(p -> p.getId().equals(contactPointDcId))
             .findAny()
             .get();

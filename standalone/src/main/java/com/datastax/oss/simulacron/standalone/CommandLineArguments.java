@@ -23,53 +23,45 @@ import com.beust.jcommander.ParameterException;
 class CommandLineArguments {
 
   @Parameter(
-    names = {"--ip", "-i"},
-    description = "Starting IP address to create simulated C* nodes on"
-  )
+      names = {"--ip", "-i"},
+      description = "Starting IP address to create simulated C* nodes on")
   String ipAddress = "127.0.0.1";
 
   @Parameter(
-    names = {"--starting-port", "-s"},
-    description =
-        "Starting Port to assign Nodes to.  Note that if this is used multiple nodes can be assigned on one IP (which mimics C* 4.0+ peering)"
-  )
+      names = {"--starting-port", "-s"},
+      description =
+          "Starting Port to assign Nodes to.  Note that if this is used multiple nodes can be assigned on one IP (which mimics C* 4.0+ peering)")
   int startingPort = -1;
 
   @Parameter(
-    names = {"--httpport", "-p"},
-    description = "HTTP port to bind on"
-  )
+      names = {"--httpport", "-p"},
+      description = "HTTP port to bind on")
   int httpPort = 8187;
 
   @Parameter(
-    names = {"--httpintf", "-t"},
-    description = "Interface address to bind HTTP server on"
-  )
+      names = {"--httpintf", "-t"},
+      description = "Interface address to bind HTTP server on")
   String httpInterface = "localhost";
 
   @Parameter(
-    names = {"--verbose", "-v"},
-    description = "Whether or not to enable verbose http logging (also enables DEBUG logging)"
-  )
+      names = {"--verbose", "-v"},
+      description = "Whether or not to enable verbose http logging (also enables DEBUG logging)")
   boolean verbose = false;
 
   @Parameter(
-    names = {"--loglevel", "-l"},
-    description = "Logging level to use",
-    converter = LevelConverter.class
-  )
+      names = {"--loglevel", "-l"},
+      description = "Logging level to use",
+      converter = LevelConverter.class)
   Level logLevel = Level.INFO;
 
   @Parameter(
-    names = {"--disable-activity-log", "-d"},
-    description = "Disables activity logging by default"
-  )
+      names = {"--disable-activity-log", "-d"},
+      description = "Disables activity logging by default")
   boolean disableActivityLogging = false;
 
   @Parameter(
-    names = {"--help", "-h"},
-    hidden = true
-  )
+      names = {"--help", "-h"},
+      hidden = true)
   boolean help = false;
 
   public static class LevelConverter implements IStringConverter<Level> {

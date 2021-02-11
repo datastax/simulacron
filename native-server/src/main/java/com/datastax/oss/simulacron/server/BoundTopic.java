@@ -134,8 +134,7 @@ public interface BoundTopic<C extends ConnectionReport, Q extends QueryLogReport
    */
   default CompletionStage<Void> forEachNode(Function<BoundNode, CompletionStage<Void>> fun) {
     return CompletableFuture.allOf(
-            this.getNodes()
-                .stream()
+            this.getNodes().stream()
                 .map(i -> fun.apply(i).toCompletableFuture())
                 .collect(Collectors.toList())
                 .toArray(new CompletableFuture[] {}))

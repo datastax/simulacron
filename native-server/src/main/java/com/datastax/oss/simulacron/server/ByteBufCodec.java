@@ -23,6 +23,8 @@ import io.netty.util.CharsetUtil;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.zip.CRC32;
 
 public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
 
@@ -38,7 +40,7 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
 
   @Override
   public ByteBuf allocate(int size) {
-    return alloc.buffer(size);
+    return alloc.ioBuffer(size, size);
   }
 
   @Override
@@ -53,7 +55,28 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
 
   @Override
   public ByteBuf concat(ByteBuf left, ByteBuf right) {
-    return new CompositeByteBuf(alloc, alloc.isDirectBufferPooled(), 2, left, right);
+    if (!left.isReadable()) {
+      return right.duplicate();
+    } else if (!right.isReadable()) {
+      return left.duplicate();
+    } else {
+      CompositeByteBuf c = alloc.compositeBuffer(2);
+      c.addComponents(left, right);
+      // c.readerIndex() is 0, which is the first readable byte in left
+      c.writerIndex(
+          left.writerIndex() - left.readerIndex() + right.writerIndex() - right.readerIndex());
+      return c;
+    }
+  }
+
+  @Override
+  public void markReaderIndex(ByteBuf source) {
+    source.markReaderIndex();
+  }
+
+  @Override
+  public void resetReaderIndex(ByteBuf source) {
+    source.resetReaderIndex();
   }
 
   @Override
@@ -67,15 +90,16 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
   }
 
   @Override
+  public int readInt(ByteBuf source, int offset) {
+    return source.getInt(source.readerIndex() + offset);
+  }
+
+  @Override
   public InetAddress readInetAddr(ByteBuf source) {
-    int len = readByte(source);
-    byte[] addr = new byte[len];
-    source.readBytes(addr);
-    try {
-      return InetAddress.getByAddress(addr);
-    } catch (UnknownHostException uhe) {
-      throw new IllegalArgumentException(uhe);
-    }
+    int length = readByte(source) & 0xFF;
+    byte[] bytes = new byte[length];
+    source.readBytes(bytes);
+    return newInetAddress(bytes);
   }
 
   @Override
@@ -96,44 +120,39 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
     return ByteBuffer.wrap(readRawBytes(slice));
   }
 
-  // Reads *all* readable bytes from a buffer and return them.
-  // If the buffer is backed by an array, this will return the underlying array directly, without
-  // copy.
-  private static byte[] readRawBytes(ByteBuf buffer) {
-    if (buffer.hasArray() && buffer.readableBytes() == buffer.array().length) {
-      // Move the readerIndex just so we consistently consume the input
-      buffer.readerIndex(buffer.writerIndex());
-      return buffer.array();
-    }
-
-    // Otherwise, just read the bytes in a new array
-    byte[] bytes = new byte[buffer.readableBytes()];
-    buffer.readBytes(bytes);
-    return bytes;
-  }
-
   @Override
   public byte[] readShortBytes(ByteBuf source) {
-    int len = readUnsignedShort(source);
-    byte[] out = new byte[len];
-    source.readBytes(out);
-    return out;
+    try {
+      int length = readUnsignedShort(source);
+      byte[] bytes = new byte[length];
+      source.readBytes(bytes);
+      return bytes;
+    } catch (IndexOutOfBoundsException e) {
+      throw new IllegalArgumentException(
+          "Not enough bytes to read a byte array preceded by its 2 bytes length");
+    }
   }
 
   @Override
   public String readString(ByteBuf source) {
-    int len = readUnsignedShort(source);
-    String str = source.toString(source.readerIndex(), len, CharsetUtil.UTF_8);
-    source.readerIndex(source.readerIndex() + len);
-    return str;
+    int length = readUnsignedShort(source);
+    return readString(source, length);
   }
 
   @Override
   public String readLongString(ByteBuf source) {
-    int len = readInt(source);
-    String str = source.toString(source.readerIndex(), len, CharsetUtil.UTF_8);
-    source.readerIndex(source.readerIndex() + len);
-    return str;
+    int length = readInt(source);
+    return readString(source, length);
+  }
+
+  @Override
+  public ByteBuf readRetainedSlice(ByteBuf source, int sliceLength) {
+    return source.readRetainedSlice(sliceLength);
+  }
+
+  @Override
+  public void updateCrc(ByteBuf source, CRC32 crc) {
+    crc.update(source.internalNioBuffer(source.readerIndex(), source.readableBytes()));
   }
 
   @Override
@@ -147,10 +166,10 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
   }
 
   @Override
-  public void writeInetAddr(InetAddress address, ByteBuf dest) {
-    byte[] addr = address.getAddress();
-    dest.writeByte(addr.length);
-    dest.writeBytes(addr);
+  public void writeInetAddr(InetAddress inetAddr, ByteBuf dest) {
+    byte[] bytes = inetAddr.getAddress();
+    writeByte((byte) bytes.length, dest);
+    dest.writeBytes(bytes);
   }
 
   @Override
@@ -165,16 +184,16 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
 
   @Override
   public void writeString(String s, ByteBuf dest) {
-    byte[] data = s.getBytes(CharsetUtil.UTF_8);
-    writeUnsignedShort(data.length, dest);
-    dest.writeBytes(data);
+    byte[] bytes = s.getBytes(CharsetUtil.UTF_8);
+    writeUnsignedShort(bytes.length, dest);
+    dest.writeBytes(bytes);
   }
 
   @Override
   public void writeLongString(String s, ByteBuf dest) {
-    byte[] data = s.getBytes(CharsetUtil.UTF_8);
-    writeInt(data.length, dest);
-    dest.writeBytes(data);
+    byte[] bytes = s.getBytes(CharsetUtil.UTF_8);
+    writeInt(bytes.length, dest);
+    dest.writeBytes(bytes);
   }
 
   @Override
@@ -199,11 +218,44 @@ public class ByteBufCodec implements PrimitiveCodec<ByteBuf> {
 
   @Override
   public void writeShortBytes(byte[] bytes, ByteBuf dest) {
-    if (bytes == null) {
-      writeUnsignedShort(-1, dest);
-    } else {
-      writeUnsignedShort(bytes.length, dest);
-      dest.writeBytes(bytes);
+    writeUnsignedShort(bytes.length, dest);
+    dest.writeBytes(bytes);
+  }
+
+  // Reads *all* readable bytes from a buffer and return them.
+  // If the buffer is backed by an array, this will return the underlying array directly, without
+  // copy.
+  private static byte[] readRawBytes(ByteBuf buffer) {
+    if (buffer.hasArray() && buffer.readableBytes() == buffer.array().length) {
+      // Move the readerIndex just so we consistently consume the input
+      buffer.readerIndex(buffer.writerIndex());
+      return buffer.array();
+    }
+
+    // Otherwise, just read the bytes in a new array
+    byte[] bytes = new byte[buffer.readableBytes()];
+    buffer.readBytes(bytes);
+    return bytes;
+  }
+
+  private static String readString(ByteBuf source, int length) {
+    try {
+      String str = source.toString(source.readerIndex(), length, CharsetUtil.UTF_8);
+      source.readerIndex(source.readerIndex() + length);
+      return str;
+    } catch (IndexOutOfBoundsException e) {
+      throw new IllegalArgumentException(
+          "Not enough bytes to read an UTF-8 serialized string of size " + length, e);
+    }
+  }
+
+  private InetAddress newInetAddress(byte[] bytes) {
+    try {
+      return InetAddress.getByAddress(bytes);
+    } catch (UnknownHostException e) {
+      // Per the Javadoc, the only way this can happen is if the length is illegal
+      throw new IllegalArgumentException(
+          String.format("Invalid address length: %d (%s)", bytes.length, Arrays.toString(bytes)));
     }
   }
 }

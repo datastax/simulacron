@@ -27,11 +27,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 @JsonTypeInfo(
-  use = JsonTypeInfo.Id.NAME,
-  include = JsonTypeInfo.As.PROPERTY,
-  property = "request",
-  defaultImpl = Query.class
-)
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.PROPERTY,
+    property = "request",
+    defaultImpl = Query.class)
 @JsonSubTypes({
   @JsonSubTypes.Type(value = Query.class, name = "query"),
   @JsonSubTypes.Type(value = Options.class, name = "options"),

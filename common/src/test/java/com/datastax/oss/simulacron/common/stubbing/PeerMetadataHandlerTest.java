@@ -462,7 +462,16 @@ public class PeerMetadataHandlerTest {
     params.put("address", ByteBuffer.wrap(addr.getAddress()));
     QueryOptions queryOptions =
         new QueryOptions(
-            0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
+            0,
+            Collections.emptyList(),
+            params,
+            false,
+            0,
+            null,
+            10,
+            Long.MIN_VALUE,
+            null,
+            Integer.MIN_VALUE);
     List<String> queries =
         Arrays.asList(
             "SELECT * FROM system.peers WHERE peer=:address",
@@ -502,7 +511,16 @@ public class PeerMetadataHandlerTest {
     params.put("port", port);
     QueryOptions queryOptions =
         new QueryOptions(
-            0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
+            0,
+            Collections.emptyList(),
+            params,
+            false,
+            0,
+            null,
+            10,
+            Long.MIN_VALUE,
+            null,
+            Integer.MIN_VALUE);
     List<String> queries =
         Arrays.asList(
             "SELECT * FROM system.peers_v2 WHERE peer=:address AND peer_port=:port",
@@ -542,7 +560,16 @@ public class PeerMetadataHandlerTest {
     params.put("port", port);
     QueryOptions queryOptions =
         new QueryOptions(
-            0, Collections.emptyList(), params, false, 0, null, 10, Long.MIN_VALUE, null);
+            0,
+            Collections.emptyList(),
+            params,
+            false,
+            0,
+            null,
+            10,
+            Long.MIN_VALUE,
+            null,
+            Integer.MIN_VALUE);
     List<String> queries =
         Arrays.asList(
             "SELECT * FROM system.peers_v2 WHERE peer=:address AND peer_port=:port",

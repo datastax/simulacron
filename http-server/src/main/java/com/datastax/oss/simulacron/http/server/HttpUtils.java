@@ -137,9 +137,7 @@ class HttpUtils {
         return Optional.empty();
       }
     } catch (NumberFormatException e) {
-      return server
-          .getClusters()
-          .stream()
+      return server.getClusters().stream()
           .filter(c -> c.getName().equals(idOrName))
           .findAny()
           .map(AbstractNodeProperties::getId);
@@ -156,10 +154,7 @@ class HttpUtils {
    */
   static Optional<Long> getDatacenterIdFromIdOrName(
       Server server, Long clusterId, String idOrName) {
-    return server
-        .getCluster(clusterId)
-        .getDataCenters()
-        .stream()
+    return server.getCluster(clusterId).getDataCenters().stream()
         .filter(d -> d.getName().equals(idOrName) || d.getId().toString().equals(idOrName))
         .findAny()
         .map(AbstractNodeProperties::getId);
@@ -177,17 +172,13 @@ class HttpUtils {
   static Optional<Long> getNodeIdFromIdOrName(
       Server server, Long clusterId, Long datacenterId, String idOrName) {
     Optional<BoundDataCenter> dc =
-        server
-            .getCluster(clusterId)
-            .getDataCenters()
-            .stream()
+        server.getCluster(clusterId).getDataCenters().stream()
             .filter(d -> d.getId().equals(datacenterId))
             .findAny();
 
     return dc.flatMap(
         d ->
-            d.getNodes()
-                .stream()
+            d.getNodes().stream()
                 .filter(n -> n.getName().equals(idOrName) || n.getId().toString().equals(idOrName))
                 .findAny()
                 .map(AbstractNodeProperties::getId));

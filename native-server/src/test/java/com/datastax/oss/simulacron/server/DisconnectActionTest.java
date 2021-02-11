@@ -172,14 +172,10 @@ public class DisconnectActionTest {
         assertThat(client.channel.isOpen()).isFalse();
       }
       // All clients should remain open except the ones to the node that received the request.
-      nodeToClients
-          .entrySet()
-          .stream()
+      nodeToClients.entrySet().stream()
           .filter(e -> e.getKey() != boundNode)
           .forEach(e -> assertThat(e.getValue().channel.isOpen()).isTrue());
-      nodeToClients
-          .entrySet()
-          .stream()
+      nodeToClients.entrySet().stream()
           .filter(e -> e.getKey() == boundNode)
           .forEach(e -> assertThat(e.getValue().channel.isOpen()).isFalse());
     }
@@ -226,15 +222,11 @@ public class DisconnectActionTest {
         assertThat(client.channel.isOpen()).isFalse();
       }
       // Clients connecting to a different DC should remain open.
-      nodeToClients
-          .entrySet()
-          .stream()
+      nodeToClients.entrySet().stream()
           .filter(e -> e.getKey().getDataCenter() != boundNode.getDataCenter())
           .forEach(e -> assertThat(e.getValue().channel.isOpen()).isTrue());
       // Clients connecting to same DC should close.
-      nodeToClients
-          .entrySet()
-          .stream()
+      nodeToClients.entrySet().stream()
           .filter(e -> e.getKey().getDataCenter() == boundNode.getDataCenter())
           .forEach(e -> assertThat(e.getValue().channel.isOpen()).isFalse());
     }
