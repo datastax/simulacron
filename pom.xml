@@ -94,7 +94,8 @@
           <configuration>
             <quiet>true</quiet>
             <verbose>false</verbose>
-            <additionalOptions>-Xdoclint:none</additionalOptions>
+            <doclint>none</doclint>
+            <additionalJOption>-Xdoclint:none</additionalJOption>
             <links>
               <link>https://docs.oracle.com/javase/8/docs/api/</link>
               <link>http://netty.io/4.1/api/</link>
