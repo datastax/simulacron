@@ -30,12 +30,12 @@ import java.util.stream.Collectors;
 public interface ClusterStructure<D extends DataCenterStructure<?, N>, N extends NodeStructure>
     extends Identifiable {
 
-  /** @return The {@link DataCenter}s belonging to this cluster. */
+  /** @return The {@link DataCenterStructure}s belonging to this cluster. */
   Collection<D> getDataCenters();
 
   /**
-   * @return All nodes belonging to {@link DataCenter}s in this cluster. Note that this method
-   *     builds a new collection on every invocation, so it is recommended to not call this
+   * @return All nodes belonging to {@link DataCenterStructure}s in this cluster. Note that this
+   *     method builds a new collection on every invocation, so it is recommended to not call this
    *     repeatedly without a good reason.
    */
   @JsonIgnore

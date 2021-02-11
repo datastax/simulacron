@@ -89,8 +89,8 @@ public class CodecUtils {
 
   /**
    * Convenience wrapper for producing a data queue that would be used as input for {@link
-   * com.datastax.oss.protocol.internal.response.result.Rows#Rows(RowsMetadata, Queue)} for a single
-   * row, which is provided as an input of column buffers.
+   * com.datastax.oss.protocol.internal.response.result.DefaultRows#DefaultRows(RowsMetadata,
+   * Queue)} for a single row, which is provided as an input of column buffers.
    *
    * @param columns column value {@link ByteBuffer}s to map to a single Row.
    * @return a {@link Queue} with a single list containing the input columns.
@@ -102,8 +102,8 @@ public class CodecUtils {
 
   /**
    * Convenience wrapper for producing a data queue that would be used as input for {@link
-   * com.datastax.oss.protocol.internal.response.result.Rows#Rows(RowsMetadata, Queue)} for variable
-   * number of list of columns (each representing a row).
+   * com.datastax.oss.protocol.internal.response.result.DefaultRows#DefaultRows(RowsMetadata,
+   * Queue)} for variable number of list of columns (each representing a row).
    *
    * @param rows variable arguments of lists of rows.
    * @return a {@link Queue} with lists each representing a row.

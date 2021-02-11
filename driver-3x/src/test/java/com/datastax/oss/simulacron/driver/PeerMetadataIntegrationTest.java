@@ -19,6 +19,7 @@ import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.default
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.EndPoint;
 import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Token;
@@ -55,7 +56,8 @@ public class PeerMetadataIntegrationTest {
       // Verify hosts connected to are only those in the local DC.
       Collection<SocketAddress> connectedHosts =
           session.getState().getConnectedHosts().stream()
-              .map(Host::getSocketAddress)
+              .map(Host::getEndPoint)
+              .map(EndPoint::resolve)
               .collect(Collectors.toList());
 
       Collection<SocketAddress> dcHosts =

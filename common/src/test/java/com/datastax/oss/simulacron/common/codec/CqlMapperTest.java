@@ -65,7 +65,7 @@ import org.junit.Test;
 
 public class CqlMapperTest {
 
-  private CqlMapper mapper = CqlMapper.forVersion(4);
+  private final CqlMapper mapper = CqlMapper.forVersion(4);
 
   @Test
   public void shouldHandleAscii() {
@@ -275,7 +275,7 @@ public class CqlMapperTest {
   }
 
   @Test
-  public void shouldHandleInt() throws Exception {
+  public void shouldHandleInt() {
     Codec<Integer> intCodec = mapper.codecFor(primitive(INT));
     assertThat(intCodec).isSameAs(mapper.cint);
 
@@ -299,7 +299,7 @@ public class CqlMapperTest {
   }
 
   @Test
-  public void shouldHandleSmallint() throws Exception {
+  public void shouldHandleSmallint() {
     Codec<Short> smallintCodec = mapper.codecFor(primitive(SMALLINT));
     assertThat(smallintCodec).isSameAs(mapper.smallint);
 
@@ -323,7 +323,7 @@ public class CqlMapperTest {
   }
 
   @Test
-  public void shouldHandleTime() throws Exception {
+  public void shouldHandleTime() {
     Codec<Long> timeCodec = mapper.codecFor(primitive(TIME));
     assertThat(timeCodec).isSameAs(mapper.time);
 
@@ -341,7 +341,7 @@ public class CqlMapperTest {
   }
 
   @Test
-  public void shouldHandleTimestamp() throws Exception {
+  public void shouldHandleTimestamp() {
     Codec<Date> timestampCodec = mapper.codecFor(primitive(TIMESTAMP));
     assertThat(timestampCodec).isSameAs(mapper.timestamp);
 
@@ -355,7 +355,7 @@ public class CqlMapperTest {
   }
 
   @Test
-  public void shouldHandleTimeuuid() throws Exception {
+  public void shouldHandleTimeuuid() {
     Codec<UUID> timeuuidCodec = mapper.codecFor(primitive(TIMEUUID));
     assertThat(timeuuidCodec).isSameAs(mapper.timeuuid);
 
@@ -372,7 +372,7 @@ public class CqlMapperTest {
   }
 
   @Test
-  public void shouldHandleTinyint() throws Exception {
+  public void shouldHandleTinyint() {
     Codec<Byte> tinyintCodec = mapper.codecFor(primitive(TINYINT));
     assertThat(tinyintCodec).isSameAs(mapper.tinyint);
 
@@ -396,7 +396,7 @@ public class CqlMapperTest {
   }
 
   @Test
-  public void shouldHandleUuid() throws Exception {
+  public void shouldHandleUuid() {
     Codec<UUID> uuidCodec = mapper.codecFor(primitive(UUID));
     assertThat(uuidCodec).isSameAs(mapper.uuid);
 
@@ -447,6 +447,7 @@ public class CqlMapperTest {
   }
 
   @Test
+  @SuppressWarnings({"unchecked", "rawtypes"})
   public void shouldHandleList() {
     Codec<List<String>> listStringCodec = mapper.codecFor(new RawList(primitive(VARCHAR)));
     Codec<List<String>> listStringCodec2 = mapper.codecFor(new RawList(primitive(VARCHAR)));
@@ -515,6 +516,7 @@ public class CqlMapperTest {
   }
 
   @Test
+  @SuppressWarnings({"unchecked", "rawtypes"})
   public void shouldHandleSet() {
     Codec<Set<Integer>> setIntCodec = mapper.codecFor(new RawSet(primitive(INT)));
     Codec<Set<Integer>> setIntCodec2 = mapper.codecFor(new RawSet(primitive(INT)));
@@ -575,7 +577,7 @@ public class CqlMapperTest {
   }
 
   @Test
-  @SuppressWarnings("Unchecked")
+  @SuppressWarnings({"unchecked", "rawtypes"})
   public void shouldHandleMap() {
     Codec<Map<String, Integer>> mapCodec =
         mapper.codecFor(new RawType.RawMap(primitive(ASCII), primitive(INT)));

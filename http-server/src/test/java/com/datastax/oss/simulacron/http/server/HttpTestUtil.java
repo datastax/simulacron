@@ -19,6 +19,7 @@ import static com.datastax.oss.simulacron.driver.SimulacronDriverSupport.default
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.BoundStatement;
+import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SimpleStatement;
@@ -35,9 +36,7 @@ import com.datastax.oss.simulacron.common.result.SuccessResult;
 import com.datastax.oss.simulacron.common.result.WriteTimeoutResult;
 import com.datastax.oss.simulacron.server.BoundCluster;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,9 +61,9 @@ public class HttpTestUtil {
     com.datastax.driver.core.Cluster cluster =
         defaultBuilder().addContactPoint(contactPoint).build();
     Session session = cluster.connect();
-    com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+    PreparedStatement prepared = session.prepare(query);
     BoundStatement bound = prepared.bind();
-    values.forEach((k, v) -> bound.setLong(k, v));
+    values.forEach(bound::setLong);
     return executeQueryWithFreshSession(bound, contactPoint, session, cluster);
   }
 
@@ -73,7 +72,7 @@ public class HttpTestUtil {
     com.datastax.driver.core.Cluster cluster =
         defaultBuilder().addContactPoint(contactPoint).build();
     Session session = cluster.connect();
-    com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+    session.prepare(query);
     BoundStatement bound = getBoundStatementNamed(query, contactPoint, values);
     return executeQueryWithFreshSession(bound, contactPoint, session, cluster);
   }
@@ -89,7 +88,7 @@ public class HttpTestUtil {
     com.datastax.driver.core.Cluster cluster =
         defaultBuilder().addContactPoint(contactPoint).build();
     Session session = cluster.connect();
-    com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+    session.prepare(query);
     BoundStatement bound = getBoundStatement(query, contactPoint, param);
     return executeQueryWithFreshSession(bound, contactPoint, session, cluster);
   }
@@ -102,13 +101,13 @@ public class HttpTestUtil {
 
       if (errorOnPrepare) {
         try {
-          com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+          session.prepare(query);
           throw new Exception("Prepared statement should have thrown exception");
         } catch (QueryExecutionException e) {
           // An exception should be throw for the prepared statement
         }
       } else {
-        com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+        session.prepare(query);
         BoundStatement bound = getBoundStatement(query, contactPoint, param);
         try {
           executeQueryWithFreshSession(bound, contactPoint, session, cluster);
@@ -124,9 +123,8 @@ public class HttpTestUtil {
     try (com.datastax.driver.core.Cluster cluster =
         defaultBuilder().addContactPoint(contactPoint).build()) {
       Session session = cluster.connect();
-      com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
-      BoundStatement bound = prepared.bind(param);
-      return bound;
+      PreparedStatement prepared = session.prepare(query);
+      return prepared.bind(param);
     }
   }
 
@@ -135,20 +133,21 @@ public class HttpTestUtil {
     try (com.datastax.driver.core.Cluster cluster =
         defaultBuilder().addContactPoint(contactPoint).build()) {
       Session session = cluster.connect();
-      com.datastax.driver.core.PreparedStatement prepared = session.prepare(query);
+      PreparedStatement prepared = session.prepare(query);
       BoundStatement bound = prepared.bind();
-      values.forEach((k, v) -> bound.setString(k, v));
+      values.forEach(bound::setString);
       return bound;
     }
   }
 
-  public static BatchStatement makeNativeBatchStatement(List<String> queries, List<List> values) {
+  public static BatchStatement makeNativeBatchStatement(
+      List<String> queries, List<List<?>> values) {
 
     BatchStatement statement = new BatchStatement();
-    Iterator<List> valuesIterator = values.iterator();
+    Iterator<List<?>> valuesIterator = values.iterator();
     for (String query : queries) {
-      List value = valuesIterator.next();
-      statement.add(new SimpleStatement(query, value.toArray(new Object[value.size()])));
+      List<?> value = valuesIterator.next();
+      statement.add(new SimpleStatement(query, value.toArray(new Object[0])));
     }
     return statement;
   }
@@ -171,8 +170,7 @@ public class HttpTestUtil {
     column_types.put("column1", "ascii");
     column_types.put("column2", "bigint");
     Result then = new SuccessResult(rows, column_types);
-    RequestPrime requestPrime = new RequestPrime(when, then);
-    return requestPrime;
+    return new RequestPrime(when, then);
   }
 
   public static RequestPrime createPrimedErrorOnQuery(
@@ -181,18 +179,9 @@ public class HttpTestUtil {
       LinkedHashMap<String, String> paramTypes,
       boolean ignoreOnPrepare) {
     Query when = new Query(query, Collections.emptyList(), params, paramTypes);
-    List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
-    LinkedHashMap<String, Object> row1 = new LinkedHashMap<>();
-    row1.put("column1", "column1");
-    row1.put("column2", "2");
-    rows.add(row1);
-    Map<String, String> column_types = new HashMap<String, String>();
-    column_types.put("column1", "ascii");
-    column_types.put("column2", "bigint");
     Result then =
         new WriteTimeoutResult(ConsistencyLevel.ALL, 2, 1, WriteType.SIMPLE, 0, ignoreOnPrepare);
-    RequestPrime requestPrime = new RequestPrime(when, then);
-    return requestPrime;
+    return new RequestPrime(when, then);
   }
 
   public static RequestPrime createParameterizedBatch(
@@ -213,7 +202,7 @@ public class HttpTestUtil {
 
     Batch when = new Batch(statements, Collections.emptyList());
 
-    List<LinkedHashMap<String, Object>> rows = new ArrayList<LinkedHashMap<String, Object>>();
+    List<LinkedHashMap<String, Object>> rows = new ArrayList<>();
     LinkedHashMap<String, Object> row1 = new LinkedHashMap<>();
     row1.put("applied", "true");
     rows.add(row1);
@@ -227,7 +216,9 @@ public class HttpTestUtil {
   public static RequestPrime createSimpleParameterizedBatch(
       String query, Map<String, String> paramTypes, Map<String, Object> params) {
     return createParameterizedBatch(
-        Arrays.asList(query), Arrays.asList(paramTypes), Arrays.asList(params));
+        Collections.singletonList(query),
+        Collections.singletonList(paramTypes),
+        Collections.singletonList(params));
   }
 
   public static String getContactPointStringByNodeID(NodeSpec node) {
@@ -259,7 +250,6 @@ public class HttpTestUtil {
     }
     ResultSet rs = session.execute(statement);
     cluster.close();
-    ;
     return rs;
   }
 }

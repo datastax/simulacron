@@ -22,7 +22,7 @@ import com.datastax.oss.protocol.internal.response.Error;
 import com.datastax.oss.protocol.internal.response.result.Rows;
 import org.assertj.core.api.AbstractAssert;
 
-public class MessageAssert<S extends AbstractAssert<S, A>, A extends Message>
+public class MessageAssert<S extends MessageAssert<S, A>, A extends Message>
     extends AbstractAssert<S, A> {
 
   MessageAssert(A actual) {
@@ -38,7 +38,7 @@ public class MessageAssert<S extends AbstractAssert<S, A>, A extends Message>
     return new RowsAssert((Rows) actual);
   }
 
-  public MessageAssert isError(int errorCode) {
+  public MessageAssert<S, A> isError(int errorCode) {
     assertThat(actual).isInstanceOf(Error.class);
     Error e = (Error) actual;
     assertThat(e.code).isEqualTo(errorCode);

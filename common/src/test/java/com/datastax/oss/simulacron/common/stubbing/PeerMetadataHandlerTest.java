@@ -42,16 +42,16 @@ import org.junit.Test;
 public class PeerMetadataHandlerTest {
 
   // A 200 node cluster with 2 dcs with 100 nodes in each.
-  private static ClusterSpec cluster;
+  private static final ClusterSpec cluster;
   private static NodeSpec node0;
   private static NodeSpec node1;
 
   // A 3 node cluster mimicking DSE 5.1.
-  private static ClusterSpec dseCluster;
-  private static NodeSpec dseNode0;
+  private static final ClusterSpec dseCluster;
+  private static final NodeSpec dseNode0;
 
-  private PeerMetadataHandler handler = new PeerMetadataHandler();
-  private PeerMetadataHandler handlerV2 = new PeerMetadataHandler(true);
+  private final PeerMetadataHandler handler = new PeerMetadataHandler();
+  private final PeerMetadataHandler handlerV2 = new PeerMetadataHandler(true);
 
   static {
     cluster = ClusterSpec.builder().withName("cluster0").build();

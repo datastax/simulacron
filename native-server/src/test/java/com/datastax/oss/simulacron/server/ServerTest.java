@@ -117,7 +117,7 @@ public class ServerTest {
   }
 
   @Test
-  public void testRegisterNodeBelongingToACluster() throws Exception {
+  public void testRegisterNodeBelongingToACluster() {
     // attempting to register a node on its own that belongs to a cluster should fail.
     ClusterSpec cluster = ClusterSpec.builder().build();
     DataCenterSpec dc = cluster.addDataCenter().build();
@@ -165,7 +165,7 @@ public class ServerTest {
   }
 
   @Test
-  public void testRegisterClusterFailsWhenNodeAlreadyBound() throws Exception {
+  public void testRegisterClusterFailsWhenNodeAlreadyBound() {
     ClusterSpec cluster = ClusterSpec.builder().build();
     DataCenterSpec dc = cluster.addDataCenter().build();
     SocketAddress address = localAddressResolver.get();
@@ -225,7 +225,7 @@ public class ServerTest {
   }
 
   @Test
-  public void testRegisterClusterFailsWhenBindTimesOut() throws Exception {
+  public void testRegisterClusterFailsWhenBindTimesOut() {
     // Designated address to be slow to bind.
     SocketAddress slowAddr = localAddressResolver.get();
 
@@ -934,7 +934,7 @@ public class ServerTest {
   }
 
   @Test
-  public void testTryWithResourcesShouldCloseAllResources() throws Exception {
+  public void testTryWithResourcesShouldCloseAllResources() {
     EventLoopGroup eventLoop;
     Timer timer;
 
@@ -1041,7 +1041,7 @@ public class ServerTest {
   }
 
   @Test
-  public void testTryWithResourcesShouldCloseAllClustersButNotTimerIfProvided() throws Exception {
+  public void testTryWithResourcesShouldCloseAllClustersButNotTimerIfProvided() {
     EventLoopGroup eventLoop;
     Timer timer = new HashedWheelTimer();
 
@@ -1064,7 +1064,7 @@ public class ServerTest {
   }
 
   @Test
-  public void testShouldThrowIllegalStateExceptionWhenUsingClosedServer() throws Exception {
+  public void testShouldThrowIllegalStateExceptionWhenUsingClosedServer() {
     Server server =
         Server.builder()
             .withAddressResolver(localAddressResolver)
@@ -1116,7 +1116,7 @@ public class ServerTest {
   }
 
   @Test
-  public void testRegisterClusterWithSplitTokenAssigner() throws Exception {
+  public void testRegisterClusterWithSplitTokenAssigner() {
     ClusterSpec cluster = ClusterSpec.builder().withNodes(2).build();
     try (BoundCluster boundCluster = localServer.register(cluster)) {
       // Cluster should be registered.
@@ -1138,7 +1138,7 @@ public class ServerTest {
   }
 
   @Test
-  public void testRegisterClusterWithRandomTokenGenerator() throws Exception {
+  public void testRegisterClusterWithRandomTokenGenerator() {
     ClusterSpec cluster = ClusterSpec.builder().withNodes(2).withNumberOfTokens(3).build();
     try (BoundCluster boundCluster = localServer.register(cluster)) {
       // Cluster should be registered.

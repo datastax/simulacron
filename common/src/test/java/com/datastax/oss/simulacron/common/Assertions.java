@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 
 public class Assertions extends org.assertj.core.api.Assertions {
 
+  @SuppressWarnings({"unchecked", "rawtypes"})
   public static MessageAssert assertThat(Message message) {
     return new MessageAssert(message);
   }

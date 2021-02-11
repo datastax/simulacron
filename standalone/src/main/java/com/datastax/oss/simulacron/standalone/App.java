@@ -38,14 +38,15 @@ public class App {
 
   private static final Logger logger = (Logger) LoggerFactory.getLogger(App.class);
 
-  public static synchronized void main(String args[]) {
+  public static synchronized void main(String[] args) {
     // Disable the vertx dns resolver.  Since we only running against a local
-    // endpoint, we don't need the benefit of vertx's async dns resolver which
+    // endpoint, we don't need the benefit of Vertx's async dns resolver which
     // doesn't load with newer netty versions anyways.
     System.setProperty("vertx.disableDnsResolver", "true");
     logger.info("Starting Simulacron.");
     CommandLineArguments cli = new CommandLineArguments();
-    JCommander commander = new JCommander(cli, args);
+    JCommander commander = new JCommander(cli);
+    commander.parse(args);
     if (cli.help) {
       commander.usage();
       System.exit(-2);
@@ -114,9 +115,7 @@ public class App {
         .getRouter()
         .route("/")
         .handler(
-            context -> {
-              context.response().putHeader("location", "/doc").setStatusCode(302).end();
-            });
+            context -> context.response().putHeader("location", "/doc").setStatusCode(302).end());
 
     try {
       httpServer.start().get(10, TimeUnit.SECONDS);
