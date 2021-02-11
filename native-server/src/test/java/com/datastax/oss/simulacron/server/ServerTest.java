@@ -671,6 +671,8 @@ public class ServerTest {
                 0,
                 false,
                 null,
+                -1,
+                -1,
                 FrameUtils.emptyCustomPayload,
                 Collections.emptyList(),
                 new Startup()));
@@ -735,6 +737,8 @@ public class ServerTest {
                 0,
                 false,
                 null,
+                -1,
+                -1,
                 FrameUtils.emptyCustomPayload,
                 Collections.emptyList(),
                 new Startup()));
@@ -757,6 +761,8 @@ public class ServerTest {
                 0,
                 false,
                 null,
+                -1,
+                -1,
                 FrameUtils.emptyCustomPayload,
                 Collections.emptyList(),
                 new Startup()));
