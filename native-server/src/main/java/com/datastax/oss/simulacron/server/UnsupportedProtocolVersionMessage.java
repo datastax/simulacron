@@ -52,6 +52,8 @@ public class UnsupportedProtocolVersionMessage {
         streamId,
         false,
         null,
+        -1,
+        -1,
         FrameUtils.emptyCustomPayload,
         Collections.singletonList(
             "This message contains a non-supported protocol version by this node.  STARTUP is inferred, but may not reflect the actual message sent."),

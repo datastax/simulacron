@@ -65,6 +65,8 @@ public class FrameSerializerTest {
             10,
             true,
             uuid,
+            -1,
+            -1,
             customPayload,
             Lists.newArrayList("Something went wrong", "Fix me!"),
             com.datastax.oss.protocol.internal.request.Options.INSTANCE);
@@ -112,6 +114,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Startup("LZ4"));
@@ -163,6 +167,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Authenticate("AllowAllAuthenticator"));
@@ -211,6 +217,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Supported(options));
@@ -265,6 +273,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Query(
@@ -342,6 +352,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Query(
@@ -426,6 +438,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Prepare("select * from base where belong=?", "your"));
@@ -477,6 +491,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Execute(
@@ -558,6 +574,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Register(Lists.newArrayList("SCHEMA_CHANGE", "TOPOLOGY_CHANGE", "STATUS_CHANGE")));
@@ -613,6 +631,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new Batch((byte) 1, queriesOrIds, values, 2, 10, time, "myks"));
@@ -670,6 +690,8 @@ public class FrameSerializerTest {
             10,
             false,
             null,
+            -1,
+            -1,
             Collections.unmodifiableMap(new HashMap<>()),
             Collections.emptyList(),
             new AuthResponse(ByteBuffer.wrap(new byte[] {0x00})));

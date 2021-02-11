@@ -108,6 +108,8 @@ public class FrameDecoder extends LengthFieldBasedFrameDecoder {
               streamId,
               false,
               null,
+              -1,
+              -1,
               FrameUtils.emptyCustomPayload,
               Collections.emptyList(),
               message);

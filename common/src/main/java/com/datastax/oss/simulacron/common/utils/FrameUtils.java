@@ -34,6 +34,8 @@ public class FrameUtils {
         requestFrame.streamId,
         false,
         null,
+        -1,
+        -1,
         emptyCustomPayload,
         Collections.emptyList(),
         response);
@@ -41,7 +43,7 @@ public class FrameUtils {
 
   public static Frame wrapRequest(Message message) {
     return new Frame(
-        4, false, 0, false, null, Collections.emptyMap(), Collections.emptyList(), message);
+        4, false, 0, false, null, -1, -1, Collections.emptyMap(), Collections.emptyList(), message);
   }
 
   public static Frame convertResponseMessage(Frame responseFrame, Message newMessage) {

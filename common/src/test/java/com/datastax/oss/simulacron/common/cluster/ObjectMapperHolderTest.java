@@ -183,6 +183,8 @@ public class ObjectMapperHolderTest {
             0,
             false,
             null,
+            -1,
+            -1,
             FrameUtils.emptyCustomPayload,
             Collections.emptyList(),
             com.datastax.oss.protocol.internal.request.Options.INSTANCE);
