@@ -136,7 +136,7 @@ public class HttpPrimeBatchIntegrationTest {
     String contactPoint = HttpTestUtil.getContactPointString(server.getCluster(), 0);
     BoundStatement bt =
         HttpTestUtil.getBoundStatementNamed(
-            query, contactPoint, ImmutableMap.<String, String>of("c1", "c1", "c2", "c2"));
+            query, contactPoint, ImmutableMap.<String, String>of("c2", "c2", "c1", "c1"));
 
     Map<String, String> simple_param_types = new HashMap<String, String>();
     simple_param_types.put("column1", "ascii");
@@ -148,9 +148,11 @@ public class HttpPrimeBatchIntegrationTest {
 
     Map<String, String> param_types = new HashMap<String, String>();
     param_types.put("c1", "ascii");
+    param_types.put("c2", "ascii");
 
     Map<String, Object> params_batch = new HashMap<String, Object>();
     params_batch.put("c1", "c1");
+    params_batch.put("c2", "c2");
 
     RequestPrime primeBatch =
         HttpTestUtil.createParameterizedBatch(
