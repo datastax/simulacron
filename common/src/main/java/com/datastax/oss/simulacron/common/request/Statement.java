@@ -43,49 +43,35 @@ public class Statement {
   public boolean checkStatementMatch(
       int protocolVersion, Object queryOrId, List<ByteBuffer> positionalValues) {
     if (queryOrId instanceof String) {
-      if (params == null || params.size() == 0) {
-        return true;
-      }
-
-      if (!query.equals(queryOrId)) {
-        return false;
-      }
-
-      if (positionalValues.size() != params.size()) {
-        return false;
-      }
-      Iterator<Object> primedPositionValues = params.values().iterator();
-      Iterator<String> primedPositionTypes = paramTypes.values().iterator();
-      // iterate over the parameters and make sure they all match
-
-      CqlMapper mapper = CqlMapper.forVersion(protocolVersion);
-      for (ByteBuffer buffer : positionalValues) {
-        if (!Request.checkParamsEqual(
-            buffer, primedPositionValues.next(), primedPositionTypes.next(), mapper)) {
-          return false;
-        }
-      }
-      return true;
+      return query.equals(queryOrId) && checkStatementMatch(protocolVersion, positionalValues);
     } else {
       Integer queryIdInt = new BigInteger((byte[]) queryOrId).intValue();
-      if (queryIdInt.equals(getQueryId())) {
-        CqlMapper mapper = CqlMapper.forVersion(protocolVersion);
+      return queryIdInt.equals(getQueryId())
+          && checkStatementMatch(protocolVersion, positionalValues);
+    }
+  }
 
-        Iterator<Object> primedPositionValues = params.values().iterator();
-        Iterator<String> primedPositionTypes = paramTypes.values().iterator();
+  private boolean checkStatementMatch(int protocolVersion, List<ByteBuffer> positionalValues) {
+    if (params == null || params.size() == 0) {
+      return true;
+    }
 
-        for (ByteBuffer buffer : positionalValues) {
-          if (!Request.checkParamsEqual(
-              buffer, primedPositionValues.next(), primedPositionTypes.next(), mapper)) {
-            return false;
-          }
-          return true;
-        }
-        return true;
-      } else {
+    if (positionalValues.size() != params.size()) {
+      return false;
+    }
+
+    Iterator<Object> primedPositionValues = params.values().iterator();
+    Iterator<String> primedPositionTypes = paramTypes.values().iterator();
+    // iterate over the parameters and make sure they all match
+
+    CqlMapper mapper = CqlMapper.forVersion(protocolVersion);
+    for (ByteBuffer buffer : positionalValues) {
+      if (!Request.checkParamsEqual(
+          buffer, primedPositionValues.next(), primedPositionTypes.next(), mapper)) {
         return false;
       }
     }
+    return true;
   }
 
   @JsonIgnore
