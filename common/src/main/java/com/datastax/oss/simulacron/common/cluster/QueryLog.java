@@ -26,7 +26,10 @@ import com.datastax.oss.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.SocketAddress;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Optional;
 
 public class QueryLog {
 
@@ -57,7 +60,7 @@ public class QueryLog {
   @JsonProperty(value = "frame", access = JsonProperty.Access.READ_ONLY)
   private Frame frame;
 
-  @JsonProperty(value = "decodedValues", access = JsonProperty.Access.READ_ONLY)
+  @JsonProperty(value = "decodedValues")
   private List<LinkedHashMap<String, Object>> decodedValues = Collections.emptyList();
 
   @JsonCreator
@@ -168,16 +171,19 @@ public class QueryLog {
     return this.frame;
   }
 
-  public Object getNamedDecodedValues(String name) {
-    return this.decodedValues.stream().findFirst().orElse(new LinkedHashMap<>()).get(name);
+  /** @return List of decoded values from batch message if present and primed */
+  public List<LinkedHashMap<String, Object>> getDecodedValues() {
+    return this.decodedValues;
   }
 
-  public LinkedHashMap<String, Object> queryDecodedValues() {
+  /** @return Decoded values from query/execute message if present and primed */
+  public LinkedHashMap<String, Object> getFirstDecodedValues() {
     return this.decodedValues.stream().findFirst().orElse(new LinkedHashMap<>());
   }
 
-  public List<LinkedHashMap<String, Object>> batchDecodedValues() {
-    return this.decodedValues;
+  /** @return Decoded value from query/execute message if present and primed */
+  public Object getDecodedValue(String name) {
+    return this.decodedValues.stream().findFirst().orElse(new LinkedHashMap<>()).get(name);
   }
 
   @Override

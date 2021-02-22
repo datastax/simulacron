@@ -28,7 +28,12 @@ import com.datastax.oss.simulacron.common.utils.FrameUtils;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 
 public class MessageValuesDecoderTest {

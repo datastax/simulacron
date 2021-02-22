@@ -31,8 +31,13 @@ import com.datastax.oss.simulacron.common.cluster.DataCenterQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.NodeQueryLogReport;
 import com.datastax.oss.simulacron.common.cluster.QueryLog;
 import com.datastax.oss.simulacron.common.result.SuccessResult;
+import com.datastax.oss.simulacron.common.stubbing.PrimeDsl;
 import com.datastax.oss.simulacron.driver.SimulacronDriverSupport;
 import com.datastax.oss.simulacron.server.Server;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +53,31 @@ public class ActivityLogIntegrationTest {
       new AdminServer(null, Server.builder().withActivityLoggingEnabled(false));
 
   @Test
+  public void testVerifyQueriesWithValuesFromCluster() throws Exception {
+    String[] queries =
+        new String[] {"select * from table1 where a = ?", "select * from table2 where b = ?"};
+    LinkedHashMap<String, String> paramTypes1 = new LinkedHashMap<>();
+    paramTypes1.put("a", "varchar");
+    LinkedHashMap<String, String> paramTypes2 = new LinkedHashMap<>();
+    paramTypes2.put("b", "int");
+    ArrayList<LinkedHashMap<String, String>> paramTypesList = new ArrayList<>(2);
+    paramTypesList.add(paramTypes1);
+    paramTypesList.add(paramTypes2);
+
+    ArrayList<List<Object>> valuesList = new ArrayList<>(2);
+    valuesList.add(Collections.singletonList("any"));
+    valuesList.add(Collections.singletonList(1));
+
+    primeAndExecuteQueries(queries, queries, paramTypesList, valuesList);
+
+    List<QueryLog> queryLogs = getAllQueryLogs(server.getLogs(server.getCluster()));
+
+    assertThat(queryLogs).hasSize(2);
+    assertThat(queryLogs.get(0).getDecodedValue("a")).isEqualTo("any");
+    assertThat(queryLogs.get(1).getDecodedValue("b")).isEqualTo(1);
+  }
+
+  @Test
   public void testVerifyQueriesFromCluster() throws Exception {
     String[] queries = new String[] {"select * from table1", "select * from table2"};
     primeAndExecuteQueries(queries, queries);
@@ -55,26 +85,6 @@ public class ActivityLogIntegrationTest {
     List<QueryLog> queryLogs = getAllQueryLogs(server.getLogs(server.getCluster()));
 
     assertThat(queryLogs).hasSize(2);
-  }
-
-  private void primeAndExecuteQueries(String[] primed, String[] queries) throws Exception {
-    SuccessResult result = getSampleSuccessResult();
-    for (String primeQuery : primed) {
-      server.prime(when(primeQuery).then(result));
-    }
-
-    try (com.datastax.driver.core.Cluster driverCluster =
-        defaultBuilder(server.getCluster())
-            .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
-            .build()) {
-      Session session = driverCluster.connect();
-      server.getCluster().clearLogs();
-      for (String executeQuery : queries) {
-        SimpleStatement stmt = new SimpleStatement(executeQuery);
-        stmt.setDefaultTimestamp(100);
-        session.execute(stmt);
-      }
-    }
   }
 
   @Test
@@ -201,6 +211,55 @@ public class ActivityLogIntegrationTest {
     assertThat(log.getReceivedTimestamp()).isGreaterThan(currentTimestamp);
     assertThat(log.getClientTimestamp()).isEqualTo(100);
     assertThat(log.isPrimed()).isTrue();
+  }
+
+  private void primeAndExecuteQueries(String[] primed, String[] queries) throws Exception {
+    SuccessResult result = getSampleSuccessResult();
+    for (String primeQuery : primed) {
+      server.prime(when(primeQuery).then(result));
+    }
+
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder(server.getCluster())
+            .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
+            .build()) {
+      Session session = driverCluster.connect();
+      server.getCluster().clearLogs();
+      for (String executeQuery : queries) {
+        SimpleStatement stmt = new SimpleStatement(executeQuery);
+        stmt.setDefaultTimestamp(100);
+        session.execute(stmt);
+      }
+    }
+  }
+
+  private void primeAndExecuteQueries(
+      String[] primed,
+      String[] queries,
+      List<LinkedHashMap<String, String>> paramTypesList,
+      List<List<Object>> valuesList)
+      throws Exception {
+    SuccessResult result = getSampleSuccessResult();
+    Iterator<LinkedHashMap<String, String>> paramTypesIterator = paramTypesList.iterator();
+    for (String primeQuery : primed) {
+      server.prime(
+          when(PrimeDsl.query(primeQuery, Collections.emptyList(), null, paramTypesIterator.next()))
+              .then(result));
+    }
+
+    Iterator<List<Object>> valuesIterator = valuesList.iterator();
+    try (com.datastax.driver.core.Cluster driverCluster =
+        defaultBuilder(server.getCluster())
+            .withRetryPolicy(FallthroughRetryPolicy.INSTANCE)
+            .build()) {
+      Session session = driverCluster.connect();
+      server.getCluster().clearLogs();
+      for (String executeQuery : queries) {
+        SimpleStatement stmt = new SimpleStatement(executeQuery, valuesIterator.next().toArray());
+        stmt.setDefaultTimestamp(100);
+        session.execute(stmt);
+      }
+    }
   }
 
   private void shouldLogQuery(AdminServer server, String uri, String queryStr, boolean present)
