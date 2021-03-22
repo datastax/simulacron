@@ -92,7 +92,11 @@ public final class Query extends Request {
       Execute execute = (Execute) frame.message;
       Integer queryIdInt = new BigInteger(execute.queryId).intValue();
       if (getQueryId() == queryIdInt) {
-        return checkParamsMatch(execute.options, frame);
+        ConsistencyLevel level = ConsistencyLevel.fromCode(execute.options.consistency);
+        // NOTE: Absent CL level means it will match all CL levels
+        if (this.consistencyEnum.contains(level) || this.consistencyEnum.size() == 0) {
+          return checkParamsMatch(execute.options, frame);
+        }
       }
     }
     if (frame.message instanceof com.datastax.oss.protocol.internal.request.Query) {

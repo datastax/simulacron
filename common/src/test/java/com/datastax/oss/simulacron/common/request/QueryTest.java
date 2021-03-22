@@ -17,6 +17,7 @@ package com.datastax.oss.simulacron.common.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datastax.oss.protocol.internal.Frame;
 import com.datastax.oss.protocol.internal.request.Execute;
 import com.datastax.oss.protocol.internal.request.query.QueryOptions;
 import com.datastax.oss.simulacron.common.utils.FrameUtils;
@@ -33,6 +34,11 @@ import java.util.Map;
 import org.junit.Test;
 
 public class QueryTest {
+
+  private static final String SIMPLE_SELECT_QUERY =
+      "select foo, bar from test_ks.test_tab where foo = ? and bar = ?";
+  private static final String SIMPLE_SELECT_QUERY_NAMED_PARAMS =
+      "select foo, bar from test_ks.test_tab where foo = :foo and bar = :bar";
 
   @Test
   public void shouldAlwaysMatchWhenParamValuesAreNotSet() {
@@ -53,9 +59,7 @@ public class QueryTest {
 
     List<ByteBuffer> posValues = new ArrayList<>();
     posValues.add(ByteBuffer.wrap(new byte[] {1, 2, 3, 4}));
-    QueryOptions queryOptions =
-        new QueryOptions(
-            0, posValues, Collections.emptyMap(), true, 0, null, 10, -1, null, Integer.MIN_VALUE);
+    QueryOptions queryOptions = getQueryOptions(posValues, Collections.emptyMap());
     com.datastax.oss.protocol.internal.request.Query simpleQueryWithArgs =
         new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
 
@@ -64,18 +68,7 @@ public class QueryTest {
     Map<String, ByteBuffer> namedValues = new HashMap<>();
     namedValues.put("z", ByteBuffer.wrap(new byte[] {0, 0, 0, 5}));
 
-    queryOptions =
-        new QueryOptions(
-            0,
-            Collections.emptyList(),
-            namedValues,
-            true,
-            0,
-            null,
-            10,
-            -1,
-            null,
-            Integer.MIN_VALUE);
+    queryOptions = getQueryOptions(Collections.emptyList(), namedValues);
     com.datastax.oss.protocol.internal.request.Query simpleQueryWithNamedArgs =
         new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
 
@@ -91,39 +84,18 @@ public class QueryTest {
   }
 
   @Test
-  public void testPositionalParams() {
-    String queryStr = "select foo, bar from test_ks.test_tab where foo = ? and bar = ?";
-    LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
-    paramTypes.put("foo", "varchar");
-    paramTypes.put("bar", "int");
-    LinkedHashMap<String, Object> params = new LinkedHashMap<>();
-    params.put("foo", "any");
-    params.put("bar", 100);
+  public void shouldPassForQueryMessageWithPositionalParams() {
+    Query selectQuery = createQueryUnderTest(SIMPLE_SELECT_QUERY);
+    Frame frame = FrameUtils.wrapRequest(createQueryMessageWithPositionalValues());
 
-    Query selectQuery = new Query(queryStr, new String[] {}, params, paramTypes);
+    boolean result = selectQuery.matches(frame);
 
-    List<ByteBuffer> positionalParamValues =
-        Arrays.asList(
-            ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)),
-            ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
+    assertThat(result).isTrue();
+  }
 
-    QueryOptions queryOptions =
-        new QueryOptions(
-            0,
-            positionalParamValues,
-            Collections.emptyMap(),
-            true,
-            0,
-            null,
-            10,
-            -1,
-            null,
-            Integer.MIN_VALUE);
-    com.datastax.oss.protocol.internal.request.Query simpleQueryWithValidPositionalParams =
-        new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
-
-    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithValidPositionalParams)))
-        .isTrue();
+  @Test
+  public void shouldFailForQueryMessageWithPositionalParamsWhenParamsNotMatch() {
+    Query selectQuery = createQueryUnderTest(SIMPLE_SELECT_QUERY);
 
     List<ByteBuffer> reverseOrderedPositionalParamValues =
         Arrays.asList(
@@ -131,27 +103,79 @@ public class QueryTest {
             ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)));
 
     QueryOptions invalidQueryOptions =
-        new QueryOptions(
-            0,
-            reverseOrderedPositionalParamValues,
-            Collections.emptyMap(),
-            true,
-            0,
-            null,
-            10,
-            -1,
-            null,
-            Integer.MIN_VALUE);
-    com.datastax.oss.protocol.internal.request.Query simpleQueryWithInvalidPositionalParams =
-        new com.datastax.oss.protocol.internal.request.Query(queryStr, invalidQueryOptions);
+        getQueryOptions(reverseOrderedPositionalParamValues, Collections.emptyMap());
 
-    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithInvalidPositionalParams)))
-        .isFalse();
+    Frame frame =
+        FrameUtils.wrapRequest(
+            new com.datastax.oss.protocol.internal.request.Query(
+                SIMPLE_SELECT_QUERY, invalidQueryOptions));
+
+    boolean result = selectQuery.matches(frame);
+
+    assertThat(result).isFalse();
   }
 
   @Test
   public void testNamedParams() {
-    String queryStr = "select foo, bar from test_ks.test_tab where foo = :foo and bar = :bar";
+    Query selectQuery = createQueryUnderTest(SIMPLE_SELECT_QUERY_NAMED_PARAMS);
+
+    Map<String, ByteBuffer> namedParamValues = new HashMap<>();
+    namedParamValues.put("foo", ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)));
+    namedParamValues.put("bar", ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
+
+    QueryOptions queryOptions = getQueryOptions(Collections.emptyList(), namedParamValues);
+
+    Frame frame =
+        FrameUtils.wrapRequest(
+            new com.datastax.oss.protocol.internal.request.Query(
+                SIMPLE_SELECT_QUERY_NAMED_PARAMS, queryOptions));
+
+    boolean result = selectQuery.matches(frame);
+
+    assertThat(result).isTrue();
+  }
+
+  @Test
+  public void shouldPassWhenQueryConsistencyMatchExecuteMessage() {
+    Query selectQuery = createQueryUnderTest(SIMPLE_SELECT_QUERY, "ANY");
+    Frame frame = FrameUtils.wrapRequest(createExecuteMessageWithPositionalValues());
+
+    boolean result = selectQuery.matches(frame);
+
+    assertThat(result).isTrue();
+  }
+
+  @Test
+  public void shouldFailWhenQueryConsistencyNotMatchExecuteMessage() {
+    Query selectQuery = createQueryUnderTest(SIMPLE_SELECT_QUERY, "ONE");
+    Frame frame = FrameUtils.wrapRequest(createExecuteMessageWithPositionalValues());
+
+    boolean result = selectQuery.matches(frame);
+
+    assertThat(result).isFalse();
+  }
+
+  @Test
+  public void shouldPassWhenQueryConsistencyMatchQueryMessage() {
+    Query selectQuery = createQueryUnderTest(SIMPLE_SELECT_QUERY, "ANY");
+    Frame frame = FrameUtils.wrapRequest(createQueryMessageWithPositionalValues());
+
+    boolean result = selectQuery.matches(frame);
+
+    assertThat(result).isTrue();
+  }
+
+  @Test
+  public void shouldFailWhenQueryConsistencyNotMatchQueryMessage() {
+    Query selectQuery = createQueryUnderTest(SIMPLE_SELECT_QUERY, "ONE");
+    Frame frame = FrameUtils.wrapRequest(createQueryMessageWithPositionalValues());
+
+    boolean result = selectQuery.matches(frame);
+
+    assertThat(result).isFalse();
+  }
+
+  private Query createQueryUnderTest(String queryStr, String... consistencyLevels) {
     LinkedHashMap<String, String> paramTypes = new LinkedHashMap<>();
     paramTypes.put("foo", "varchar");
     paramTypes.put("bar", "int");
@@ -159,27 +183,37 @@ public class QueryTest {
     params.put("foo", "any");
     params.put("bar", 100);
 
-    Query selectQuery = new Query(queryStr, new String[] {}, params, paramTypes);
+    return new Query(queryStr, consistencyLevels, params, paramTypes);
+  }
 
-    Map<String, ByteBuffer> namedParamValues = new HashMap<>();
-    namedParamValues.put("foo", ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)));
-    namedParamValues.put("bar", ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
+  private Execute createExecuteMessageWithPositionalValues() {
+    List<ByteBuffer> positionalParamValues =
+        Arrays.asList(
+            ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)),
+            ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
 
-    QueryOptions queryOptions =
-        new QueryOptions(
-            0,
-            Collections.emptyList(),
-            namedParamValues,
-            true,
-            0,
-            null,
-            10,
-            -1,
-            null,
-            Integer.MIN_VALUE);
-    com.datastax.oss.protocol.internal.request.Query simpleQueryWithNamedParams =
-        new com.datastax.oss.protocol.internal.request.Query(queryStr, queryOptions);
+    QueryOptions queryOptions = getQueryOptions(positionalParamValues, Collections.emptyMap());
 
-    assertThat(selectQuery.matches(FrameUtils.wrapRequest(simpleQueryWithNamedParams))).isTrue();
+    return new Execute(
+        BigInteger.valueOf(SIMPLE_SELECT_QUERY.hashCode()).toByteArray(), queryOptions);
+  }
+
+  private com.datastax.oss.protocol.internal.request.Query
+      createQueryMessageWithPositionalValues() {
+
+    List<ByteBuffer> positionalParamValues =
+        Arrays.asList(
+            ByteBuffer.wrap("any".getBytes(StandardCharsets.UTF_8)),
+            ByteBuffer.wrap(new byte[] {0, 0, 0, 100}));
+
+    QueryOptions queryOptions = getQueryOptions(positionalParamValues, Collections.emptyMap());
+    return new com.datastax.oss.protocol.internal.request.Query(SIMPLE_SELECT_QUERY, queryOptions);
+  }
+
+  private QueryOptions getQueryOptions(
+      List<ByteBuffer> positionalParamValues, Map<String, ByteBuffer> objectObjectMap) {
+
+    return new QueryOptions(
+        0, positionalParamValues, objectObjectMap, true, 0, null, 10, -1, null, Integer.MIN_VALUE);
   }
 }
