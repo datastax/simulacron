@@ -171,14 +171,9 @@ public class QueryLog {
     return this.frame;
   }
 
-  /** @return List of decoded values from batch message if present and primed */
+  /** @return List of decoded values if present and primed */
   public List<LinkedHashMap<String, Object>> getDecodedValues() {
     return this.decodedValues;
-  }
-
-  /** @return Decoded values from query/execute message if present and primed */
-  public LinkedHashMap<String, Object> getFirstDecodedValues() {
-    return this.decodedValues.stream().findFirst().orElse(new LinkedHashMap<>());
   }
 
   /** @return Decoded value from query/execute message if present and primed */
