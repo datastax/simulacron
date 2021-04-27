@@ -26,6 +26,9 @@ import com.datastax.oss.simulacron.common.stubbing.StubMapping;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.SocketAddress;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Optional;
 
 public class QueryLog {
@@ -57,6 +60,9 @@ public class QueryLog {
   @JsonProperty(value = "frame", access = JsonProperty.Access.READ_ONLY)
   private Frame frame;
 
+  @JsonProperty(value = "decodedValues")
+  private List<LinkedHashMap<String, Object>> decodedValues = Collections.emptyList();
+
   @JsonCreator
   public QueryLog(
       @JsonProperty("query") String query,
@@ -86,6 +92,11 @@ public class QueryLog {
     this.receivedTimestamp = receivedTimestamp;
     this.primed = primed;
     this.type = frame.message.getClass().getSimpleName().toUpperCase();
+
+    if (primed && stubOption.isPresent() && stubOption.get() instanceof Prime) {
+      Prime prime = (Prime) stubOption.get();
+      decodedValues = MessageValuesDecoder.decode(prime, frame);
+    }
 
     if (frame.message instanceof Query) {
       Query query = (Query) frame.message;
@@ -158,6 +169,16 @@ public class QueryLog {
   /** @return The frame associated with this log if present. */
   public Frame getFrame() {
     return this.frame;
+  }
+
+  /** @return List of decoded values if present and primed */
+  public List<LinkedHashMap<String, Object>> getDecodedValues() {
+    return this.decodedValues;
+  }
+
+  /** @return Decoded value from query/execute message if present and primed */
+  public Object getDecodedValue(String name) {
+    return this.decodedValues.stream().findFirst().orElse(new LinkedHashMap<>()).get(name);
   }
 
   @Override
