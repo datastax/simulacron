@@ -49,7 +49,7 @@ emphasis on testing with many simulated native protocol endpoints.
    If you need to remove these ip addresses without a reboot, you can run the following script:
    
    ```bash
-      #!/bin/bash
+   #!/bin/bash
    for sub in {0..4}; do
        echo "Opening for 127.0.$sub"
        for i in {0..255}; do sudo ifconfig lo0 -alias 127.0.$sub.$i; done
