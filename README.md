@@ -45,6 +45,17 @@ emphasis on testing with many simulated native protocol endpoints.
    itself to the presence of added ip addresses.  This lasts several minutes.
 
    Also note that on reboot these ip addresses need to be re-added.
+   
+   If you need to remove these ip addresses without a reboot, you can run the following script:
+   
+   ```bash
+      #!/bin/bash
+   for sub in {0..4}; do
+       echo "Opening for 127.0.$sub"
+       for i in {0..255}; do sudo ifconfig lo0 -alias 127.0.$sub.$i; done
+   done
+   sudo ifconfig lo0 alias 127.0.0.1 up
+   ```
 
 ## Getting Started with the Standalone Jar
 
