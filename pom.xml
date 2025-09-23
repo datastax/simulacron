@@ -26,11 +26,11 @@
 
   <groupId>com.datastax.oss.simulacron</groupId>
   <artifactId>simulacron-parent</artifactId>
-  <version>0.13.0-SNAPSHOT</version>
+  <version>0.13.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>simulacron parent project</name>
-  <url>https://github.com/datastax/simulacron</url>
+  <url>https://github.com/scylladb/java-simulacron</url>
   <inceptionYear>2017</inceptionYear>
 
   <modules>
@@ -56,6 +56,9 @@
     <swagger-ui.version>3.42.0</swagger-ui.version>
     <jcommander.version>1.78</jcommander.version>
     <format.validateOnly>true</format.validateOnly>
+    <release.autopublish>false</release.autopublish>
+    <release.push.changes>false</release.push.changes>
+    <gpg.passphrase/>
   </properties>
 
   <dependencies>
@@ -120,8 +123,18 @@
             <autoVersionSubmodules>true</autoVersionSubmodules>
             <useReleaseProfile>false</useReleaseProfile>
             <releaseProfiles>release</releaseProfiles>
-            <goals>deploy</goals>
+            <localCheckout>true</localCheckout>
+            <pushChanges>${release.push.changes}</pushChanges>
+            <mavenExecutorId>forked-path</mavenExecutorId>
+            <arguments>-Dgpg.passphrase=${gpg.passphrase} -Drelease.autopublish=${release.autopublish}</arguments>
           </configuration>
+          <dependencies>
+            <dependency>
+              <groupId>org.apache.maven.scm</groupId>
+              <artifactId>maven-scm-provider-gitexe</artifactId>
+              <version>2.1.0</version>
+            </dependency>
+          </dependencies>
         </plugin>
         <plugin>
           <groupId>com.mycila</groupId>
@@ -267,6 +280,17 @@ limitations under the License.]]>
           </instructions>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.8.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>${release.autopublish}</autoPublish>
+          <waitUntil>validated</waitUntil>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
@@ -317,12 +341,15 @@ limitations under the License.]]>
   </profiles>
 
   <distributionManagement>
+    <snapshotRepository>
+      <id>central</id>
+      <url>https://central.sonatype.com/repository/maven-snapshots</url>
+    </snapshotRepository>
     <repository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+      <id>central</id>
+      <url>https://central.sonatype.com/repository/maven-releases</url>
     </repository>
   </distributionManagement>
-
   <licenses>
     <license>
       <name>Apache 2</name>
@@ -333,16 +360,16 @@ limitations under the License.]]>
   </licenses>
 
   <scm>
-    <connection>scm:git:git@github.com:datastax/simulacron.git</connection>
-    <developerConnection>scm:git:git@github.com:datastax/simulacron.git</developerConnection>
-    <url>https://github.com/datastax/simulacron</url>
+    <connection>scm:git:git@github.com:scylladb/java-simulacron.git</connection>
+    <developerConnection>scm:git:git@github.com:scylladb/java-simulacron.git</developerConnection>
+    <url>https://github.com/scylladb/java-simulacron</url>
     <tag>HEAD</tag>
   </scm>
 
   <developers>
     <developer>
       <name>Various</name>
-      <organization>DataStax</organization>
+      <organization>ScyllaDB</organization>
     </developer>
   </developers>
 </project>
